@@ -189,6 +189,7 @@ class SelfdriveD:
         filtered_events = {EventName.belowEngageSpeed, EventName.speedTooLow}
         if self.CP.brand == 'hyundai':
           filtered_events.add(EventName.wrongCarMode)
+          filtered_events.add(EventName.pcmDisable)
         car_events = [e for e in car_events if e.name not in filtered_events]
       self.events.add_from_msg(car_events)
 
