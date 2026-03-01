@@ -92,6 +92,7 @@ class SelfdriveD:
     self.is_metric = self.params.get_bool("IsMetric")
     self.is_ldw_enabled = self.params.get_bool("IsLdwEnabled")
     self.disengage_on_accelerator = self.params.get_bool("DisengageOnAccelerator")
+    self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
 
     car_recognized = self.CP.brand != 'mock'
 
@@ -184,6 +185,8 @@ class SelfdriveD:
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:
       car_events = self.car_events.update(CS, self.CS_prev, self.sm['carControl']).to_msg()
+      if self.slow_speed_engage:
+        car_events = [e for e in car_events if e.name not in (EventName.belowEngageSpeed, EventName.speedTooLow)]
       self.events.add_from_msg(car_events)
 
       if self.CP.notCar:
@@ -507,6 +510,7 @@ class SelfdriveD:
       self.is_metric = self.params.get_bool("IsMetric")
       self.is_ldw_enabled = self.params.get_bool("IsLdwEnabled")
       self.disengage_on_accelerator = self.params.get_bool("DisengageOnAccelerator")
+      self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
       self.experimental_mode = self.params.get_bool("ExperimentalMode") and self.CP.openpilotLongitudinalControl
       self.personality = self.params.get("LongitudinalPersonality", return_default=True)
       time.sleep(0.1)
