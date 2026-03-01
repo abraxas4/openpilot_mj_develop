@@ -6,6 +6,7 @@ import threading
 import cereal.messaging as messaging
 
 from cereal import car, log
+from panda import ALTERNATIVE_EXPERIENCE
 
 from openpilot.common.params import Params
 from openpilot.common.realtime import config_realtime_process, Priority, Ratekeeper
@@ -109,7 +110,15 @@ class Car:
       self.CI, self.CP = CI, CI.CP
       self.RI = RI
 
+    self.disengage_on_accelerator = self.params.get_bool("DisengageOnAccelerator")
+    self.always_on_lateral = self.params.get_bool("AlwaysOnLateral")
     self.CP.alternativeExperience = 0
+    if not self.disengage_on_accelerator:
+      self.CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.DISABLE_DISENGAGE_ON_GAS
+    if self.always_on_lateral:
+      self.CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.ALWAYS_ON_LATERAL
+      self.CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.DISABLE_DISENGAGE_ON_GAS
+
     openpilot_enabled_toggle = self.params.get_bool("OpenpilotEnabledToggle")
     controller_available = self.CI.CC is not None and openpilot_enabled_toggle and not self.CP.dashcamOnly
     self.CP.passive = not controller_available or self.CP.dashcamOnly

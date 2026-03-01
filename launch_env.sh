@@ -21,5 +21,3 @@ fi
 
 export STAGING_ROOT="/data/safe_staging"
 
-export IGNORE_CONTROLS_MISMATCH=1
-export IGNORE_PEDAL_PRESSED=1
