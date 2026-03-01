@@ -186,7 +186,10 @@ class SelfdriveD:
     if CS.canValid:
       car_events = self.car_events.update(CS, self.CS_prev, self.sm['carControl']).to_msg()
       if self.slow_speed_engage:
-        car_events = [e for e in car_events if e.name not in (EventName.belowEngageSpeed, EventName.speedTooLow)]
+        filtered_events = {EventName.belowEngageSpeed, EventName.speedTooLow}
+        if self.CP.brand == 'hyundai':
+          filtered_events.add(EventName.wrongCarMode)
+        car_events = [e for e in car_events if e.name not in filtered_events]
       self.events.add_from_msg(car_events)
 
       if self.CP.notCar:
