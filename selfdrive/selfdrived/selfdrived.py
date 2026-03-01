@@ -192,6 +192,10 @@ class SelfdriveD:
         car_events = [e for e in car_events if e.name not in filtered_events]
       self.events.add_from_msg(car_events)
 
+      if self.slow_speed_engage and self.CP.brand == 'hyundai' and CS.cruiseState.available and not self.enabled and not CS.brakePressed:
+        if any(be.type in (ButtonType.accelCruise, ButtonType.decelCruise) for be in CS.buttonEvents):
+          self.events.add(EventName.buttonEnable)
+
       if self.CP.notCar:
         # wait for everything to init first
         if self.sm.frame > int(5. / DT_CTRL) and self.initialized:
