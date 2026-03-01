@@ -50,6 +50,7 @@ class Controls:
 
     self.LoC = LongControl(self.CP)
     self.VM = VehicleModel(self.CP)
+    self.always_on_lateral = self.params.get_bool("AlwaysOnLateral")
     self.LaC: LatControl
     if self.CP.steerControlType == car.CarParams.SteerControlType.angle:
       self.LaC = LatControlAngle(self.CP, self.CI, DT_CTRL)
@@ -60,6 +61,9 @@ class Controls:
 
   def update(self):
     self.sm.update(15)
+    if self.sm.frame % 20 == 0:
+      self.always_on_lateral = self.params.get_bool("AlwaysOnLateral")
+
     if self.sm.updated["liveCalibration"]:
       self.pose_calibrator.feed_live_calib(self.sm['liveCalibration'])
     if self.sm.updated["livePose"]:
@@ -93,7 +97,8 @@ class Controls:
 
     # Check which actuators can be enabled
     standstill = abs(CS.vEgo) <= max(self.CP.minSteerSpeed, 0.3) or CS.standstill
-    CC.latActive = self.sm['selfdriveState'].active and not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
+    always_on_lateral_active = self.always_on_lateral and CS.cruiseState.enabled
+    CC.latActive = (self.sm['selfdriveState'].active or always_on_lateral_active) and not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
                    (not standstill or self.CP.steerAtStandstill)
     CC.longActive = CC.enabled and not any(e.overrideLongitudinal for e in self.sm['onroadEvents']) and self.CP.openpilotLongitudinalControl
 

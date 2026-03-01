@@ -155,6 +155,7 @@ class Car:
 
     self.is_metric = self.params.get_bool("IsMetric")
     self.experimental_mode = self.params.get_bool("ExperimentalMode")
+    self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
 
     # card is driven by can recv, expected at 100Hz
     self.rk = Ratekeeper(100, print_delay_threshold=None)
@@ -169,6 +170,9 @@ class Car:
     CS = self.CI.update(can_list)
     if self.CP.brand == 'mock':
       CS = self.mock_carstate.update(CS)
+
+    if self.slow_speed_engage and len(CS.events):
+      CS.events = [e for e in CS.events if e.name not in (EventName.belowEngageSpeed, EventName.speedTooLow)]
 
     # Update radar tracks from CAN
     RD: structs.RadarDataT | None = self.RI.update(can_list)
@@ -260,6 +264,7 @@ class Car:
     while not evt.is_set():
       self.is_metric = self.params.get_bool("IsMetric")
       self.experimental_mode = self.params.get_bool("ExperimentalMode") and self.CP.openpilotLongitudinalControl
+      self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
       time.sleep(0.1)
 
   def card_thread(self):
