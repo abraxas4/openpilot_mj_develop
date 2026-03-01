@@ -27,6 +27,8 @@ from openpilot.system.hardware import HARDWARE
 REPLAY = "REPLAY" in os.environ
 SIMULATION = "SIMULATION" in os.environ
 TESTING_CLOSET = "TESTING_CLOSET" in os.environ
+IGNORE_CONTROLS_MISMATCH = "IGNORE_CONTROLS_MISMATCH" in os.environ
+IGNORE_PEDAL_PRESSED = "IGNORE_PEDAL_PRESSED" in os.environ
 
 LONGITUDINAL_PERSONALITY_MAP = {v: k for k, v in log.LongitudinalPersonality.schema.enumerants.items()}
 
@@ -62,6 +64,13 @@ class SelfdriveD:
     self.calibrated_pose: Pose | None = None
     self.excessive_actuation_check = ExcessiveActuationCheck()
     self.excessive_actuation = self.params.get("Offroad_ExcessiveActuation") is not None
+    self.ignore_controls_mismatch = IGNORE_CONTROLS_MISMATCH
+    self.ignore_pedal_pressed = IGNORE_PEDAL_PRESSED
+
+    if self.ignore_controls_mismatch:
+      cloudlog.warning("controlsMismatch ignored", force_ignore=IGNORE_CONTROLS_MISMATCH)
+    if self.ignore_pedal_pressed:
+      cloudlog.warning("pedalPressed ignored", force_ignore=IGNORE_PEDAL_PRESSED)
 
     # Setup sockets
     self.pm = messaging.PubMaster(['selfdriveState', 'onroadEvents'])
@@ -207,7 +216,8 @@ class SelfdriveD:
       if (CS.gasPressed and not self.CS_prev.gasPressed and self.disengage_on_accelerator) or \
         (CS.brakePressed and (not self.CS_prev.brakePressed or not CS.standstill)) or \
         (CS.regenBraking and (not self.CS_prev.regenBraking or not CS.standstill)):
-        self.events.add(EventName.pedalPressed)
+        if not self.ignore_pedal_pressed:
+          self.events.add(EventName.pedalPressed)
 
     # Create events for temperature, disk space, and memory
     if self.sm['deviceState'].thermalStatus >= ThermalStatus.red:
@@ -289,7 +299,7 @@ class SelfdriveD:
         safety_mismatch = pandaState.safetyModel not in IGNORED_SAFETY_MODES
 
       # safety mismatch allows some time for pandad to set the safety mode and publish it back from panda
-      if (safety_mismatch and self.sm.frame*DT_CTRL > 10.) or pandaState.safetyRxChecksInvalid or self.mismatch_counter >= 200:
+      if ((safety_mismatch and self.sm.frame*DT_CTRL > 10.) or pandaState.safetyRxChecksInvalid or self.mismatch_counter >= 200) and not self.ignore_controls_mismatch:
         self.events.add(EventName.controlsMismatch)
 
       if log.PandaState.FaultType.relayMalfunction in pandaState.faults:
