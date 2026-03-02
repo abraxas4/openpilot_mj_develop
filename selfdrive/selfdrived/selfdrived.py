@@ -205,8 +205,12 @@ class SelfdriveD:
           self.events.add(EventName.pcmEnable)
 
       # Disable on rising edge of accelerator or brake. Also disable on brake when speed > 0
+      brake_pressed = CS.brakePressed and (not self.CS_prev.brakePressed or not CS.standstill)
+      if self.CP.brand == 'hyundai' and self.slow_speed_engage:
+        brake_pressed = CS.brakePressed and not self.CS_prev.brakePressed
+
       pedal_pressed = (CS.gasPressed and not self.CS_prev.gasPressed and self.disengage_on_accelerator) or \
-                      (CS.brakePressed and (not self.CS_prev.brakePressed or not CS.standstill)) or \
+                      brake_pressed or \
                       (CS.regenBraking and (not self.CS_prev.regenBraking or not CS.standstill))
 
       if self.CP.brand == 'hyundai' and self.slow_speed_engage:
