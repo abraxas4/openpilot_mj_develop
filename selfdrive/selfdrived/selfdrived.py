@@ -115,6 +115,7 @@ class SelfdriveD:
     self.distance_traveled = 0
     self.last_functional_fan_frame = 0
     self.events_prev = []
+    self.hyundai_pedal_pressed_frames = 0
     self.logged_comm_issue = None
     self.not_running_prev = None
     self.experimental_mode = False
@@ -204,9 +205,15 @@ class SelfdriveD:
           self.events.add(EventName.pcmEnable)
 
       # Disable on rising edge of accelerator or brake. Also disable on brake when speed > 0
-      if (CS.gasPressed and not self.CS_prev.gasPressed and self.disengage_on_accelerator) or \
-        (CS.brakePressed and (not self.CS_prev.brakePressed or not CS.standstill)) or \
-        (CS.regenBraking and (not self.CS_prev.regenBraking or not CS.standstill)):
+      pedal_pressed = (CS.gasPressed and not self.CS_prev.gasPressed and self.disengage_on_accelerator) or \
+                      (CS.brakePressed and (not self.CS_prev.brakePressed or not CS.standstill)) or \
+                      (CS.regenBraking and (not self.CS_prev.regenBraking or not CS.standstill))
+
+      if self.CP.brand == 'hyundai' and self.slow_speed_engage:
+        self.hyundai_pedal_pressed_frames = self.hyundai_pedal_pressed_frames + 1 if pedal_pressed else 0
+        if self.hyundai_pedal_pressed_frames >= 2:
+          self.events.add(EventName.pedalPressed)
+      elif pedal_pressed:
         self.events.add(EventName.pedalPressed)
 
     # Create events for temperature, disk space, and memory
