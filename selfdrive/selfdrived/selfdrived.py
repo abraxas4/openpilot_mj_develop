@@ -288,15 +288,24 @@ class SelfdriveD:
 
     for i, pandaState in enumerate(self.sm['pandaStates']):
       # All pandas must match the list of safetyConfigs, and if outside this list, must be silent or noOutput
+      model_mismatch = False
+      param_mismatch = False
+      alt_exp_mismatch = False
       if i < len(self.CP.safetyConfigs):
-        safety_mismatch = pandaState.safetyModel != self.CP.safetyConfigs[i].safetyModel or \
-                          pandaState.safetyParam != self.CP.safetyConfigs[i].safetyParam or \
-                          pandaState.alternativeExperience != self.CP.alternativeExperience
+        model_mismatch = pandaState.safetyModel != self.CP.safetyConfigs[i].safetyModel
+        param_mismatch = pandaState.safetyParam != self.CP.safetyConfigs[i].safetyParam
+        alt_exp_mismatch = pandaState.alternativeExperience != self.CP.alternativeExperience
+        safety_mismatch = model_mismatch or param_mismatch or alt_exp_mismatch
       else:
         safety_mismatch = pandaState.safetyModel not in IGNORED_SAFETY_MODES
 
       # safety mismatch allows some time for pandad to set the safety mode and publish it back from panda
-      if (safety_mismatch and self.sm.frame*DT_CTRL > 10.) or pandaState.safetyRxChecksInvalid or self.mismatch_counter >= 200:
+      mismatch_counter_limit = 400 if (self.CP.brand == 'hyundai' and self.slow_speed_engage) else 200
+      alt_exp_only_mismatch = alt_exp_mismatch and not model_mismatch and not param_mismatch
+      alt_exp_grace_s = 30.0 if (self.CP.brand == 'hyundai' and self.slow_speed_engage) else 10.0
+      safety_mismatch_trigger = safety_mismatch and self.sm.frame * DT_CTRL > (alt_exp_grace_s if alt_exp_only_mismatch else 10.0)
+
+      if safety_mismatch_trigger or pandaState.safetyRxChecksInvalid or self.mismatch_counter >= mismatch_counter_limit:
         self.events.add(EventName.controlsMismatch)
 
       if log.PandaState.FaultType.relayMalfunction in pandaState.faults:
