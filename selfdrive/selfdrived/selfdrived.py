@@ -290,6 +290,7 @@ class SelfdriveD:
                                                     LaneChangeState.laneChangeFinishing):
       self.events.add(EventName.laneChange)
 
+    interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
     for i, pandaState in enumerate(self.sm['pandaStates']):
       # All pandas must match the list of safetyConfigs, and if outside this list, must be silent or noOutput
       model_mismatch = False
@@ -309,7 +310,16 @@ class SelfdriveD:
       alt_exp_grace_s = 30.0 if (self.CP.brand == 'hyundai' and self.slow_speed_engage) else 10.0
       safety_mismatch_trigger = safety_mismatch and self.sm.frame * DT_CTRL > (alt_exp_grace_s if alt_exp_only_mismatch else 10.0)
 
-      if safety_mismatch_trigger or pandaState.safetyRxChecksInvalid or self.mismatch_counter >= mismatch_counter_limit:
+      interrupt_rate_can2_only = (
+        self.CP.brand == 'hyundai' and self.slow_speed_engage and
+        interrupt_rate_can2_fault is not None and len(pandaState.faults) > 0 and
+        all(f == interrupt_rate_can2_fault for f in pandaState.faults)
+      )
+      mismatch_counter_trigger = self.mismatch_counter >= mismatch_counter_limit
+      if interrupt_rate_can2_only and not safety_mismatch and not pandaState.safetyRxChecksInvalid:
+        mismatch_counter_trigger = False
+
+      if safety_mismatch_trigger or pandaState.safetyRxChecksInvalid or mismatch_counter_trigger:
         self.events.add(EventName.controlsMismatch)
 
       if log.PandaState.FaultType.relayMalfunction in pandaState.faults:
@@ -473,9 +483,22 @@ class SelfdriveD:
       self.mismatch_counter = 0
 
     # All pandas not in silent mode must have controlsAllowed when openpilot is enabled
-    if self.enabled and any(not ps.controlsAllowed for ps in self.sm['pandaStates']
-           if ps.safetyModel not in IGNORED_SAFETY_MODES):
+    controls_mismatch_now = self.enabled and any(not ps.controlsAllowed for ps in self.sm['pandaStates']
+                                                 if ps.safetyModel not in IGNORED_SAFETY_MODES)
+    hyundai_interrupt_rate_can2_only = False
+    if controls_mismatch_now and self.CP.brand == 'hyundai' and self.slow_speed_engage:
+      interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
+      if interrupt_rate_can2_fault is not None:
+        active_pandas = [ps for ps in self.sm['pandaStates'] if ps.safetyModel not in IGNORED_SAFETY_MODES]
+        hyundai_interrupt_rate_can2_only = len(active_pandas) > 0 and all(
+          (not ps.controlsAllowed) and len(ps.faults) > 0 and all(f == interrupt_rate_can2_fault for f in ps.faults)
+          for ps in active_pandas
+        )
+
+    if controls_mismatch_now and not hyundai_interrupt_rate_can2_only:
       self.mismatch_counter += 1
+    elif not controls_mismatch_now or hyundai_interrupt_rate_can2_only:
+      self.mismatch_counter = 0
 
     return CS
 
