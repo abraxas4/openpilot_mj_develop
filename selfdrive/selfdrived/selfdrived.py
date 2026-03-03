@@ -191,6 +191,9 @@ class SelfdriveD:
         if self.CP.brand == 'hyundai':
           filtered_events.add("wrongCarMode")
           filtered_events.add("pcmDisable")
+          if CS.vEgo < (self.CP.minSteerSpeed + 0.5):
+            filtered_events.add("steerTempUnavailable")
+            filtered_events.add("steerTempUnavailableSilent")
         car_events = [e for e in car_events if e.name not in filtered_events]
       self.events.add_from_msg(car_events)
 
