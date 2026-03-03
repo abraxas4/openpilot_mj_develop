@@ -194,7 +194,7 @@ class SelfdriveD:
           if CS.vEgo < (self.CP.minSteerSpeed + 0.5):
             filtered_events.add("steerTempUnavailable")
             filtered_events.add("steerTempUnavailableSilent")
-        car_events = [e for e in car_events if e.name not in filtered_events]
+        car_events = [e for e in car_events if str(e.name) not in filtered_events]
       self.events.add_from_msg(car_events)
 
       if self.slow_speed_engage and self.CP.brand == 'hyundai' and CS.cruiseState.available and not self.enabled and not CS.brakePressed:
