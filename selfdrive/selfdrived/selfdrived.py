@@ -191,7 +191,15 @@ class SelfdriveD:
         if self.CP.brand == 'hyundai':
           filtered_events.add("wrongCarMode")
           filtered_events.add("pcmDisable")
-          if CS.vEgo < (self.CP.minSteerSpeed + 0.5):
+          interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
+          active_pandas = [ps for ps in self.sm['pandaStates'] if ps.safetyModel not in IGNORED_SAFETY_MODES]
+          hyundai_interrupt_rate_can2_only = interrupt_rate_can2_fault is not None and len(active_pandas) > 0 and all(
+            (not ps.controlsAllowed) and (not ps.safetyRxChecksInvalid) and len(ps.faults) > 0 and all(f == interrupt_rate_can2_fault for f in ps.faults)
+            for ps in active_pandas
+          )
+
+          low_speed_interrupt_rate_case = CS.vEgo < 8.33 and hyundai_interrupt_rate_can2_only
+          if CS.vEgo < (self.CP.minSteerSpeed + 0.5) or low_speed_interrupt_rate_case:
             filtered_events.add("steerTempUnavailable")
             filtered_events.add("steerTempUnavailableSilent")
         car_events = [e for e in car_events if str(e.name) not in filtered_events]
