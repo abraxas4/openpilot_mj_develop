@@ -198,7 +198,7 @@ class SelfdriveD:
             for ps in active_pandas
           )
 
-          low_speed_interrupt_rate_case = CS.vEgo < 8.33 and hyundai_interrupt_rate_can2_only
+          low_speed_interrupt_rate_case = CS.vEgo < 11.11 and hyundai_interrupt_rate_can2_only
           if CS.vEgo < (self.CP.minSteerSpeed + 0.5) or low_speed_interrupt_rate_case:
             filtered_events.add("steerTempUnavailable")
             filtered_events.add("steerTempUnavailableSilent")
