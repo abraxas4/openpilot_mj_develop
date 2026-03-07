@@ -194,7 +194,7 @@ class SelfdriveD:
           interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
           active_pandas = [ps for ps in self.sm['pandaStates'] if ps.safetyModel not in IGNORED_SAFETY_MODES]
           hyundai_interrupt_rate_can2_only = interrupt_rate_can2_fault is not None and len(active_pandas) > 0 and all(
-            (not ps.controlsAllowed) and (not ps.safetyRxChecksInvalid) and len(ps.faults) > 0 and all(f == interrupt_rate_can2_fault for f in ps.faults)
+            (not ps.safetyRxChecksInvalid) and len(ps.faults) > 0 and all(f == interrupt_rate_can2_fault for f in ps.faults)
             for ps in active_pandas
           )
 
