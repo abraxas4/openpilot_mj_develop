@@ -116,6 +116,7 @@ class SelfdriveD:
     self.last_functional_fan_frame = 0
     self.events_prev = []
     self.hyundai_pedal_pressed_frames = 0
+    self.hyundai_controls_blocked_frames = 0
     self.logged_comm_issue = None
     self.not_running_prev = None
     self.experimental_mode = False
@@ -498,6 +499,7 @@ class SelfdriveD:
     controls_mismatch_now = self.enabled and any(not ps.controlsAllowed for ps in self.sm['pandaStates']
                                                  if ps.safetyModel not in IGNORED_SAFETY_MODES)
     hyundai_interrupt_rate_can2_only = False
+    hyundai_interrupt_rate_can2_timeout_frames = int(0.7 / DT_CTRL)
     if controls_mismatch_now and self.CP.brand == 'hyundai' and self.slow_speed_engage:
       interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
       if interrupt_rate_can2_fault is not None:
@@ -506,6 +508,13 @@ class SelfdriveD:
           (not ps.controlsAllowed) and len(ps.faults) > 0 and all(f == interrupt_rate_can2_fault for f in ps.faults)
           for ps in active_pandas
         )
+
+    if controls_mismatch_now and hyundai_interrupt_rate_can2_only:
+      self.hyundai_controls_blocked_frames += 1
+      if self.hyundai_controls_blocked_frames >= hyundai_interrupt_rate_can2_timeout_frames:
+        hyundai_interrupt_rate_can2_only = False
+    else:
+      self.hyundai_controls_blocked_frames = 0
 
     if controls_mismatch_now and not hyundai_interrupt_rate_can2_only:
       self.mismatch_counter += 1
