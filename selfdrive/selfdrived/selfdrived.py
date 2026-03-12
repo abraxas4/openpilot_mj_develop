@@ -325,6 +325,7 @@ class SelfdriveD:
       interrupt_rate_can2_only = (
         self.CP.brand == 'hyundai' and self.slow_speed_engage and
         CS.vEgo < 8.33 and
+        self.hyundai_controls_blocked_frames < int(0.7 / DT_CTRL) and
         interrupt_rate_can2_fault is not None and len(pandaState.faults) > 0 and
         all(f == interrupt_rate_can2_fault for f in pandaState.faults)
       )
