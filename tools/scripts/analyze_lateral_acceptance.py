@@ -27,7 +27,8 @@ class Stats:
   enabled_frames: int = 0
   lat_active_frames: int = 0
   command_frames: int = 0
-  blocked_frames: int = 0
+  blocked_enabled_frames: int = 0
+  blocked_command_frames: int = 0
   effective_frames: int = 0
   interrupt_rate_can2_fault_frames: int = 0
 
@@ -40,7 +41,9 @@ class Stats:
     if has_command:
       self.command_frames += 1
     if blocked:
-      self.blocked_frames += 1
+      self.blocked_enabled_frames += 1
+    if blocked and has_command:
+      self.blocked_command_frames += 1
     if has_command and not blocked:
       self.effective_frames += 1
     if interrupt_rate_fault:
@@ -73,9 +76,38 @@ def print_stats(name: str, s: Stats) -> None:
   print(f"\n[{name}]")
   print(f"frames={s.frames}, enabled={s.enabled_frames}, latActive={s.lat_active_frames}")
   print(f"op_command_frames={s.command_frames}")
-  print(f"controls_blocked_frames={s.blocked_frames} ({pct(s.blocked_frames, s.command_frames)})")
+  print(f"controls_blocked_enabled_frames={s.blocked_enabled_frames} ({pct(s.blocked_enabled_frames, s.enabled_frames)})")
+  print(f"command_blocked_frames={s.blocked_command_frames} ({pct(s.blocked_command_frames, s.command_frames)})")
   print(f"effective_lateral_frames={s.effective_frames} ({pct(s.effective_frames, s.command_frames)})")
   print(f"interruptRateCan2_fault_frames={s.interrupt_rate_can2_fault_frames} ({pct(s.interrupt_rate_can2_fault_frames, s.frames)})")
+
+
+def effective_ratio(s: Stats) -> float:
+  return (s.effective_frames / s.command_frames) if s.command_frames > 0 else 0.0
+
+
+def print_ranked_summary(results: list[tuple[str, Stats, Stats]], top_n: int) -> None:
+  with_commands = [(path, all_stats, post_stats) for path, all_stats, post_stats in results if all_stats.command_frames > 0]
+  if not with_commands:
+    print("\n[Route Summary]")
+    print("- No segments with OP lateral command frames were found.")
+    return
+
+  worst_all = sorted(with_commands, key=lambda x: effective_ratio(x[1]))[:top_n]
+  print(f"\n[Route Summary] worst_overall_effective_top_{len(worst_all)}")
+  for path, all_stats, _ in worst_all:
+    print(f"- {path}: effective={pct(all_stats.effective_frames, all_stats.command_frames)}, "
+          f"cmd_blocked={pct(all_stats.blocked_command_frames, all_stats.command_frames)}, "
+          f"commands={all_stats.command_frames}")
+
+  with_post_cancel = [(path, post_stats) for path, _, post_stats in with_commands if post_stats.command_frames > 0]
+  if with_post_cancel:
+    worst_post = sorted(with_post_cancel, key=lambda x: effective_ratio(x[1]))[:top_n]
+    print(f"\n[Route Summary] worst_post_cancel_effective_top_{len(worst_post)}")
+    for path, post_stats in worst_post:
+      print(f"- {path}: effective={pct(post_stats.effective_frames, post_stats.command_frames)}, "
+            f"cmd_blocked={pct(post_stats.blocked_command_frames, post_stats.command_frames)}, "
+            f"commands={post_stats.command_frames}")
 
 
 def has_lateral_command(cc) -> bool:
@@ -102,7 +134,7 @@ def controls_blocked(ps_list: list[log.PandaState]) -> tuple[bool, bool]:
   return blocked, interrupt
 
 
-def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s: float) -> Stats:
+def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s: float) -> tuple[Stats, Stats]:
   low_windows: list[Window] = []
   high_windows: list[Window] = []
   post_cancel_windows: list[Window] = []
@@ -178,7 +210,7 @@ def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s:
   print("- If controls_blocked_frames is high with interruptRateCan2_fault_frames, panda safety gate blocking is likely.")
   print("- If POST_CANCEL effective_lateral_frames drops sharply versus LOW/HIGH windows, inspect post-cancel lateral re-entry path.")
 
-  return stats_all
+  return stats_all, stats_post_cancel
 
 
 def route_glob_from_rlog_path(rlog_path: str) -> str:
@@ -200,6 +232,7 @@ def main() -> None:
   parser.add_argument("--low-speed-ms", type=float, default=12.0, help="Engage speed threshold for low-speed window")
   parser.add_argument("--high-speed-ms", type=float, default=20.0, help="Engage speed threshold for high-speed window")
   parser.add_argument("--window-sec", type=float, default=10.0, help="Duration of each analysis window")
+  parser.add_argument("--summary-top", type=int, default=8, help="How many worst segments to show in route summary")
   args = parser.parse_args()
 
   if args.rlog_glob:
@@ -207,12 +240,15 @@ def main() -> None:
     if not rlogs:
       raise FileNotFoundError(f"No rlog files matched --rlog-glob: {args.rlog_glob}")
     print(f"matched_rlogs={len(rlogs)}")
+    results: list[tuple[str, Stats, Stats]] = []
     for i, rlog_path in enumerate(rlogs, start=1):
       print(f"\n=== [{i}/{len(rlogs)}] ===")
-      analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+      stats_all, stats_post_cancel = analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+      results.append((rlog_path, stats_all, stats_post_cancel))
+    print_ranked_summary(results, args.summary_top)
   else:
     rlog_path = args.rlog.strip() if args.rlog else pick_latest_rlog(args.realdata_root)
-    stats_all = analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+    stats_all, _ = analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
 
     if stats_all.enabled_frames == 0:
       inferred_glob = route_glob_from_rlog_path(rlog_path)
@@ -220,9 +256,12 @@ def main() -> None:
         rlogs = sorted(glob.glob(inferred_glob))
         if len(rlogs) > 1:
           print(f"\n[AutoFallback] matched_rlogs={len(rlogs)} from route glob: {inferred_glob}")
+          results: list[tuple[str, Stats, Stats]] = []
           for i, rp in enumerate(rlogs, start=1):
             print(f"\n=== [auto {i}/{len(rlogs)}] ===")
-            analyze(rp, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+            auto_stats_all, auto_stats_post_cancel = analyze(rp, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+            results.append((rp, auto_stats_all, auto_stats_post_cancel))
+          print_ranked_summary(results, args.summary_top)
 
 
 if __name__ == "__main__":
