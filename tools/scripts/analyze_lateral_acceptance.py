@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import argparse
 import glob
 from dataclasses import dataclass
@@ -166,10 +167,10 @@ def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s:
   print_stats(f"HIGH_ENGAGE_FIRST_{int(window_s)}S", stats_high)
   print_stats(f"POST_CANCEL_{int(window_s)}S", stats_post_cancel)
 
-  print("\n[판정 가이드]")
-  print("- op_command_frames > 0 이면서 effective_lateral_frames가 매우 낮으면: OP는 조향 명령을 냈지만 차량에 거의 적용되지 않은 상태")
-  print("- controls_blocked_frames 비율이 높고 interruptRateCan2_fault_frames가 동반되면: panda safety gate 차단 가능성 높음")
-  print("- POST_CANCEL 구간의 effective_lateral_frames가 LOW/HIGH 대비 급감하면: 취소 이후 lateral 복귀 경로 점검 필요")
+  print("\n[Interpretation Guide]")
+  print("- If op_command_frames > 0 and effective_lateral_frames is very low, OP generated steering commands but they were rarely applied.")
+  print("- If controls_blocked_frames is high with interruptRateCan2_fault_frames, panda safety gate blocking is likely.")
+  print("- If POST_CANCEL effective_lateral_frames drops sharply versus LOW/HIGH windows, inspect post-cancel lateral re-entry path.")
 
 
 def main() -> None:

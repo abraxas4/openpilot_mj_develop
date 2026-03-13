@@ -2,6 +2,8 @@
   "editor.tabSize": 2,
   "editor.insertSpaces": true,
   "editor.renderWhitespace": "trailing",
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
   "files.trimTrailingWhitespace": true,
   "search.exclude": {
     "**/.git": true,
