@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import argparse
 import glob
+import os
 from dataclasses import dataclass
 
 from cereal import car, log
@@ -101,7 +102,7 @@ def controls_blocked(ps_list: list[log.PandaState]) -> tuple[bool, bool]:
   return blocked, interrupt
 
 
-def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s: float) -> None:
+def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s: float) -> Stats:
   low_windows: list[Window] = []
   high_windows: list[Window] = []
   post_cancel_windows: list[Window] = []
@@ -177,6 +178,19 @@ def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s:
   print("- If controls_blocked_frames is high with interruptRateCan2_fault_frames, panda safety gate blocking is likely.")
   print("- If POST_CANCEL effective_lateral_frames drops sharply versus LOW/HIGH windows, inspect post-cancel lateral re-entry path.")
 
+  return stats_all
+
+
+def route_glob_from_rlog_path(rlog_path: str) -> str:
+  seg_dir = os.path.basename(os.path.dirname(rlog_path))
+  if "--" not in seg_dir:
+    return ""
+
+  route_prefix = seg_dir.rsplit("--", 1)[0]
+  parent = os.path.dirname(os.path.dirname(rlog_path))
+  rlog_name = os.path.basename(rlog_path)
+  return os.path.join(parent, f"{route_prefix}--*", rlog_name)
+
 
 def main() -> None:
   parser = argparse.ArgumentParser(description="Analyze whether openpilot lateral commands were accepted")
@@ -198,7 +212,17 @@ def main() -> None:
       analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
   else:
     rlog_path = args.rlog.strip() if args.rlog else pick_latest_rlog(args.realdata_root)
-    analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+    stats_all = analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+
+    if stats_all.enabled_frames == 0:
+      inferred_glob = route_glob_from_rlog_path(rlog_path)
+      if inferred_glob:
+        rlogs = sorted(glob.glob(inferred_glob))
+        if len(rlogs) > 1:
+          print(f"\n[AutoFallback] matched_rlogs={len(rlogs)} from route glob: {inferred_glob}")
+          for i, rp in enumerate(rlogs, start=1):
+            print(f"\n=== [auto {i}/{len(rlogs)}] ===")
+            analyze(rp, args.low_speed_ms, args.high_speed_ms, args.window_sec)
 
 
 if __name__ == "__main__":
