@@ -167,6 +167,11 @@ def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s:
   print_stats(f"HIGH_ENGAGE_FIRST_{int(window_s)}S", stats_high)
   print_stats(f"POST_CANCEL_{int(window_s)}S", stats_post_cancel)
 
+  if stats_all.enabled_frames == 0:
+    print("\n[Note]")
+    print("- No enabled frames found in this rlog. This segment cannot be used to judge OP steering intervention.")
+    print("- Analyze all segments in the same route with --rlog-glob '/data/media/0/realdata/<route>--*/rlog.zst'.")
+
   print("\n[Interpretation Guide]")
   print("- If op_command_frames > 0 and effective_lateral_frames is very low, OP generated steering commands but they were rarely applied.")
   print("- If controls_blocked_frames is high with interruptRateCan2_fault_frames, panda safety gate blocking is likely.")
@@ -176,14 +181,24 @@ def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s:
 def main() -> None:
   parser = argparse.ArgumentParser(description="Analyze whether openpilot lateral commands were accepted")
   parser.add_argument("--rlog", type=str, default="", help="Path to rlog(.zst/.bz2/.rlog)")
+  parser.add_argument("--rlog-glob", type=str, default="", help="Glob pattern for multiple rlogs (e.g. /data/media/0/realdata/<route>--*/rlog.zst)")
   parser.add_argument("--realdata-root", type=str, default="/data/media/0/realdata", help="Root to auto-pick latest rlog")
   parser.add_argument("--low-speed-ms", type=float, default=12.0, help="Engage speed threshold for low-speed window")
   parser.add_argument("--high-speed-ms", type=float, default=20.0, help="Engage speed threshold for high-speed window")
   parser.add_argument("--window-sec", type=float, default=10.0, help="Duration of each analysis window")
   args = parser.parse_args()
 
-  rlog_path = args.rlog.strip() if args.rlog else pick_latest_rlog(args.realdata_root)
-  analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+  if args.rlog_glob:
+    rlogs = sorted(glob.glob(args.rlog_glob))
+    if not rlogs:
+      raise FileNotFoundError(f"No rlog files matched --rlog-glob: {args.rlog_glob}")
+    print(f"matched_rlogs={len(rlogs)}")
+    for i, rlog_path in enumerate(rlogs, start=1):
+      print(f"\n=== [{i}/{len(rlogs)}] ===")
+      analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+  else:
+    rlog_path = args.rlog.strip() if args.rlog else pick_latest_rlog(args.realdata_root)
+    analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
 
 
 if __name__ == "__main__":
