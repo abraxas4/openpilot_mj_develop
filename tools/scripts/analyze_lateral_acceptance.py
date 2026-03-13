@@ -77,7 +77,7 @@ def print_stats(name: str, s: Stats) -> None:
   print(f"interruptRateCan2_fault_frames={s.interrupt_rate_can2_fault_frames} ({pct(s.interrupt_rate_can2_fault_frames, s.frames)})")
 
 
-def has_lateral_command(cc: log.Event.carControl) -> bool:
+def has_lateral_command(cc) -> bool:
   if not cc.latActive:
     return False
 
