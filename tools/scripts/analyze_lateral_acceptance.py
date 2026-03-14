@@ -110,6 +110,18 @@ def print_ranked_summary(results: list[tuple[str, Stats, Stats]], top_n: int) ->
             f"commands={post_stats.command_frames}")
 
 
+def verdict_text(s: Stats) -> str:
+  if s.command_frames == 0:
+    return "No OP lateral commands observed (likely stock ADAS/manual for this speed bin)."
+
+  eff = effective_ratio(s)
+  if eff >= 0.8:
+    return "OP lateral intervention is likely active for most commanded frames."
+  if eff <= 0.2:
+    return "OP lateral commands are mostly blocked (stock ADAS/safety gate likely dominates)."
+  return "Mixed behavior: OP commands are partially applied and partially blocked."
+
+
 def has_lateral_command(cc) -> bool:
   if not cc.latActive:
     return False
@@ -134,7 +146,12 @@ def controls_blocked(ps_list: list[log.PandaState]) -> tuple[bool, bool]:
   return blocked, interrupt
 
 
-def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s: float) -> tuple[Stats, Stats]:
+def analyze(rlog_path: str,
+            low_speed_ms: float,
+            high_speed_ms: float,
+            window_s: float,
+            low_bin_ms: float,
+            high_bin_ms: float) -> tuple[Stats, Stats]:
   low_windows: list[Window] = []
   high_windows: list[Window] = []
   post_cancel_windows: list[Window] = []
@@ -143,6 +160,8 @@ def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s:
   stats_low = Stats()
   stats_high = Stats()
   stats_post_cancel = Stats()
+  stats_speed_bin_low = Stats()
+  stats_speed_bin_high = Stats()
 
   latest_enabled = False
   prev_enabled = False
@@ -191,6 +210,10 @@ def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s:
         stats_high.add(enabled, lat_active, has_command, enabled and blocked, interrupt)
       if in_any_window(t_ns, post_cancel_windows):
         stats_post_cancel.add(enabled, lat_active, has_command, enabled and blocked, interrupt)
+      if latest_v_ego <= low_bin_ms:
+        stats_speed_bin_low.add(enabled, lat_active, has_command, enabled and blocked, interrupt)
+      if latest_v_ego >= high_bin_ms:
+        stats_speed_bin_high.add(enabled, lat_active, has_command, enabled and blocked, interrupt)
 
   print(f"rlog={rlog_path}")
   print(f"low_speed_engage_windows={len(low_windows)}, high_speed_engage_windows={len(high_windows)}, post_cancel_windows={len(post_cancel_windows)}")
@@ -199,6 +222,12 @@ def analyze(rlog_path: str, low_speed_ms: float, high_speed_ms: float, window_s:
   print_stats(f"LOW_ENGAGE_FIRST_{int(window_s)}S", stats_low)
   print_stats(f"HIGH_ENGAGE_FIRST_{int(window_s)}S", stats_high)
   print_stats(f"POST_CANCEL_{int(window_s)}S", stats_post_cancel)
+  print_stats(f"SPEED_LE_{int(low_bin_ms * 3.6)}KPH", stats_speed_bin_low)
+  print_stats(f"SPEED_GE_{int(high_bin_ms * 3.6)}KPH", stats_speed_bin_high)
+
+  print("\n[Speed Bin Verdict]")
+  print(f"- <= {int(low_bin_ms * 3.6)} km/h: {verdict_text(stats_speed_bin_low)}")
+  print(f"- >= {int(high_bin_ms * 3.6)} km/h: {verdict_text(stats_speed_bin_high)}")
 
   if stats_all.enabled_frames == 0:
     print("\n[Note]")
@@ -224,6 +253,47 @@ def route_glob_from_rlog_path(rlog_path: str) -> str:
   return os.path.join(parent, f"{route_prefix}--*", rlog_name)
 
 
+def route_id_from_rlog_path(rlog_path: str) -> str:
+  seg_dir = os.path.basename(os.path.dirname(rlog_path))
+  if "--" not in seg_dir:
+    return seg_dir
+  return seg_dir.rsplit("--", 1)[0]
+
+
+def collect_recent_route_patterns(realdata_root: str,
+                                  recent_routes: int,
+                                  min_route_hours: float) -> list[tuple[str, str, int, float]]:
+  rlogs = sorted(glob.glob(os.path.join(realdata_root, "*--*", "rlog.zst")))
+  if not rlogs:
+    rlogs = sorted(glob.glob(os.path.join(realdata_root, "*--*", "rlog.bz2")))
+  if not rlogs:
+    rlogs = sorted(glob.glob(os.path.join(realdata_root, "*--*", "rlog")))
+
+  route_map: dict[str, list[str]] = {}
+  for rp in rlogs:
+    rid = route_id_from_rlog_path(rp)
+    route_map.setdefault(rid, []).append(rp)
+
+  min_segments = int(min_route_hours * 60.0)
+  route_meta: list[tuple[float, str, int, str]] = []
+  for rid, segs in route_map.items():
+    seg_count = len(segs)
+    if min_segments > 0 and seg_count < min_segments:
+      continue
+    latest_mtime = max(os.path.getmtime(p) for p in segs)
+    route_meta.append((latest_mtime, rid, seg_count, os.path.basename(segs[0])))
+
+  route_meta.sort(reverse=True)
+  selected = route_meta[:recent_routes]
+
+  results: list[tuple[str, str, int, float]] = []
+  for _, rid, seg_count, rlog_name in selected:
+    pattern = os.path.join(realdata_root, f"{rid}--*", rlog_name)
+    est_hours = seg_count / 60.0
+    results.append((rid, pattern, seg_count, est_hours))
+  return results
+
+
 def main() -> None:
   parser = argparse.ArgumentParser(description="Analyze whether openpilot lateral commands were accepted")
   parser.add_argument("--rlog", type=str, default="", help="Path to rlog(.zst/.bz2/.rlog)")
@@ -232,10 +302,38 @@ def main() -> None:
   parser.add_argument("--low-speed-ms", type=float, default=12.0, help="Engage speed threshold for low-speed window")
   parser.add_argument("--high-speed-ms", type=float, default=20.0, help="Engage speed threshold for high-speed window")
   parser.add_argument("--window-sec", type=float, default=10.0, help="Duration of each analysis window")
+  parser.add_argument("--low-bin-kph", type=float, default=30.0, help="Speed-bin lower range upper bound in kph")
+  parser.add_argument("--high-bin-kph", type=float, default=80.0, help="Speed-bin high range lower bound in kph")
   parser.add_argument("--summary-top", type=int, default=8, help="How many worst segments to show in route summary")
+  parser.add_argument("--recent-routes", type=int, default=0, help="Analyze N most recent routes from --realdata-root")
+  parser.add_argument("--min-route-hours", type=float, default=0.0, help="Only include routes with at least this estimated duration in hours")
   args = parser.parse_args()
 
-  if args.rlog_glob:
+  low_bin_ms = args.low_bin_kph / 3.6
+  high_bin_ms = args.high_bin_kph / 3.6
+
+  if args.recent_routes > 0:
+    route_patterns = collect_recent_route_patterns(args.realdata_root, args.recent_routes, args.min_route_hours)
+    if not route_patterns:
+      raise FileNotFoundError("No routes matched recent/duration filters")
+
+    print(f"selected_routes={len(route_patterns)}")
+    for idx, (rid, pattern, seg_count, est_hours) in enumerate(route_patterns, start=1):
+      print(f"\n===== [route {idx}/{len(route_patterns)}] {rid} | segments={seg_count} | est_hours={est_hours:.2f} =====")
+      rlogs = sorted(glob.glob(pattern))
+      if not rlogs:
+        print(f"no rlogs matched route pattern: {pattern}")
+        continue
+      print(f"matched_rlogs={len(rlogs)}")
+      results: list[tuple[str, Stats, Stats]] = []
+      for i, rlog_path in enumerate(rlogs, start=1):
+        print(f"\n=== [{i}/{len(rlogs)}] ===")
+        stats_all, stats_post_cancel = analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec,
+                                               low_bin_ms, high_bin_ms)
+        results.append((rlog_path, stats_all, stats_post_cancel))
+      print_ranked_summary(results, args.summary_top)
+
+  elif args.rlog_glob:
     rlogs = sorted(glob.glob(args.rlog_glob))
     if not rlogs:
       raise FileNotFoundError(f"No rlog files matched --rlog-glob: {args.rlog_glob}")
@@ -243,12 +341,14 @@ def main() -> None:
     results: list[tuple[str, Stats, Stats]] = []
     for i, rlog_path in enumerate(rlogs, start=1):
       print(f"\n=== [{i}/{len(rlogs)}] ===")
-      stats_all, stats_post_cancel = analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+      stats_all, stats_post_cancel = analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec,
+                                             low_bin_ms, high_bin_ms)
       results.append((rlog_path, stats_all, stats_post_cancel))
     print_ranked_summary(results, args.summary_top)
   else:
     rlog_path = args.rlog.strip() if args.rlog else pick_latest_rlog(args.realdata_root)
-    stats_all, _ = analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+    stats_all, _ = analyze(rlog_path, args.low_speed_ms, args.high_speed_ms, args.window_sec,
+                           low_bin_ms, high_bin_ms)
 
     if stats_all.enabled_frames == 0:
       inferred_glob = route_glob_from_rlog_path(rlog_path)
@@ -259,7 +359,8 @@ def main() -> None:
           results: list[tuple[str, Stats, Stats]] = []
           for i, rp in enumerate(rlogs, start=1):
             print(f"\n=== [auto {i}/{len(rlogs)}] ===")
-            auto_stats_all, auto_stats_post_cancel = analyze(rp, args.low_speed_ms, args.high_speed_ms, args.window_sec)
+            auto_stats_all, auto_stats_post_cancel = analyze(rp, args.low_speed_ms, args.high_speed_ms, args.window_sec,
+                                                              low_bin_ms, high_bin_ms)
             results.append((rp, auto_stats_all, auto_stats_post_cancel))
           print_ranked_summary(results, args.summary_top)
 
