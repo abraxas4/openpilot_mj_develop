@@ -116,6 +116,7 @@ class HudRenderer(Widget):
       self._draw_set_speed(rect)
 
     self._draw_current_speed(rect)
+    self._draw_drive_debug_panel(rect)
 
     button_x = rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_size
     button_y = rect.y + UI_CONFIG.border_size
@@ -178,3 +179,25 @@ class HudRenderer(Widget):
     unit_text_size = measure_text_cached(self._font_medium, unit_text, FONT_SIZES.speed_unit)
     unit_pos = rl.Vector2(rect.x + rect.width / 2 - unit_text_size.x / 2, 290 - unit_text_size.y / 2)
     rl.draw_text_ex(self._font_medium, unit_text, unit_pos, FONT_SIZES.speed_unit, 0, COLORS.WHITE_TRANSLUCENT)
+
+  def _draw_drive_debug_panel(self, rect: rl.Rectangle) -> None:
+    lines = ui_state.get_drive_debug_lines()
+    x = rect.x + 36
+    y = rect.y + UI_CONFIG.header_height + 18
+    width = 360
+    line_height = 34
+    height = 24 + line_height * len(lines)
+
+    panel = rl.Rectangle(x, y, width, height)
+    rl.draw_rectangle_rounded(panel, 0.15, 8, COLORS.BLACK_TRANSLUCENT)
+    rl.draw_rectangle_rounded_lines_ex(panel, 0.15, 8, 3, COLORS.BORDER_TRANSLUCENT)
+
+    for i, line in enumerate(lines):
+      rl.draw_text_ex(
+        self._font_medium,
+        line,
+        rl.Vector2(x + 16, y + 12 + i * line_height),
+        28,
+        0,
+        COLORS.WHITE_TRANSLUCENT,
+      )

@@ -13,6 +13,7 @@ from openpilot.system.ui.lib.application import gui_app
 from openpilot.system.hardware import HARDWARE, PC
 
 BACKLIGHT_OFFROAD = 65 if HARDWARE.get_device_type() == "mici" else 50
+IGNORED_SAFETY_MODES = (car.CarParams.SafetyModel.silent, car.CarParams.SafetyModel.noOutput)
 
 
 class UIStatus(Enum):
@@ -80,6 +81,10 @@ class UIState:
     self.CP: car.CarParams | None = None
     self.light_sensor: float = -1.0
     self._param_update_time: float = 0.0
+    self.op_lat_command_frames: int = 0
+    self.op_lat_success_frames: int = 0
+    self.e2e_command_frames: int = 0
+    self.e2e_success_frames: int = 0
 
     # Callbacks
     self._offroad_transition_callbacks: list[Callable[[], None]] = []
@@ -108,9 +113,110 @@ class UIState:
     self.sm.update(0)
     self._update_state()
     self._update_status()
+    self._update_drive_metrics()
     if time.monotonic() - self._param_update_time > 5.0:
       self.update_params()
     device.update()
+
+  def _reset_drive_metrics(self) -> None:
+    self.op_lat_command_frames = 0
+    self.op_lat_success_frames = 0
+    self.e2e_command_frames = 0
+    self.e2e_success_frames = 0
+
+  def _controls_allowed(self) -> bool:
+    panda_states = [ps for ps in self.sm["pandaStates"] if ps.safetyModel not in IGNORED_SAFETY_MODES]
+    return len(panda_states) > 0 and all(ps.controlsAllowed for ps in panda_states)
+
+  def _has_lateral_command(self) -> bool:
+    cc = self.sm["carControl"]
+    if not cc.latActive:
+      return False
+
+    actuators = cc.actuators
+    return (
+      abs(getattr(actuators, "torque", 0.0)) > 1e-3 or
+      abs(getattr(actuators, "steeringAngleDeg", 0.0)) > 0.02 or
+      abs(getattr(actuators, "curvature", 0.0)) > 1e-6
+    )
+
+  def _e2e_long_active(self) -> bool:
+    cc = self.sm["carControl"]
+    if not cc.longActive:
+      return False
+
+    source = self.sm["longitudinalPlan"].longitudinalPlanSource
+    e2e_source = getattr(log.LongitudinalPlan.LongitudinalPlanSource, "e2e", None)
+    return (e2e_source is not None and source == e2e_source) or str(source) == "e2e"
+
+  def _update_drive_metrics(self) -> None:
+    if not self.started:
+      return
+
+    controls_allowed = self._controls_allowed()
+
+    if self._has_lateral_command():
+      self.op_lat_command_frames += 1
+      if controls_allowed:
+        self.op_lat_success_frames += 1
+
+    if self._e2e_long_active():
+      self.e2e_command_frames += 1
+      if controls_allowed:
+        self.e2e_success_frames += 1
+
+  def _format_ratio(self, success: int, total: int) -> str:
+    return "--" if total <= 0 else f"{(100.0 * success / total):.0f}%"
+
+  def _safe_attr(self, obj, attr: str):
+    try:
+      return getattr(obj, attr)
+    except AttributeError:
+      return None
+
+  def _get_tpms_values(self) -> list[str]:
+    cs = self.sm["carState"]
+    nested = self._safe_attr(cs, "tpms")
+    candidates = [
+      ("FL", ["tirePressureFl", "tpmsFl", "fl"]),
+      ("FR", ["tirePressureFr", "tpmsFr", "fr"]),
+      ("RL", ["tirePressureRl", "tpmsRl", "rl"]),
+      ("RR", ["tirePressureRr", "tpmsRr", "rr"]),
+    ]
+
+    vals: list[str] = []
+    for label, attrs in candidates:
+      value = None
+      for attr in attrs:
+        value = self._safe_attr(cs, attr)
+        if value is None and nested is not None:
+          value = self._safe_attr(nested, attr)
+        if value is not None:
+          break
+
+      if value is None:
+        vals.append(f"{label}:--")
+      else:
+        vals.append(f"{label}:{float(value):.0f}")
+
+    return vals
+
+  def get_drive_debug_lines(self) -> list[str]:
+    cs = self.sm["carState"]
+    brake_lights = self._safe_attr(cs, "brakeLights")
+    if brake_lights is None:
+      brake_lights = bool(cs.brakePressed)
+
+    tpms = self._get_tpms_values()
+    return [
+      f"TPMS {tpms[0]} {tpms[1]}",
+      f"TPMS {tpms[2]} {tpms[3]}",
+      f"Brake {'ON' if brake_lights else 'OFF'}",
+      (
+        f"OP {self._format_ratio(self.op_lat_success_frames, self.op_lat_command_frames)} | "
+        f"E2E {self._format_ratio(self.e2e_success_frames, self.e2e_command_frames)}"
+      ),
+    ]
 
   def _update_state(self) -> None:
     # Handle panda states updates
@@ -164,6 +270,9 @@ class UIState:
         self.status = UIStatus.DISENGAGED
         self.started_frame = self.sm.frame
         self.started_time = time.monotonic()
+        self._reset_drive_metrics()
+      else:
+        self._reset_drive_metrics()
 
       for callback in self._offroad_transition_callbacks:
         callback()

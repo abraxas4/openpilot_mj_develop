@@ -179,6 +179,7 @@ class HudRenderer(Widget):
       self._draw_set_speed(rect)
 
     self._draw_steering_wheel(rect)
+    self._draw_drive_debug_panel(rect)
 
   def _draw_steering_wheel(self, rect: rl.Rectangle) -> None:
     wheel_txt = self._txt_wheel_critical if self._show_wheel_critical else self._txt_wheel
@@ -263,6 +264,28 @@ class HudRenderer(Widget):
       0,
       max_color,
     )
+
+  def _draw_drive_debug_panel(self, rect: rl.Rectangle) -> None:
+    lines = ui_state.get_drive_debug_lines()
+    x = rect.x + 22
+    y = rect.y + 170
+    width = 390
+    line_height = 28
+    height = 22 + line_height * len(lines)
+
+    panel = rl.Rectangle(x, y, width, height)
+    rl.draw_rectangle_rounded(panel, 0.15, 8, rl.Color(0, 0, 0, 150))
+    rl.draw_rectangle_rounded_lines_ex(panel, 0.15, 8, 2, rl.Color(255, 255, 255, 70))
+
+    for i, line in enumerate(lines):
+      rl.draw_text_ex(
+        self._font_medium,
+        line,
+        rl.Vector2(x + 14, y + 10 + i * line_height),
+        24,
+        0,
+        COLORS.WHITE_TRANSLUCENT,
+      )
 
   def _draw_current_speed(self, rect: rl.Rectangle) -> None:
     """Draw the current vehicle speed and unit."""

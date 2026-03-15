@@ -16,6 +16,10 @@ class TogglesLayoutMici(NavWidget):
   def __init__(self, back_callback: Callable):
     super().__init__()
     self.set_back_callback(back_callback)
+    if ui_state.params.get("ExperimentalMode") is None:
+      ui_state.params.put_bool("ExperimentalMode", True)
+    if ui_state.params.get("ExperimentalModeConfirmed") is None:
+      ui_state.params.put_bool("ExperimentalModeConfirmed", True)
 
     self._personality_toggle = BigMultiParamToggle("driving personality", "LongitudinalPersonality", ["aggressive", "standard", "relaxed"])
     self._experimental_btn = BigParamControl("experimental mode", "ExperimentalMode")
@@ -87,11 +91,8 @@ class TogglesLayoutMici(NavWidget):
         self._experimental_btn.set_visible(True)
         self._personality_toggle.set_visible(True)
       else:
-        # no long for now
-        self._experimental_btn.set_visible(False)
-        self._experimental_btn.set_checked(False)
-        self._personality_toggle.set_visible(False)
-        ui_state.params.remove("ExperimentalMode")
+        self._experimental_btn.set_visible(True)
+        self._personality_toggle.set_visible(True)
 
     # Refresh toggles from params to mirror external changes
     for key, item in self._refresh_toggles:

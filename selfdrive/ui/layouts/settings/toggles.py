@@ -41,6 +41,10 @@ class TogglesLayout(Widget):
     super().__init__()
     self._params = Params()
     self._is_release = self._params.get_bool("IsReleaseBranch")
+    if self._params.get("ExperimentalMode") is None:
+      self._params.put_bool("ExperimentalMode", True)
+    if self._params.get("ExperimentalModeConfirmed") is None:
+      self._params.put_bool("ExperimentalModeConfirmed", True)
 
     # param, title, desc, icon, needs_restart
     self._toggle_defs = {
@@ -186,23 +190,13 @@ class TogglesLayout(Widget):
         self._toggles["ExperimentalMode"].set_description(e2e_description)
         self._long_personality_setting.action_item.set_enabled(True)
       else:
-        # no long for now
-        self._toggles["ExperimentalMode"].action_item.set_enabled(False)
-        self._toggles["ExperimentalMode"].action_item.set_state(False)
-        self._long_personality_setting.action_item.set_enabled(False)
-        self._params.remove("ExperimentalMode")
+        self._toggles["ExperimentalMode"].action_item.set_enabled(True)
+        self._long_personality_setting.action_item.set_enabled(True)
 
-        unavailable = tr("Experimental mode is currently unavailable on this car since the car's stock ACC is used for longitudinal control.")
-
-        long_desc = unavailable + " " + tr("openpilot longitudinal control may come in a future update.")
-        if ui_state.CP.alphaLongitudinalAvailable:
-          if self._is_release:
-            long_desc = unavailable + " " + tr("An alpha version of openpilot longitudinal control can be tested, along with " +
-                                               "Experimental mode, on non-release branches.")
-          else:
-            long_desc = tr("Enable the openpilot longitudinal control (alpha) toggle to allow Experimental mode.")
-
-        self._toggles["ExperimentalMode"].set_description("<b>" + long_desc + "</b><br><br>" + e2e_description)
+        stock_long_desc = tr(
+          "This car is currently using stock ACC for longitudinal control, so Experimental Mode may have limited effect on gas/brake behavior."
+        )
+        self._toggles["ExperimentalMode"].set_description("<b>" + stock_long_desc + "</b><br><br>" + e2e_description)
     else:
       self._toggles["ExperimentalMode"].set_description(e2e_description)
 

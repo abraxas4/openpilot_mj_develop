@@ -99,8 +99,6 @@ class SelfdriveD:
     # cleanup old params
     if not self.CP.alphaLongitudinalAvailable:
       self.params.remove("AlphaLongitudinalEnabled")
-    if not self.CP.openpilotLongitudinalControl:
-      self.params.remove("ExperimentalMode")
 
     self.CS_prev = car.CarState.new_message()
     self.AM = AlertManager()
@@ -118,6 +116,7 @@ class SelfdriveD:
     self.hyundai_pedal_pressed_frames = 0
     self.hyundai_controls_blocked_frames = 0
     self.hyundai_cancel_reenable_cooldown_frames = 0
+    self.hyundai_reenable_request_frames = 0
     self.logged_comm_issue = None
     self.not_running_prev = None
     self.experimental_mode = False
@@ -188,6 +187,10 @@ class SelfdriveD:
     if self.CP.brand == 'hyundai' and self.slow_speed_engage:
       if self.hyundai_cancel_reenable_cooldown_frames > 0:
         self.hyundai_cancel_reenable_cooldown_frames -= 1
+      if self.hyundai_reenable_request_frames > 0:
+        self.hyundai_reenable_request_frames -= 1
+      if self.enabled or CS.brakePressed or not CS.cruiseState.available:
+        self.hyundai_reenable_request_frames = 0
 
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:
@@ -200,8 +203,14 @@ class SelfdriveD:
           interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
           active_pandas = [ps for ps in self.sm['pandaStates'] if ps.safetyModel not in IGNORED_SAFETY_MODES]
           hyundai_cancel_pressed = any(be.type == ButtonType.cancel for be in CS.buttonEvents)
+          hyundai_reenable_pressed = any(be.type in (ButtonType.accelCruise, ButtonType.decelCruise, ButtonType.resumeCruise)
+                                         for be in CS.buttonEvents)
           if hyundai_cancel_pressed:
             self.hyundai_cancel_reenable_cooldown_frames = int(1.0 / DT_CTRL)
+            self.hyundai_reenable_request_frames = 0
+
+          if hyundai_reenable_pressed and not self.enabled and CS.cruiseState.available and not CS.brakePressed:
+            self.hyundai_reenable_request_frames = int(2.5 / DT_CTRL)
 
           hyundai_controls_ready = len(active_pandas) > 0 and all(ps.controlsAllowed for ps in active_pandas)
           hyundai_interrupt_rate_can2_only = interrupt_rate_can2_fault is not None and len(active_pandas) > 0 and all(
@@ -228,8 +237,12 @@ class SelfdriveD:
           for ps in active_pandas
         )
         allow_button_reenable = hyundai_controls_ready and (not hyundai_interrupt_rate_can2_only) and self.hyundai_cancel_reenable_cooldown_frames == 0
-        if allow_button_reenable and any(be.type in (ButtonType.accelCruise, ButtonType.decelCruise) for be in CS.buttonEvents):
+        button_reenable_pressed = any(be.type in (ButtonType.accelCruise, ButtonType.decelCruise, ButtonType.resumeCruise)
+                                      for be in CS.buttonEvents)
+        pending_reenable = self.hyundai_reenable_request_frames > 0
+        if allow_button_reenable and (button_reenable_pressed or pending_reenable):
           self.events.add(EventName.buttonEnable)
+          self.hyundai_reenable_request_frames = 0
 
       if self.CP.notCar:
         # wait for everything to init first
