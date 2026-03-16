@@ -184,20 +184,21 @@ class HudRenderer(Widget):
     lines = ui_state.get_drive_debug_lines()
     x = rect.x + 36
     y = rect.y + UI_CONFIG.header_height + 18
-    width = 360
-    line_height = 34
+    width = 520
+    line_height = 30
     height = 24 + line_height * len(lines)
 
     panel = rl.Rectangle(x, y, width, height)
     rl.draw_rectangle_rounded(panel, 0.15, 8, COLORS.BLACK_TRANSLUCENT)
     rl.draw_rectangle_rounded_lines_ex(panel, 0.15, 8, 3, COLORS.BORDER_TRANSLUCENT)
 
-    for i, line in enumerate(lines):
+    for i, line_item in enumerate(lines):
+      line, color = line_item if isinstance(line_item, tuple) else (line_item, COLORS.WHITE_TRANSLUCENT)
       rl.draw_text_ex(
         self._font_medium,
         line,
         rl.Vector2(x + 16, y + 12 + i * line_height),
         28,
         0,
-        COLORS.WHITE_TRANSLUCENT,
+        color,
       )

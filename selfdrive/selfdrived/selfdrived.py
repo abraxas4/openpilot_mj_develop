@@ -618,7 +618,7 @@ class SelfdriveD:
       self.is_ldw_enabled = self.params.get_bool("IsLdwEnabled")
       self.disengage_on_accelerator = self.params.get_bool("DisengageOnAccelerator")
       self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
-      self.experimental_mode = self.params.get_bool("ExperimentalMode") and self.CP.openpilotLongitudinalControl
+      self.experimental_mode = self.params.get_bool("ExperimentalMode")
       self.personality = self.params.get("LongitudinalPersonality", return_default=True)
       time.sleep(0.1)
 

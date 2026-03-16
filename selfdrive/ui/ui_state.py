@@ -174,6 +174,57 @@ class UIState:
     except AttributeError:
       return None
 
+  def _format_debug_value(self, value) -> str | None:
+    if value is None or callable(value):
+      return None
+
+    if isinstance(value, (bool, np.bool_)):
+      return "ON" if value else "OFF"
+    if isinstance(value, (int, np.integer)):
+      return str(int(value))
+    if isinstance(value, (float, np.floating)):
+      return f"{float(value):.2f}"
+    if isinstance(value, str):
+      return value
+
+    return None
+
+  def _get_matching_attr_lines(self, obj, tokens: tuple[str, ...], prefix: str = "", limit: int = 4) -> list[tuple[str, rl.Color]]:
+    if obj is None:
+      return []
+
+    lines: list[tuple[str, rl.Color]] = []
+    for attr in sorted(dir(obj)):
+      if attr.startswith("_"):
+        continue
+
+      lower_attr = attr.lower()
+      if not any(token in lower_attr for token in tokens):
+        continue
+
+      value = self._safe_attr(obj, attr)
+      formatted = self._format_debug_value(value)
+      if formatted is None:
+        continue
+
+      color = rl.RED if formatted == "ON" else rl.Color(255, 255, 255, 180)
+      lines.append((f"{prefix}{attr}:{formatted}", color))
+      if len(lines) >= limit:
+        break
+
+    return lines
+
+  def _get_long_plan_source_name(self) -> str:
+    source = self.sm["longitudinalPlan"].longitudinalPlanSource
+    plan_source_enum = getattr(log.LongitudinalPlan, "LongitudinalPlanSource", None)
+    if plan_source_enum is not None:
+      for name in ("lead0", "lead1", "cruise", "e2e"):
+        enum_value = getattr(plan_source_enum, name, None)
+        if enum_value is not None and source == enum_value:
+          return name
+
+    return str(source)
+
   def _get_tpms_values(self) -> list[str]:
     cs = self.sm["carState"]
     nested = self._safe_attr(cs, "tpms")
@@ -201,22 +252,51 @@ class UIState:
 
     return vals
 
-  def get_drive_debug_lines(self) -> list[str]:
+  def get_drive_debug_lines(self) -> list[tuple[str, rl.Color]]:
     cs = self.sm["carState"]
-    brake_lights = self._safe_attr(cs, "brakeLights")
-    if brake_lights is None:
-      brake_lights = bool(cs.brakePressed)
-
     tpms = self._get_tpms_values()
-    return [
-      f"TPMS {tpms[0]} {tpms[1]}",
-      f"TPMS {tpms[2]} {tpms[3]}",
-      f"Brake {'ON' if brake_lights else 'OFF'}",
+    brake_lights = self._safe_attr(cs, "brakeLights")
+    brake_lights_deprecated = self._safe_attr(cs, "brakeLightsDEPRECATED")
+    brake_pressed = bool(cs.brakePressed)
+    brake_value = float(self._safe_attr(cs, "brake") or 0.0)
+    brake_on = any(bool(v) for v in (brake_lights, brake_lights_deprecated, brake_pressed)) or brake_value > 1e-3
+
+    exp_param = self.params.get_bool("ExperimentalMode")
+    exp_state = self.sm["selfdriveState"].experimentalMode
+    long_active = self.sm["carControl"].longActive
+    long_plan_source = self._get_long_plan_source_name()
+
+    tpms_attr_lines = self._get_matching_attr_lines(cs, ("tpms", "tire", "pressure"), limit=2)
+    tpms_nested = self._safe_attr(cs, "tpms")
+    tpms_attr_lines.extend(self._get_matching_attr_lines(tpms_nested, ("tpms", "tire", "pressure"), prefix="tpms.", limit=2))
+
+    if len(tpms_attr_lines) == 0:
+      tpms_attr_lines = [("TPMS attrs:none", rl.Color(255, 255, 255, 140))]
+
+    brake_color = rl.RED if brake_on else rl.Color(255, 255, 255, 180)
+
+    lines: list[tuple[str, rl.Color]] = [
+      (f"TPMS {tpms[0]} {tpms[1]}", rl.Color(255, 255, 255, 200)),
+      (f"TPMS {tpms[2]} {tpms[3]}", rl.Color(255, 255, 255, 200)),
+      *tpms_attr_lines,
+      (
+        f"Brake {'ON' if brake_on else '--'} | dep:{'ON' if bool(brake_lights_deprecated) else 'OFF'} "
+        f"ped:{'ON' if brake_pressed else 'OFF'} raw:{brake_value:.2f}",
+        brake_color,
+      ),
+      (
+        f"ExpP {'ON' if exp_param else 'OFF'} | ExpS {'ON' if exp_state else 'OFF'} | Src {long_plan_source}",
+        rl.Color(255, 255, 255, 200),
+      ),
       (
         f"OP {self._format_ratio(self.op_lat_success_frames, self.op_lat_command_frames)} | "
-        f"E2E {self._format_ratio(self.e2e_success_frames, self.e2e_command_frames)}"
+        f"E2E {self._format_ratio(self.e2e_success_frames, self.e2e_command_frames)} | "
+        f"Long {'ON' if long_active else 'OFF'}",
+        rl.Color(255, 255, 255, 200),
       ),
     ]
+
+    return lines
 
   def _update_state(self) -> None:
     # Handle panda states updates

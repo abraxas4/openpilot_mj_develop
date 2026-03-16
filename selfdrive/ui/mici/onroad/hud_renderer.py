@@ -269,7 +269,7 @@ class HudRenderer(Widget):
     lines = ui_state.get_drive_debug_lines()
     x = rect.x + 22
     y = rect.y + 170
-    width = 390
+    width = 520
     line_height = 28
     height = 22 + line_height * len(lines)
 
@@ -277,14 +277,15 @@ class HudRenderer(Widget):
     rl.draw_rectangle_rounded(panel, 0.15, 8, rl.Color(0, 0, 0, 150))
     rl.draw_rectangle_rounded_lines_ex(panel, 0.15, 8, 2, rl.Color(255, 255, 255, 70))
 
-    for i, line in enumerate(lines):
+    for i, line_item in enumerate(lines):
+      line, color = line_item if isinstance(line_item, tuple) else (line_item, COLORS.WHITE_TRANSLUCENT)
       rl.draw_text_ex(
         self._font_medium,
         line,
         rl.Vector2(x + 14, y + 10 + i * line_height),
         24,
         0,
-        COLORS.WHITE_TRANSLUCENT,
+        color,
       )
 
   def _draw_current_speed(self, rect: rl.Rectangle) -> None:
