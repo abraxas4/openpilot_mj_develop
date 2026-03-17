@@ -248,7 +248,8 @@ class UIState:
       if value is None:
         vals.append(f"{label}:--")
       else:
-        vals.append(f"{label}:{float(value):.0f}")
+        value_f = float(value)
+        vals.append(f"{label}:{value_f:.0f}" if value_f > 0 else f"{label}:--")
 
     return vals
 
@@ -259,7 +260,9 @@ class UIState:
     brake_lights_deprecated = self._safe_attr(cs, "brakeLightsDEPRECATED")
     brake_pressed = bool(cs.brakePressed)
     brake_value = float(self._safe_attr(cs, "brake") or 0.0)
-    brake_on = any(bool(v) for v in (brake_lights, brake_lights_deprecated, brake_pressed)) or brake_value > 1e-3
+    brake_lamp_on = any(bool(v) for v in (brake_lights, brake_lights_deprecated))
+    brake_pedal_on = brake_pressed or brake_value > 1e-3
+    brake_on = brake_lamp_on or brake_pedal_on
 
     exp_param = self.params.get_bool("ExperimentalMode")
     exp_state = self.sm["selfdriveState"].experimentalMode
@@ -274,16 +277,19 @@ class UIState:
       tpms_attr_lines = [("TPMS attrs:none", rl.Color(255, 255, 255, 140))]
 
     brake_color = rl.RED if brake_on else rl.Color(255, 255, 255, 180)
+    brake_lamp_color = rl.RED if brake_lamp_on else rl.Color(255, 255, 255, 180)
+    brake_pedal_color = rl.RED if brake_pedal_on else rl.Color(255, 255, 255, 180)
 
     lines: list[tuple[str, rl.Color]] = [
       (f"TPMS {tpms[0]} {tpms[1]}", rl.Color(255, 255, 255, 200)),
       (f"TPMS {tpms[2]} {tpms[3]}", rl.Color(255, 255, 255, 200)),
       *tpms_attr_lines,
       (
-        f"Brake {'ON' if brake_on else '--'} | dep:{'ON' if bool(brake_lights_deprecated) else 'OFF'} "
-        f"ped:{'ON' if brake_pressed else 'OFF'} raw:{brake_value:.2f}",
+        f"Brake Total = {'A' if brake_lamp_on else '--'} | {'B' if brake_pedal_on else '--'}",
         brake_color,
       ),
+      (f"A Lamp {'ON' if brake_lamp_on else 'OFF'}", brake_lamp_color),
+      (f"B Ped {'ON' if brake_pedal_on else 'OFF'} | Raw {brake_value:.2f}", brake_pedal_color),
       (
         f"ExpP {'ON' if exp_param else 'OFF'} | ExpS {'ON' if exp_state else 'OFF'} | Src {long_plan_source}",
         rl.Color(255, 255, 255, 200),
