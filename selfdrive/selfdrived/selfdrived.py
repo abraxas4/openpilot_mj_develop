@@ -116,6 +116,7 @@ class SelfdriveD:
     self.hyundai_pedal_pressed_frames = 0
     self.hyundai_controls_blocked_frames = 0
     self.hyundai_cancel_reenable_cooldown_frames = 0
+    self.hyundai_recent_cancel_frames = 0
     self.hyundai_reenable_request_frames = 0
     self.logged_comm_issue = None
     self.not_running_prev = None
@@ -187,6 +188,8 @@ class SelfdriveD:
     if self.CP.brand == 'hyundai' and self.slow_speed_engage:
       if self.hyundai_cancel_reenable_cooldown_frames > 0:
         self.hyundai_cancel_reenable_cooldown_frames -= 1
+      if self.hyundai_recent_cancel_frames > 0:
+        self.hyundai_recent_cancel_frames -= 1
       if self.hyundai_reenable_request_frames > 0:
         self.hyundai_reenable_request_frames -= 1
       if self.enabled or CS.brakePressed or not CS.cruiseState.available:
@@ -199,7 +202,8 @@ class SelfdriveD:
         filtered_events = {"belowEngageSpeed", "speedTooLow"}
         if self.CP.brand == 'hyundai':
           filtered_events.add("wrongCarMode")
-          filtered_events.add("pcmDisable")
+          if self.hyundai_recent_cancel_frames == 0:
+            filtered_events.add("pcmDisable")
           interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
           active_pandas = [ps for ps in self.sm['pandaStates'] if ps.safetyModel not in IGNORED_SAFETY_MODES]
           hyundai_cancel_pressed = any(be.type == ButtonType.cancel for be in CS.buttonEvents)
@@ -207,6 +211,7 @@ class SelfdriveD:
                                          for be in CS.buttonEvents)
           if hyundai_cancel_pressed:
             self.hyundai_cancel_reenable_cooldown_frames = int(1.0 / DT_CTRL)
+            self.hyundai_recent_cancel_frames = int(1.5 / DT_CTRL)
             self.hyundai_reenable_request_frames = 0
 
           if hyundai_reenable_pressed and not self.enabled and CS.cruiseState.available and not CS.brakePressed:
@@ -219,7 +224,8 @@ class SelfdriveD:
             for ps in active_pandas
           )
 
-          if (not hyundai_pandas_healthy) or hyundai_interrupt_rate_can2_only or self.hyundai_cancel_reenable_cooldown_frames > 0:
+          if ((not CS.cruiseState.enabled) or (not hyundai_pandas_healthy) or
+              hyundai_interrupt_rate_can2_only or self.hyundai_cancel_reenable_cooldown_frames > 0):
             filtered_events.add("buttonEnable")
 
           low_speed_interrupt_rate_case = CS.vEgo < 11.11 and hyundai_interrupt_rate_can2_only
@@ -229,7 +235,8 @@ class SelfdriveD:
         car_events = [e for e in car_events if str(e.name) not in filtered_events]
       self.events.add_from_msg(car_events)
 
-      if self.slow_speed_engage and self.CP.brand == 'hyundai' and CS.cruiseState.available and not self.enabled and not CS.brakePressed:
+      if (self.slow_speed_engage and self.CP.brand == 'hyundai' and CS.cruiseState.available and
+          CS.cruiseState.enabled and not self.enabled and not CS.brakePressed):
         active_pandas = [ps for ps in self.sm['pandaStates'] if ps.safetyModel not in IGNORED_SAFETY_MODES]
         interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
         hyundai_pandas_healthy = len(active_pandas) > 0 and all((not ps.safetyRxChecksInvalid) and len(ps.faults) == 0
