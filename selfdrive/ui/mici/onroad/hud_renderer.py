@@ -15,7 +15,7 @@ EventName = log.OnroadEvent.EventName
 # Constants
 SET_SPEED_NA = 255
 KM_TO_MILE = 0.621371
-CRUISE_DISABLED_CHAR = '–'
+CRUISE_DISABLED_CHAR = '???'
 
 SET_SPEED_PERSISTENCE = 2.5  # seconds
 
@@ -26,6 +26,7 @@ class FontSizes:
   speed_unit: int = 66
   max_speed: int = 36
   set_speed: int = 112
+  debug: int = 30
 
 
 @dataclass(frozen=True)
@@ -179,6 +180,9 @@ class HudRenderer(Widget):
 
     self._draw_steering_wheel(rect)
 
+    if ui_state.show_debug_info:
+      self._draw_debug_info(rect)
+
   def _draw_steering_wheel(self, rect: rl.Rectangle) -> None:
     wheel_txt = self._txt_wheel_critical if self._show_wheel_critical else self._txt_wheel
 
@@ -274,3 +278,30 @@ class HudRenderer(Widget):
     unit_text_size = measure_text_cached(self._font_medium, unit_text, FONT_SIZES.speed_unit)
     unit_pos = rl.Vector2(rect.x + rect.width / 2 - unit_text_size.x / 2, 290 - unit_text_size.y / 2)
     rl.draw_text_ex(self._font_medium, unit_text, unit_pos, FONT_SIZES.speed_unit, 0, COLORS.WHITE_TRANSLUCENT)
+
+  @staticmethod
+  def _format_tpms_value(value: float) -> str:
+    return "--" if value <= 0.1 else f"{value:.0f}"
+
+  def _draw_debug_info(self, rect: rl.Rectangle) -> None:
+    car_state = ui_state.sm['carState']
+    frogpilot_car_state = ui_state.sm['frogpilotCarState']
+    tpms = car_state.tpms
+
+    brake_text = f"BRK {('ON' if frogpilot_car_state.brakeLights else 'OFF')}"
+    tpms_text = (
+      f"TPMS {self._format_tpms_value(tpms.fl)}/{self._format_tpms_value(tpms.fr)} "
+      f"{self._format_tpms_value(tpms.rl)}/{self._format_tpms_value(tpms.rr)}"
+    )
+
+    debug_lines = [
+      (brake_text, rl.Color(255, 120, 120, 255) if frogpilot_car_state.brakeLights else COLORS.WHITE_TRANSLUCENT),
+      (tpms_text, COLORS.WHITE_TRANSLUCENT),
+    ]
+
+    x = rect.x + rect.width - 330
+    y = rect.y + 36
+    line_height = 34
+
+    for i, (text, color) in enumerate(debug_lines):
+      rl.draw_text_ex(self._font_medium, text, rl.Vector2(x, y + i * line_height), FONT_SIZES.debug, 0, color)

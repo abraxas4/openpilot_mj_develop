@@ -5,7 +5,7 @@ import threading
 
 import cereal.messaging as messaging
 
-from cereal import car, log
+from cereal import car, custom, log
 
 from openpilot.common.params import Params
 from openpilot.common.realtime import config_realtime_process, Priority, Ratekeeper
@@ -16,6 +16,7 @@ from opendbc.car.can_definitions import CanData, CanRecvCallable, CanSendCallabl
 from opendbc.car.carlog import carlog
 from opendbc.car.fw_versions import ObdCallback
 from opendbc.car.car_helpers import get_car, interfaces
+from opendbc.car.hyundai.values import HyundaiFlags
 from opendbc.car.interfaces import CarInterfaceBase, RadarInterfaceBase
 from openpilot.selfdrive.pandad import can_capnp_to_list, can_list_to_can_capnp
 from openpilot.selfdrive.car.cruise import VCruiseHelper
@@ -23,6 +24,8 @@ from openpilot.selfdrive.car.cruise import VCruiseHelper
 REPLAY = "REPLAY" in os.environ
 
 EventName = log.OnroadEvent.EventName
+ButtonType = car.CarState.ButtonEvent.Type
+GearShifter = car.CarState.GearShifter
 
 # forward
 carlog.addHandler(ForwardingHandler(cloudlog))
@@ -65,7 +68,7 @@ class Car:
   def __init__(self, CI=None, RI=None) -> None:
     self.can_sock = messaging.sub_sock('can', timeout=20)
     self.sm = messaging.SubMaster(['pandaStates', 'carControl', 'onroadEvents'])
-    self.pm = messaging.PubMaster(['sendcan', 'carState', 'carParams', 'carOutput', 'liveTracks'])
+    self.pm = messaging.PubMaster(['sendcan', 'carState', 'carParams', 'carOutput', 'liveTracks', 'frogpilotCarState'])
 
     self.can_rcv_cum_timeout_counter = 0
 
@@ -143,6 +146,10 @@ class Car:
     if prev_cp is not None:
       self.params.put("CarParamsPrevRoute", prev_cp)
 
+    fp_cp = custom.FrogPilotCarParams.new_message()
+    fp_cp.openpilotLongitudinalControlDisabled = not self.CP.openpilotLongitudinalControl
+    self.params.put("FrogPilotCarParams", fp_cp.to_bytes())
+
     # Write CarParams for controls and radard
     cp_bytes = self.CP.to_bytes()
     self.params.put("CarParams", cp_bytes)
@@ -151,13 +158,44 @@ class Car:
 
     self.v_cruise_helper = VCruiseHelper(self.CP)
 
+    self.always_on_lateral = self.params.get_bool("AlwaysOnLateral")
+    self.always_on_lateral_allowed = True
+    self.always_on_lateral_lkas_seen = False
+
     self.is_metric = self.params.get_bool("IsMetric")
     self.experimental_mode = self.params.get_bool("ExperimentalMode")
 
     # card is driven by can recv, expected at 100Hz
     self.rk = Ratekeeper(100, print_delay_threshold=None)
 
-  def state_update(self) -> tuple[car.CarState, structs.RadarDataT | None]:
+  def build_frogpilot_car_state(self, CS: car.CarState) -> custom.FrogPilotCarState:
+    fp_cs = custom.FrogPilotCarState.new_message()
+
+    lkas_pressed = any(be.pressed and be.type == ButtonType.lkas for be in CS.buttonEvents)
+    lkas_event_seen = any(be.type == ButtonType.lkas for be in CS.buttonEvents)
+    if lkas_event_seen:
+      self.always_on_lateral_lkas_seen = True
+    if lkas_pressed:
+      self.always_on_lateral_allowed = not self.always_on_lateral_allowed
+
+    hyundai_lkas_mode = self.CP.brand == 'hyundai' and bool(self.CP.flags & HyundaiFlags.HAS_LDA_BUTTON)
+    if hyundai_lkas_mode:
+      allowed = bool(getattr(getattr(self.CI, "CS", None), "lkas_enabled", self.always_on_lateral_allowed))
+      self.always_on_lateral_allowed = allowed
+    else:
+      allowed = bool(CS.cruiseState.available)
+    enabled = self.always_on_lateral and allowed and CS.gearShifter == GearShifter.drive
+    if not hyundai_lkas_mode:
+      enabled = enabled and CS.cruiseState.available
+
+    fp_cs.alwaysOnLateralAllowed = allowed
+    fp_cs.alwaysOnLateralEnabled = enabled
+    fp_cs.brakeLights = bool(getattr(getattr(self.CI, "CS", None), "brake_lights", CS.brakePressed) or CS.brakeHoldActive or CS.parkingBrake)
+    fp_cs.pauseLateral = False
+    fp_cs.pauseLongitudinal = False
+    return fp_cs
+
+  def state_update(self) -> tuple[car.CarState, structs.RadarDataT | None, custom.FrogPilotCarState]:
     """carState update loop, driven by can"""
 
     can_strs = messaging.drain_sock_raw(self.can_sock, wait_for_one=True)
@@ -189,9 +227,9 @@ class Car:
     CS.vCruise = float(self.v_cruise_helper.v_cruise_kph)
     CS.vCruiseCluster = float(self.v_cruise_helper.v_cruise_cluster_kph)
 
-    return CS, RD
+    return CS, RD, self.build_frogpilot_car_state(CS)
 
-  def state_publish(self, CS: car.CarState, RD: structs.RadarDataT | None):
+  def state_publish(self, CS: car.CarState, RD: structs.RadarDataT | None, FPCS: custom.FrogPilotCarState):
     """carState and carParams publish loop"""
 
     # carParams - logged every 50 seconds (> 1 per segment)
@@ -214,6 +252,11 @@ class Car:
     cs_send.carState.canErrorCounter = self.can_rcv_cum_timeout_counter
     cs_send.carState.cumLagMs = -self.rk.remaining * 1000.
     self.pm.send('carState', cs_send)
+
+    fpcs_send = messaging.new_message('frogpilotCarState')
+    fpcs_send.valid = CS.canValid
+    fpcs_send.frogpilotCarState = FPCS
+    self.pm.send('frogpilotCarState', fpcs_send)
 
     if RD is not None:
       tracks_msg = messaging.new_message('liveTracks')
@@ -240,9 +283,9 @@ class Car:
       self.CC_prev = CC
 
   def step(self):
-    CS, RD = self.state_update()
+    CS, RD, FPCS = self.state_update()
 
-    self.state_publish(CS, RD)
+    self.state_publish(CS, RD, FPCS)
 
     initialized = (not any(e.name == EventName.selfdriveInitializing for e in self.sm['onroadEvents']) and
                    self.sm.seen['onroadEvents'])
@@ -254,6 +297,7 @@ class Car:
 
   def params_thread(self, evt):
     while not evt.is_set():
+      self.always_on_lateral = self.params.get_bool("AlwaysOnLateral")
       self.is_metric = self.params.get_bool("IsMetric")
       self.experimental_mode = self.params.get_bool("ExperimentalMode") and self.CP.openpilotLongitudinalControl
       time.sleep(0.1)

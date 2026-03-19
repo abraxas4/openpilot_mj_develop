@@ -46,6 +46,7 @@ _services: dict[str, tuple] = {
   "liveDelay": (True, 4., 1),
   "androidLog": (True, 0.),
   "carState": (True, 100., 10),
+  "frogpilotCarState": (True, 100., 10),
   "carControl": (True, 100., 10),
   "carOutput": (True, 100., 10),
   "longitudinalPlan": (True, 20., 10),

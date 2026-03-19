@@ -37,8 +37,8 @@ class Controls:
     self.CI = interfaces[self.CP.carFingerprint](self.CP)
 
     self.sm = messaging.SubMaster(['liveDelay', 'liveParameters', 'liveTorqueParameters', 'modelV2', 'selfdriveState',
-                                   'liveCalibration', 'livePose', 'longitudinalPlan', 'carState', 'carOutput',
-                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance'], poll='selfdriveState')
+                     'liveCalibration', 'livePose', 'longitudinalPlan', 'carState', 'carOutput',
+                     'driverMonitoringState', 'onroadEvents', 'driverAssistance', 'frogpilotCarState'], poll='selfdriveState')
     self.pm = messaging.PubMaster(['carControl', 'controlsState'])
 
     self.steer_limited_by_safety = False
@@ -93,9 +93,12 @@ class Controls:
 
     # Check which actuators can be enabled
     standstill = abs(CS.vEgo) <= max(self.CP.minSteerSpeed, 0.3) or CS.standstill
-    CC.latActive = self.sm['selfdriveState'].active and not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
-                   (not standstill or self.CP.steerAtStandstill)
-    CC.longActive = CC.enabled and not any(e.overrideLongitudinal for e in self.sm['onroadEvents']) and self.CP.openpilotLongitudinalControl
+    frogpilot_car_state = self.sm['frogpilotCarState']
+    CC.latActive = (self.sm['selfdriveState'].active or frogpilot_car_state.alwaysOnLateralEnabled) and \
+             not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
+             (not standstill or self.CP.steerAtStandstill) and not frogpilot_car_state.pauseLateral
+    CC.longActive = CC.enabled and not any(e.overrideLongitudinal for e in self.sm['onroadEvents']) and \
+            self.CP.openpilotLongitudinalControl and not frogpilot_car_state.pauseLongitudinal
 
     actuators = CC.actuators
     actuators.longControlState = self.LoC.long_control_state
@@ -140,6 +143,7 @@ class Controls:
 
   def publish(self, CC, lac_log):
     CS = self.sm['carState']
+    frogpilot_car_state = self.sm['frogpilotCarState']
 
     # Orientation and angle rates can be useful for carcontroller
     # Only calibrated (car) frame is relevant for the carcontroller
@@ -149,13 +153,13 @@ class Controls:
       CC.angularVelocity = self.calibrated_pose.angular_velocity.xyz.tolist()
 
     CC.cruiseControl.override = CC.enabled and not CC.longActive and self.CP.openpilotLongitudinalControl
-    CC.cruiseControl.cancel = CS.cruiseState.enabled and (not CC.enabled or not self.CP.pcmCruise)
+    CC.cruiseControl.cancel = CS.cruiseState.enabled and (not (CC.enabled or frogpilot_car_state.alwaysOnLateralEnabled) or not self.CP.pcmCruise)
     CC.cruiseControl.resume = CC.enabled and CS.cruiseState.standstill and not self.sm['longitudinalPlan'].shouldStop
 
     hudControl = CC.hudControl
     hudControl.setSpeed = float(CS.vCruiseCluster * CV.KPH_TO_MS)
-    hudControl.speedVisible = CC.enabled
-    hudControl.lanesVisible = CC.enabled
+    hudControl.speedVisible = CC.enabled or CC.latActive
+    hudControl.lanesVisible = CC.enabled or CC.latActive
     hudControl.leadVisible = self.sm['longitudinalPlan'].hasLead
     hudControl.leadDistanceBars = self.sm['selfdriveState'].personality.raw + 1
     hudControl.visualAlert = self.sm['selfdriveState'].alertHudVisual

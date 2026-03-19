@@ -1482,9 +1482,9 @@ struct ProcLog {
     exe @16 :Text;
 
     # from /proc/<pid>/smaps_rollup (proportional/private memory)
-    memPss @17 :UInt64;        # Pss — shared pages split by mapper count
-    memPssAnon @18 :UInt64;    # Pss_Anon — private anonymous (heap, stack)
-    memPssShmem @19 :UInt64;   # Pss_Shmem — proportional MSGQ/tmpfs share
+    memPss @17 :UInt64;        # Pss ??? shared pages split by mapper count
+    memPssAnon @18 :UInt64;    # Pss_Anon ??? private anonymous (heap, stack)
+    memPssShmem @19 :UInt64;   # Pss_Shmem ??? proportional MSGQ/tmpfs share
   }
 
   struct CPUTimes {
@@ -2635,8 +2635,8 @@ struct Event {
     # DON'T change which struct it points to
     customReserved0 @107 :Custom.CustomReserved0;
     customReserved1 @108 :Custom.CustomReserved1;
-    customReserved2 @109 :Custom.CustomReserved2;
-    customReserved3 @110 :Custom.CustomReserved3;
+    frogpilotCarParams @109 :Custom.FrogPilotCarParams;
+    frogpilotCarState @110 :Custom.FrogPilotCarState;
     customReserved4 @111 :Custom.CustomReserved4;
     customReserved5 @112 :Custom.CustomReserved5;
     customReserved6 @113 :Custom.CustomReserved6;

@@ -16,10 +16,16 @@ struct CustomReserved0 @0x81c2f05a394cf4af {
 struct CustomReserved1 @0xaedffd8f31e7b55d {
 }
 
-struct CustomReserved2 @0xf35cc4560bbf6ec2 {
+struct FrogPilotCarParams @0xf35cc4560bbf6ec2 {
+	openpilotLongitudinalControlDisabled @0 :Bool;
 }
 
-struct CustomReserved3 @0xda96579883444c35 {
+struct FrogPilotCarState @0xda96579883444c35 {
+	alwaysOnLateralAllowed @0 :Bool;
+	alwaysOnLateralEnabled @1 :Bool;
+	brakeLights @2 :Bool;
+	pauseLateral @3 :Bool;
+	pauseLongitudinal @4 :Bool;
 }
 
 struct CustomReserved4 @0x80ae746ee2596b11 {
