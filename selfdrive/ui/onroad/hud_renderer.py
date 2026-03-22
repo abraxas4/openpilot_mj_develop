@@ -190,13 +190,16 @@ class HudRenderer(Widget):
   def _draw_debug_info(self, rect: rl.Rectangle) -> None:
     car_state = ui_state.sm['carState']
     frogpilot_car_state = ui_state.sm['frogpilotCarState']
-    tpms = car_state.tpms
 
     brake_text = f"BRK {('ON' if frogpilot_car_state.brakeLights else 'OFF')}"
-    tpms_text = (
-      f"TPMS {self._format_tpms_value(tpms.fl)}/{self._format_tpms_value(tpms.fr)} "
-      f"{self._format_tpms_value(tpms.rl)}/{self._format_tpms_value(tpms.rr)}"
-    )
+    try:
+      tpms = car_state.tpms
+      tpms_text = (
+        f"TPMS {self._format_tpms_value(tpms.fl)}/{self._format_tpms_value(tpms.fr)} "
+        f"{self._format_tpms_value(tpms.rl)}/{self._format_tpms_value(tpms.rr)}"
+      )
+    except AttributeError:
+      tpms_text = "TPMS --/-- --/--"
 
     debug_lines = [
       (brake_text, rl.Color(255, 120, 120, 255) if frogpilot_car_state.brakeLights else COLORS.WHITE_TRANSLUCENT),

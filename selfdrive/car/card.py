@@ -7,7 +7,7 @@ import cereal.messaging as messaging
 
 from cereal import car, custom, log
 
-from openpilot.common.params import Params
+from openpilot.common.params import Params, UnknownKeyName
 from openpilot.common.realtime import config_realtime_process, Priority, Ratekeeper
 from openpilot.common.swaglog import cloudlog, ForwardingHandler
 
@@ -148,7 +148,10 @@ class Car:
 
     fp_cp = custom.FrogPilotCarParams.new_message()
     fp_cp.openpilotLongitudinalControlDisabled = not self.CP.openpilotLongitudinalControl
-    self.params.put("FrogPilotCarParams", fp_cp.to_bytes())
+    try:
+      self.params.put("FrogPilotCarParams", fp_cp.to_bytes())
+    except UnknownKeyName:
+      cloudlog.exception("FrogPilotCarParams key unavailable, skipping custom param write")
 
     # Write CarParams for controls and radard
     cp_bytes = self.CP.to_bytes()
@@ -158,7 +161,11 @@ class Car:
 
     self.v_cruise_helper = VCruiseHelper(self.CP)
 
-    self.always_on_lateral = self.params.get_bool("AlwaysOnLateral")
+    try:
+      self.always_on_lateral = self.params.get_bool("AlwaysOnLateral")
+    except UnknownKeyName:
+      cloudlog.exception("AlwaysOnLateral key unavailable, defaulting to disabled")
+      self.always_on_lateral = False
     self.always_on_lateral_allowed = True
     self.always_on_lateral_lkas_seen = False
 
