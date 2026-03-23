@@ -18,6 +18,7 @@ from opendbc.car.fw_versions import ObdCallback
 from opendbc.car.car_helpers import get_car, interfaces
 from opendbc.car.hyundai.values import HyundaiFlags
 from opendbc.car.interfaces import CarInterfaceBase, RadarInterfaceBase
+from opendbc.safety import ALTERNATIVE_EXPERIENCE
 from openpilot.selfdrive.pandad import can_capnp_to_list, can_list_to_can_capnp
 from openpilot.selfdrive.car.cruise import VCruiseHelper
 
@@ -111,7 +112,17 @@ class Car:
       self.CI, self.CP = CI, CI.CP
       self.RI = RI
 
+    try:
+      self.always_on_lateral = self.params.get_bool("AlwaysOnLateral")
+    except UnknownKeyName:
+      cloudlog.exception("AlwaysOnLateral key unavailable, defaulting to disabled")
+      self.always_on_lateral = False
+
     self.CP.alternativeExperience = 0
+    if self.always_on_lateral:
+      self.CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.ALWAYS_ON_LATERAL
+      self.CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.DISABLE_DISENGAGE_ON_GAS
+
     openpilot_enabled_toggle = self.params.get_bool("OpenpilotEnabledToggle")
     controller_available = self.CI.CC is not None and openpilot_enabled_toggle and not self.CP.dashcamOnly
     self.CP.passive = not controller_available or self.CP.dashcamOnly
@@ -161,11 +172,6 @@ class Car:
 
     self.v_cruise_helper = VCruiseHelper(self.CP)
 
-    try:
-      self.always_on_lateral = self.params.get_bool("AlwaysOnLateral")
-    except UnknownKeyName:
-      cloudlog.exception("AlwaysOnLateral key unavailable, defaulting to disabled")
-      self.always_on_lateral = False
     self.always_on_lateral_allowed = True
     self.always_on_lateral_lkas_seen = False
 
@@ -179,21 +185,15 @@ class Car:
     fp_cs = custom.FrogPilotCarState.new_message()
 
     lkas_pressed = any(be.pressed and be.type == ButtonType.lkas for be in CS.buttonEvents)
-    lkas_event_seen = any(be.type == ButtonType.lkas for be in CS.buttonEvents)
-    if lkas_event_seen:
-      self.always_on_lateral_lkas_seen = True
     if lkas_pressed:
       self.always_on_lateral_allowed = not self.always_on_lateral_allowed
 
     hyundai_lkas_mode = self.CP.brand == 'hyundai' and bool(self.CP.flags & HyundaiFlags.HAS_LDA_BUTTON)
     if hyundai_lkas_mode:
-      allowed = bool(getattr(getattr(self.CI, "CS", None), "lkas_enabled", self.always_on_lateral_allowed))
-      self.always_on_lateral_allowed = allowed
-    else:
-      allowed = bool(CS.cruiseState.available)
+      self.always_on_lateral_allowed = bool(getattr(getattr(self.CI, "CS", None), "lkas_enabled", self.always_on_lateral_allowed))
+
+    allowed = self.always_on_lateral_allowed
     enabled = self.always_on_lateral and allowed and CS.gearShifter == GearShifter.drive
-    if not hyundai_lkas_mode:
-      enabled = enabled and CS.cruiseState.available
 
     fp_cs.alwaysOnLateralAllowed = allowed
     fp_cs.alwaysOnLateralEnabled = enabled
