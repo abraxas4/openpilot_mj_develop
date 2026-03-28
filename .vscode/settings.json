@@ -2,6 +2,11 @@
   "editor.tabSize": 2,
   "editor.insertSpaces": true,
   "editor.renderWhitespace": "trailing",
+  "editor.tokenColorCustomizations": {
+    "[Abyss]": {
+      "comments": "#ffd966"
+    }
+  },
   "files.trimTrailingWhitespace": true,
   "search.exclude": {
     "**/.git": true,

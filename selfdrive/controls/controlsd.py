@@ -25,6 +25,9 @@ LaneChangeState = log.LaneChangeState
 LaneChangeDirection = log.LaneChangeDirection
 
 ACTUATOR_FIELDS = tuple(car.CarControl.Actuators.schema.fields.keys())
+# Keep AOL lateral active for 2 seconds after the car first reaches standstill.
+# DT_CTRL is the control loop period, so this converts 2.0 seconds into control frames.
+AOL_STANDSTILL_RELEASE_DELAY_FRAMES = int(2.0 / DT_CTRL)
 
 
 class Controls:
@@ -44,6 +47,7 @@ class Controls:
     self.steer_limited_by_safety = False
     self.curvature = 0.0
     self.desired_curvature = 0.0
+    self.aol_standstill_frames = 0
 
     self.pose_calibrator = PoseCalibrator()
     self.calibrated_pose: Pose | None = None
@@ -92,13 +96,31 @@ class Controls:
     CC.enabled = self.sm['selfdriveState'].enabled
 
     # Check which actuators can be enabled
+    #
+    # `below_lateral_control_speed` is the normal openpilot low-speed steering gate.
+    # On cars that don't support steering all the way to standstill, this would normally
+    # make `CC.latActive` drop in the final slow-down phase.
     below_lateral_control_speed = abs(CS.vEgo) <= max(self.CP.minSteerSpeed, 0.3)
     frogpilot_car_state = self.sm['frogpilotCarState']
-    moving_aol = frogpilot_car_state.alwaysOnLateralEnabled and not CS.standstill and abs(CS.vEgo) > 0.01
-    near_stop_braking = CS.brakePressed and abs(CS.vEgo) < 1.0
-    allow_aol_low_speed = frogpilot_car_state.alwaysOnLateralEnabled and not CS.standstill and not near_stop_braking
+
+    # For Always On Lateral (AOL), start counting once the car has actually reached standstill.
+    # Any time the car moves again, or AOL is off, the counter resets immediately.
+    if frogpilot_car_state.alwaysOnLateralEnabled and CS.standstill:
+      self.aol_standstill_frames += 1
+    else:
+      self.aol_standstill_frames = 0
+
+    # AOL behavior:
+    # - While the car is still moving, keep lateral active even below min steer speed.
+    # - After standstill begins, keep lateral active for 2 more seconds.
+    # - After that delay expires, AOL no longer overrides the low-speed gate.
+    allow_aol_low_speed = frogpilot_car_state.alwaysOnLateralEnabled and \
+      (not CS.standstill or self.aol_standstill_frames < AOL_STANDSTILL_RELEASE_DELAY_FRAMES)
+
+    # `CC.latActive` still respects temporary/permanent steering faults and manual AOL pause.
+    # The only thing overridden here is the normal low-speed disengage condition.
     CC.latActive = (self.sm['selfdriveState'].active or frogpilot_car_state.alwaysOnLateralEnabled) and \
-         (not CS.steerFaultTemporary or moving_aol) and not CS.steerFaultPermanent and \
+         not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
          (not below_lateral_control_speed or self.CP.steerAtStandstill or allow_aol_low_speed) and not frogpilot_car_state.pauseLateral
     CC.longActive = CC.enabled and not any(e.overrideLongitudinal for e in self.sm['onroadEvents']) and \
             self.CP.openpilotLongitudinalControl and not frogpilot_car_state.pauseLongitudinal
