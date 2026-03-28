@@ -94,10 +94,11 @@ class Controls:
     # Check which actuators can be enabled
     below_lateral_control_speed = abs(CS.vEgo) <= max(self.CP.minSteerSpeed, 0.3)
     frogpilot_car_state = self.sm['frogpilotCarState']
+    moving_aol = frogpilot_car_state.alwaysOnLateralEnabled and not CS.standstill and abs(CS.vEgo) > 0.01
     near_stop_braking = CS.brakePressed and abs(CS.vEgo) < 1.0
     allow_aol_low_speed = frogpilot_car_state.alwaysOnLateralEnabled and not CS.standstill and not near_stop_braking
     CC.latActive = (self.sm['selfdriveState'].active or frogpilot_car_state.alwaysOnLateralEnabled) and \
-             not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
+         (not CS.steerFaultTemporary or moving_aol) and not CS.steerFaultPermanent and \
          (not below_lateral_control_speed or self.CP.steerAtStandstill or allow_aol_low_speed) and not frogpilot_car_state.pauseLateral
     CC.longActive = CC.enabled and not any(e.overrideLongitudinal for e in self.sm['onroadEvents']) and \
             self.CP.openpilotLongitudinalControl and not frogpilot_car_state.pauseLongitudinal
