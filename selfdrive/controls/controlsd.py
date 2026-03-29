@@ -25,9 +25,9 @@ LaneChangeState = log.LaneChangeState
 LaneChangeDirection = log.LaneChangeDirection
 
 ACTUATOR_FIELDS = tuple(car.CarControl.Actuators.schema.fields.keys())
-# Keep AOL lateral active briefly when transient moving-speed drops happen in AOL-only mode.
-# This smooths momentary interruptions without holding lateral indefinitely while the car is moving.
-AOL_MOVING_RELEASE_DELAY_FRAMES = int(0.5 / DT_CTRL)
+# Keep AOL lateral active for up to 3 seconds when transient moving-speed drops happen in AOL-only mode.
+# This is intentionally long enough to bridge repeated brake-triggered interruptions during the slow-down phase.
+AOL_MOVING_RELEASE_DELAY_FRAMES = int(3.0 / DT_CTRL)
 # Keep AOL lateral active for 2 seconds after the car first reaches standstill.
 # DT_CTRL is the control loop period, so this converts 2.0 seconds into control frames.
 AOL_STANDSTILL_RELEASE_DELAY_FRAMES = int(2.0 / DT_CTRL)
@@ -129,8 +129,8 @@ class Controls:
          not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
          (not below_lateral_control_speed or self.CP.steerAtStandstill or allow_aol_low_speed) and not frogpilot_car_state.pauseLateral
 
-    # In AOL-only mode while the car is still moving, hold lateral for a short grace period
-    # when a transient drop happens. This avoids brief steer cutouts from flickering the engage state.
+    # In AOL-only mode while the car is still moving, hold lateral for a 3-second grace period
+    # when a transient drop happens. This avoids repeated steer cutouts during braking or CAN/fault flicker.
     if aol_moving and not base_lat_active and not CS.steerFaultPermanent and not frogpilot_car_state.pauseLateral:
       self.aol_moving_release_frames += 1
     else:
