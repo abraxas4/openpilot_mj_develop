@@ -123,16 +123,16 @@ class Controls:
     allow_aol_low_speed = frogpilot_car_state.alwaysOnLateralEnabled and \
       (not CS.standstill or self.aol_standstill_frames < AOL_STANDSTILL_RELEASE_DELAY_FRAMES)
 
-      # In strong AOL-only moving mode, temporary steering faults are allowed to flicker without
-      # immediately dropping `CC.latActive`. Permanent steering faults and manual AOL pause still win.
-      allow_aol_temp_fault = aol_moving and CS.steerFaultTemporary
+    # In strong AOL-only moving mode, temporary steering faults are allowed to flicker without
+    # immediately dropping `CC.latActive`. Permanent steering faults and manual AOL pause still win.
+    allow_aol_temp_fault = aol_moving and CS.steerFaultTemporary
 
-      # `CC.latActive` still respects permanent steering faults and manual AOL pause.
-      # The normal low-speed disengage condition is overridden by AOL, and while moving in AOL-only
-      # mode we also ignore temporary steering-fault flicker so steering does not release mid-brake.
+    # `CC.latActive` still respects permanent steering faults and manual AOL pause.
+    # The normal low-speed disengage condition is overridden by AOL, and while moving in AOL-only
+    # mode we also ignore temporary steering-fault flicker so steering does not release mid-brake.
     base_lat_active = (self.sm['selfdriveState'].active or frogpilot_car_state.alwaysOnLateralEnabled) and \
-         (allow_aol_temp_fault or not CS.steerFaultTemporary) and not CS.steerFaultPermanent and \
-         (not below_lateral_control_speed or self.CP.steerAtStandstill or allow_aol_low_speed) and not frogpilot_car_state.pauseLateral
+      (allow_aol_temp_fault or not CS.steerFaultTemporary) and not CS.steerFaultPermanent and \
+      (not below_lateral_control_speed or self.CP.steerAtStandstill or allow_aol_low_speed) and not frogpilot_car_state.pauseLateral
 
     # In AOL-only mode while the car is still moving, hold lateral for a 3-second grace period
     # when a transient drop happens. This avoids repeated steer cutouts during braking or CAN/fault flicker.
