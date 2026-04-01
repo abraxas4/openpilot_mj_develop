@@ -25,9 +25,9 @@ LaneChangeState = log.LaneChangeState
 LaneChangeDirection = log.LaneChangeDirection
 
 ACTUATOR_FIELDS = tuple(car.CarControl.Actuators.schema.fields.keys())
-# Keep AOL lateral active for 2 seconds after the car first reaches standstill.
-# DT_CTRL is the control loop period, so this converts 2.0 seconds into control frames.
-AOL_STANDSTILL_RELEASE_DELAY_FRAMES = int(2.0 / DT_CTRL)
+# Keep AOL lateral active for 5 seconds after the car first reaches standstill.
+# DT_CTRL is the control loop period, so this converts 5.0 seconds into control frames.
+AOL_STANDSTILL_RELEASE_DELAY_FRAMES = int(5.0 / DT_CTRL)
 
 
 class Controls:
