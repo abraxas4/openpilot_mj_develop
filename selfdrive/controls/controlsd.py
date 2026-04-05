@@ -28,6 +28,7 @@ ACTUATOR_FIELDS = tuple(car.CarControl.Actuators.schema.fields.keys())
 # Keep AOL lateral active for 5 seconds after the car first reaches standstill.
 # DT_CTRL is the control loop period, so this converts 5.0 seconds into control frames.
 AOL_STANDSTILL_RELEASE_DELAY_FRAMES = int(5.0 / DT_CTRL)
+HIGH_SPEED_AOL_DEBUG_MIN_VEGO = 60 * CV.KPH_TO_MS
 
 
 class Controls:
@@ -48,6 +49,7 @@ class Controls:
     self.curvature = 0.0
     self.desired_curvature = 0.0
     self.aol_standstill_frames = 0
+    self.aol_high_speed_temp_event_active = False
 
     self.pose_calibrator = PoseCalibrator()
     self.calibrated_pose: Pose | None = None
@@ -91,6 +93,10 @@ class Controls:
 
     long_plan = self.sm['longitudinalPlan']
     model_v2 = self.sm['modelV2']
+    try:
+      event_names = [str(e.name) for e in self.sm['onroadEvents']]
+    except Exception:
+      event_names = [str(e) for e in self.sm['onroadEvents']]
 
     CC = car.CarControl.new_message()
     CC.enabled = self.sm['selfdriveState'].enabled
@@ -112,10 +118,14 @@ class Controls:
 
     # AOL behavior:
     # - While the car is still moving, keep lateral active even below min steer speed.
-    # - After standstill begins, keep lateral active for 2 more seconds.
+    # - After standstill begins, keep lateral active for 5 more seconds.
     # - After that delay expires, AOL no longer overrides the low-speed gate.
     allow_aol_low_speed = frogpilot_car_state.alwaysOnLateralEnabled and \
       (not CS.standstill or self.aol_standstill_frames < AOL_STANDSTILL_RELEASE_DELAY_FRAMES)
+
+    aol_only_active = frogpilot_car_state.alwaysOnLateralEnabled and not self.sm['selfdriveState'].active
+    aol_high_speed_temp_event = aol_only_active and not CS.brakePressed and CS.vEgo >= HIGH_SPEED_AOL_DEBUG_MIN_VEGO and \
+      ('steerTempUnavailable' in event_names or 'steerTempUnavailableSilent' in event_names)
 
     # `CC.latActive` still respects temporary/permanent steering faults and manual AOL pause.
     # The only thing overridden here is the normal low-speed disengage condition.
@@ -154,6 +164,37 @@ class Controls:
                                                        curvature_limited, lat_delay)
     actuators.torque = float(steer)
     actuators.steeringAngleDeg = float(steeringAngleDeg)
+
+    if aol_high_speed_temp_event and not self.aol_high_speed_temp_event_active:
+      lane_change_state = str(model_v2.meta.laneChangeState)
+      lane_change_direction = str(model_v2.meta.laneChangeDirection)
+      car_output = self.sm['carOutput']
+      cloudlog.event("aol_high_speed_steer_temp_debug",
+                     speed_kph=round(CS.vEgo * CV.MS_TO_KPH, 3),
+                     lat_active=bool(CC.latActive),
+                     enabled=bool(CC.enabled),
+                     selfdrive_active=bool(self.sm['selfdriveState'].active),
+                     aol_enabled=bool(frogpilot_car_state.alwaysOnLateralEnabled),
+                     wrong_car_mode=('wrongCarMode' in event_names),
+                     pause_lateral=bool(frogpilot_car_state.pauseLateral),
+                     brake_pressed=bool(CS.brakePressed),
+                     gas_pressed=bool(CS.gasPressed),
+                     steering_pressed=bool(CS.steeringPressed),
+                     steer_fault_temp=bool(CS.steerFaultTemporary),
+                     steer_fault_perm=bool(CS.steerFaultPermanent),
+                     steering_torque=float(CS.steeringTorque),
+                     steering_torque_eps=float(CS.steeringTorqueEps),
+                     steering_angle_deg=float(CS.steeringAngleDeg),
+                     steering_rate_deg=float(CS.steeringRateDeg),
+                     desired_curvature=float(self.desired_curvature),
+                     output_torque=float(car_output.actuatorsOutput.torque),
+                     output_angle_deg=float(car_output.actuatorsOutput.steeringAngleDeg),
+                     steer_limited_by_safety=bool(self.steer_limited_by_safety),
+                     lane_change_state=lane_change_state,
+                     lane_change_direction=lane_change_direction,
+                     events=event_names)
+    self.aol_high_speed_temp_event_active = aol_high_speed_temp_event
+
     # Ensure no NaNs/Infs
     for p in ACTUATOR_FIELDS:
       attr = getattr(actuators, p)
