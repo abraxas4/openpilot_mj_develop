@@ -25,9 +25,9 @@ LaneChangeState = log.LaneChangeState
 LaneChangeDirection = log.LaneChangeDirection
 
 ACTUATOR_FIELDS = tuple(car.CarControl.Actuators.schema.fields.keys())
-# Keep AOL lateral active for 2 seconds after the car first reaches standstill.
-# DT_CTRL is the control loop period, so this converts 2.0 seconds into control frames.
-AOL_STANDSTILL_RELEASE_DELAY_FRAMES = int(2.0 / DT_CTRL)
+# Keep AOL lateral active for 5 seconds after the car first reaches standstill.
+# DT_CTRL is the control loop period, so this converts 5.0 seconds into control frames.
+AOL_STANDSTILL_RELEASE_DELAY_FRAMES = int(5.0 / DT_CTRL)
 
 
 class Controls:
@@ -117,17 +117,10 @@ class Controls:
     allow_aol_low_speed = frogpilot_car_state.alwaysOnLateralEnabled and \
       (not CS.standstill or self.aol_standstill_frames < AOL_STANDSTILL_RELEASE_DELAY_FRAMES)
 
-    # In AOL-only moving mode, ignore transient temporary steering-fault flicker.
-    # This avoids one-frame steer cutouts while leaving permanent faults and manual pause intact.
-    aol_only_enabled = frogpilot_car_state.alwaysOnLateralEnabled and not self.sm['selfdriveState'].active
-    aol_moving = aol_only_enabled and not CS.standstill and abs(CS.vEgo) > 0.1
-    allow_aol_temp_fault = aol_moving and CS.steerFaultTemporary
-
     # `CC.latActive` still respects temporary/permanent steering faults and manual AOL pause.
-    # The normal low-speed disengage condition is overridden by AOL, and in AOL-only moving mode
-    # temporary steering-fault flicker is also ignored so brief Hyundai MDPS interruptions do not cut steering.
+    # The only thing overridden here is the normal low-speed disengage condition.
     CC.latActive = (self.sm['selfdriveState'].active or frogpilot_car_state.alwaysOnLateralEnabled) and \
-         (allow_aol_temp_fault or not CS.steerFaultTemporary) and not CS.steerFaultPermanent and \
+         not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
          (not below_lateral_control_speed or self.CP.steerAtStandstill or allow_aol_low_speed) and not frogpilot_car_state.pauseLateral
     CC.longActive = CC.enabled and not any(e.overrideLongitudinal for e in self.sm['onroadEvents']) and \
             self.CP.openpilotLongitudinalControl and not frogpilot_car_state.pauseLongitudinal
