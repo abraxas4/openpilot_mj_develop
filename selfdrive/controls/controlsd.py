@@ -29,7 +29,7 @@ ACTUATOR_FIELDS = tuple(car.CarControl.Actuators.schema.fields.keys())
 # DT_CTRL is the control loop period, so this converts 5.0 seconds into control frames.
 AOL_STANDSTILL_RELEASE_DELAY_FRAMES = int(5.0 / DT_CTRL)
 HIGH_SPEED_AOL_DEBUG_MIN_VEGO = 60 * CV.KPH_TO_MS
-AOL_HIGH_SPEED_TEMP_FAULT_MIN_VEGO = 90 * CV.KPH_TO_MS
+AOL_HIGH_SPEED_TEMP_DEBOUNCE_MIN_VEGO = 80 * CV.KPH_TO_MS
 AOL_TEMP_FAULT_DEBOUNCE_FRAMES = int(0.2 / DT_CTRL)
 
 
@@ -127,11 +127,12 @@ class Controls:
       (not CS.standstill or self.aol_standstill_frames < AOL_STANDSTILL_RELEASE_DELAY_FRAMES)
 
     aol_only_active = frogpilot_car_state.alwaysOnLateralEnabled and not self.sm['selfdriveState'].active
+    aol_temp_unavailable_event = 'steerTempUnavailable' in event_names or 'steerTempUnavailableSilent' in event_names
     aol_high_speed_temp_event = aol_only_active and not CS.brakePressed and CS.vEgo >= HIGH_SPEED_AOL_DEBUG_MIN_VEGO and \
-      ('steerTempUnavailable' in event_names or 'steerTempUnavailableSilent' in event_names)
-    aol_temp_fault_debounce_active = aol_only_active and not CS.brakePressed and not CS.gasPressed and \
+      aol_temp_unavailable_event
+    aol_temp_fault_debounce_active = aol_only_active and not CS.brakePressed and \
       not CS.steeringPressed and not frogpilot_car_state.pauseLateral and not CS.steerFaultPermanent and \
-      CS.vEgo >= AOL_HIGH_SPEED_TEMP_FAULT_MIN_VEGO and CS.steerFaultTemporary
+      CS.vEgo >= AOL_HIGH_SPEED_TEMP_DEBOUNCE_MIN_VEGO and (CS.steerFaultTemporary or aol_temp_unavailable_event)
     if aol_temp_fault_debounce_active:
       self.aol_temp_fault_frames += 1
     else:
@@ -141,8 +142,8 @@ class Controls:
 
     # `CC.latActive` still respects temporary/permanent steering faults and manual AOL pause.
     # The only thing overridden here is the normal low-speed disengage condition.
-    # In addition, a very short high-speed AOL-only debounce is allowed for temporary steering-fault
-    # flicker when the driver is neither braking nor overriding steering/gas.
+    # In addition, a very short high-speed AOL-only debounce is allowed for temporary steering-unavailable
+    # flicker when the driver is neither braking nor overriding steering.
     CC.latActive = (self.sm['selfdriveState'].active or frogpilot_car_state.alwaysOnLateralEnabled) and \
          (allow_aol_temp_fault_debounce or not CS.steerFaultTemporary) and not CS.steerFaultPermanent and \
          (not below_lateral_control_speed or self.CP.steerAtStandstill or allow_aol_low_speed) and not frogpilot_car_state.pauseLateral
