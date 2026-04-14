@@ -267,7 +267,7 @@ void send_peripheral_state(Panda *panda, PubMaster *pm) {
   pm->send("peripheralState", msg);
 }
 
-void process_panda_state(Panda *panda, PubMaster *pm, bool engaged, bool is_onroad, bool spoofing_started) {
+void process_panda_state(Panda *panda, PubMaster *pm, bool heartbeat_engaged, bool is_onroad, bool spoofing_started) {
   auto ignition_opt = send_panda_states(pm, panda, is_onroad, spoofing_started);
   if (!ignition_opt) {
     LOGE("Failed to get ignition_opt");
@@ -282,7 +282,7 @@ void process_panda_state(Panda *panda, PubMaster *pm, bool engaged, bool is_onro
     }
   }
 
-  panda->send_heartbeat(engaged);
+  panda->send_heartbeat(heartbeat_engaged);
 }
 
 void process_peripheral_state(Panda *panda, PubMaster *pm, bool no_fan_control) {
@@ -359,7 +359,7 @@ void pandad_run(Panda *panda) {
 
   Params params;
   RateKeeper rk("pandad", 100);
-  SubMaster sm({"selfdriveState"});
+  SubMaster sm({"selfdriveState", "frogpilotCarState"});
   PubMaster pm({"can", "pandaStates", "peripheralState"});
   PandaSafety panda_safety(panda);
   bool engaged = false;
@@ -378,8 +378,11 @@ void pandad_run(Panda *panda) {
     if (rk.frame() % 10 == 0) {
       sm.update(0);
       engaged = sm.allAliveAndValid({"selfdriveState"}) && sm["selfdriveState"].getSelfdriveState().getEnabled();
+      // AOL can legitimately keep lateral control active while selfdriveState.enabled stays false.
+      const bool heartbeat_engaged = engaged || (sm.allAliveAndValid({"frogpilotCarState"}) &&
+        sm["frogpilotCarState"].getFrogpilotCarState().getAlwaysOnLateralEnabled());
       is_onroad = params.getBool("IsOnroad");
-      process_panda_state(panda, &pm, engaged, is_onroad, spoofing_started);
+      process_panda_state(panda, &pm, heartbeat_engaged, is_onroad, spoofing_started);
       panda_safety.configureSafetyMode(is_onroad);
     }
 
