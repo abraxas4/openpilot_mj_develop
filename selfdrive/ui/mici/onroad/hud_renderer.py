@@ -26,6 +26,9 @@ class FontSizes:
   speed_unit: int = 66
   max_speed: int = 36
   set_speed: int = 112
+  compass: int = 40
+  log_title: int = 28
+  log_body: int = 24
   debug: int = 30
 
 
@@ -33,6 +36,11 @@ class FontSizes:
 class Colors:
   WHITE = rl.WHITE
   WHITE_TRANSLUCENT = rl.Color(255, 255, 255, 200)
+  PANEL_BG = rl.Color(7, 12, 18, 160)
+  PANEL_BORDER = rl.Color(255, 255, 255, 52)
+  ACCENT = rl.Color(120, 220, 255, 230)
+  WARNING = rl.Color(255, 196, 120, 230)
+  GOOD = rl.Color(140, 255, 180, 230)
 
 
 FONT_SIZES = FontSizes()
@@ -178,10 +186,86 @@ class HudRenderer(Widget):
     if self.is_cruise_set:
       self._draw_set_speed(rect)
 
+    self._draw_compass(rect)
     self._draw_steering_wheel(rect)
+    self._draw_learning_log(rect)
 
     if ui_state.show_debug_info:
       self._draw_debug_info(rect)
+
+  @staticmethod
+  def _format_flag(value: bool) -> str:
+    return "ON" if value else "OFF"
+
+  @staticmethod
+  def _format_gear(gear) -> str:
+    return str(gear).split(".")[-1].upper()
+
+  @staticmethod
+  def _format_event_name(event) -> str:
+    return str(event.name).split(".")[-1]
+
+  @staticmethod
+  def _truncate_text(text: str, max_chars: int = 52) -> str:
+    return text if len(text) <= max_chars else f"{text[:max_chars - 3]}..."
+
+  @staticmethod
+  def _bearing_to_cardinal(bearing: float) -> str:
+    directions = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+    return directions[int(((bearing % 360.0) + 22.5) // 45) % len(directions)]
+
+  def _draw_compass(self, rect: rl.Rectangle) -> None:
+    sm = ui_state.sm
+    if not (sm.alive["gpsLocationExternal"] and sm.valid["gpsLocationExternal"]):
+      return
+
+    gps = sm["gpsLocationExternal"]
+    if gps.speed < 0.5 or gps.bearingAccuracyDeg > 45.0:
+      return
+
+    bearing = gps.bearingDeg % 360.0
+    compass_text = f"{self._bearing_to_cardinal(bearing)} {bearing:03.0f} deg"
+    compass_size = measure_text_cached(self._font_semi_bold, compass_text, FONT_SIZES.compass)
+    compass_pos = rl.Vector2(rect.x + rect.width / 2 - compass_size.x / 2, rect.y + 28)
+    rl.draw_text_ex(self._font_semi_bold, compass_text, compass_pos, FONT_SIZES.compass, 0, COLORS.ACCENT)
+
+  def _draw_learning_log(self, rect: rl.Rectangle) -> None:
+    sm = ui_state.sm
+    car_state = sm['carState']
+    car_control = sm['carControl']
+    selfdrive_state = sm['selfdriveState']
+    frogpilot_car_state = sm['frogpilotCarState']
+
+    active_events = [self._format_event_name(event) for event in sm['onroadEvents']][:3]
+    events_text = ", ".join(active_events) if active_events else "clear"
+    blinker_text = f"{('L' if car_state.leftBlinker else '-')}{('R' if car_state.rightBlinker else '-')}"
+
+    lines = [
+      ("DRIVING LOG", COLORS.ACCENT),
+      (f"mode    op {self._format_flag(selfdrive_state.enabled)}  active {self._format_flag(selfdrive_state.active)}  aol {self._format_flag(frogpilot_car_state.alwaysOnLateralEnabled)}", COLORS.GOOD if selfdrive_state.enabled else COLORS.WHITE_TRANSLUCENT),
+      (f"control lat {self._format_flag(car_control.latActive)}  long {self._format_flag(car_control.longActive)}  gear {self._format_gear(car_state.gearShifter)}", COLORS.WHITE_TRANSLUCENT),
+      (f"driver  gas {self._format_flag(car_state.gasPressed)}  brake {self._format_flag(car_state.brakePressed)}  override {self._format_flag(car_state.steeringPressed)}  blink {blinker_text}", COLORS.WHITE_TRANSLUCENT),
+      (f"steer   angle {car_state.steeringAngleDeg:+.1f} deg  torque {car_state.steeringTorque:+.2f}", COLORS.WHITE_TRANSLUCENT),
+      (f"alerts  {self._truncate_text(events_text)}", COLORS.WARNING if active_events else COLORS.WHITE_TRANSLUCENT),
+    ]
+
+    panel_width = min(rect.width * 0.46, 620)
+    panel_height = min(rect.height * 0.30, 236)
+    panel_x = rect.x + rect.width - panel_width - 24
+    panel_y = rect.y + rect.height - panel_height - 32
+    panel_rect = rl.Rectangle(panel_x, panel_y, panel_width, panel_height)
+
+    rl.draw_rectangle_rec(panel_rect, COLORS.PANEL_BG)
+    rl.draw_rectangle_lines_ex(panel_rect, 1.0, COLORS.PANEL_BORDER)
+
+    x = panel_x + 18
+    y = panel_y + 16
+    body_line_height = 30
+
+    for i, (text, color) in enumerate(lines):
+      font = self._font_semi_bold if i == 0 else self._font_medium
+      font_size = FONT_SIZES.log_title if i == 0 else FONT_SIZES.log_body
+      rl.draw_text_ex(font, text, rl.Vector2(x, y + i * body_line_height), font_size, 0, color)
 
   def _draw_steering_wheel(self, rect: rl.Rectangle) -> None:
     wheel_txt = self._txt_wheel_critical if self._show_wheel_critical else self._txt_wheel
