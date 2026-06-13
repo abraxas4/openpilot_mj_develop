@@ -12,6 +12,7 @@ from openpilot.system.ui.widgets import Widget
 SET_SPEED_NA = 255
 KM_TO_MILE = 0.621371
 CRUISE_DISABLED_CHAR = '???'
+KPA_TO_PSI = 0.145038
 
 
 @dataclass(frozen=True)
@@ -118,6 +119,9 @@ class HudRenderer(Widget):
 
     self._draw_current_speed(rect)
 
+    self._draw_tpms_widget(rect)
+    self._draw_compass(rect)
+
     if ui_state.show_debug_info:
       self._draw_debug_info(rect)
 
@@ -186,6 +190,88 @@ class HudRenderer(Widget):
   @staticmethod
   def _format_tpms_value(value: float) -> str:
     return "--" if value <= 0.1 else f"{value:.0f}"
+
+  @staticmethod
+  def _bearing_to_cardinal(bearing: float) -> str:
+    directions = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+    return directions[int(((bearing % 360.0) + 22.5) // 45) % 8]
+
+  def _draw_tpms_widget(self, rect: rl.Rectangle) -> None:
+    car_state = ui_state.sm['carState']
+    try:
+      tpms = car_state.tpms
+    except AttributeError:
+      return
+
+    def fmt(v: float) -> str:
+      return "--" if v <= 0.1 else f"{v * KPA_TO_PSI:.1f}"
+
+    # car body rectangle dimensions
+    car_w, car_h = 130, 85
+    # widget origin: left side, below set-speed box
+    wx = int(rect.x + 55)
+    wy = int(rect.y + 270)
+    car_x = wx
+    car_y = wy + 42
+
+    # semi-transparent background
+    bg = rl.Rectangle(wx - 12, wy - 10, car_w + 24, car_h + 96)
+    rl.draw_rectangle_rec(bg, rl.Color(0, 0, 0, 120))
+
+    # car body outline (viewed from top)
+    rl.draw_rectangle_lines_ex(rl.Rectangle(car_x, car_y, car_w, car_h), 3, COLORS.WHITE_TRANSLUCENT)
+
+    # front marker (small bar at top of rectangle)
+    rl.draw_rectangle(car_x + car_w // 2 - 18, car_y, 36, 5, COLORS.WHITE_TRANSLUCENT)
+
+    font = self._font_medium
+    fs = FONT_SIZES.debug
+
+    fl_text = f"FL:{fmt(tpms.fl)}"
+    fr_text = f"FR:{fmt(tpms.fr)}"
+    rl_text = f"RL:{fmt(tpms.rl)}"
+    rr_text = f"RR:{fmt(tpms.rr)}"
+
+    fr_w = measure_text_cached(font, fr_text, fs).x
+    rr_w = measure_text_cached(font, rr_text, fs).x
+
+    # front row (FL left, FR right)
+    rl.draw_text_ex(font, fl_text, rl.Vector2(car_x, wy + 8), fs, 0, COLORS.WHITE_TRANSLUCENT)
+    rl.draw_text_ex(font, fr_text, rl.Vector2(car_x + car_w - fr_w, wy + 8), fs, 0, COLORS.WHITE_TRANSLUCENT)
+
+    # rear row (RL left, RR right)
+    rear_y = car_y + car_h + 8
+    rl.draw_text_ex(font, rl_text, rl.Vector2(car_x, rear_y), fs, 0, COLORS.WHITE_TRANSLUCENT)
+    rl.draw_text_ex(font, rr_text, rl.Vector2(car_x + car_w - rr_w, rear_y), fs, 0, COLORS.WHITE_TRANSLUCENT)
+
+    # "PSI" label inside car body
+    psi_label = "PSI"
+    psi_w = measure_text_cached(font, psi_label, fs - 4).x
+    rl.draw_text_ex(font, psi_label, rl.Vector2(car_x + (car_w - psi_w) / 2, car_y + car_h / 2 - 10), fs - 4, 0, COLORS.GREY)
+
+  def _draw_compass(self, rect: rl.Rectangle) -> None:
+    sm = ui_state.sm
+    if not (sm.alive["gpsLocationExternal"] and sm.valid["gpsLocationExternal"]):
+      return
+    gps = sm["gpsLocationExternal"]
+    if gps.bearingAccuracyDeg > 45.0:
+      return
+
+    bearing = gps.bearingDeg % 360.0
+    cardinal = self._bearing_to_cardinal(bearing)
+    text = f"{cardinal}  {bearing:03.0f}°"
+
+    font = self._font_medium
+    fs = FONT_SIZES.debug
+    text_size = measure_text_cached(font, text, fs)
+
+    # position: below TPMS widget
+    cx = int(rect.x + 55)
+    cy = int(rect.y + 460)
+
+    bg = rl.Rectangle(cx - 12, cy - 8, text_size.x + 24, text_size.y + 16)
+    rl.draw_rectangle_rec(bg, rl.Color(0, 0, 0, 120))
+    rl.draw_text_ex(font, text, rl.Vector2(cx, cy), fs, 0, COLORS.WHITE_TRANSLUCENT)
 
   def _draw_debug_info(self, rect: rl.Rectangle) -> None:
     car_state = ui_state.sm['carState']
