@@ -12,7 +12,6 @@ from openpilot.system.ui.widgets import Widget
 SET_SPEED_NA = 255
 KM_TO_MILE = 0.621371
 CRUISE_DISABLED_CHAR = '???'
-KPA_TO_PSI = 0.145038
 
 
 @dataclass(frozen=True)
@@ -204,13 +203,14 @@ class HudRenderer(Widget):
       return
 
     def fmt(v: float) -> str:
-      return "--" if v <= 0.1 else f"{v * KPA_TO_PSI:.1f}"
+      return "--" if v <= 0.1 else f"{v:.0f}"
 
-    # car body rectangle dimensions
-    car_w, car_h = 130, 85
-    # widget origin: left side, below set-speed box
-    wx = int(rect.x + 55)
-    wy = int(rect.y + 270)
+    # car body rectangle — width matches set-speed box width
+    car_w, car_h = 200, 85
+    # align left edge with set-speed box (x = rect.x + 60)
+    wx = int(rect.x + 60)
+    # start 36 px below set-speed box bottom (45 + 204 + 36 = 285)
+    wy = int(rect.y + 285)
     car_x = wx
     car_y = wy + 42
 
@@ -235,11 +235,11 @@ class HudRenderer(Widget):
     fr_w = measure_text_cached(font, fr_text, fs).x
     rr_w = measure_text_cached(font, rr_text, fs).x
 
-    # front row (FL left, FR right)
+    # front row (FL left, FR right-aligned within car_w)
     rl.draw_text_ex(font, fl_text, rl.Vector2(car_x, wy + 8), fs, 0, COLORS.WHITE_TRANSLUCENT)
     rl.draw_text_ex(font, fr_text, rl.Vector2(car_x + car_w - fr_w, wy + 8), fs, 0, COLORS.WHITE_TRANSLUCENT)
 
-    # rear row (RL left, RR right)
+    # rear row (RL left, RR right-aligned within car_w)
     rear_y = car_y + car_h + 8
     rl.draw_text_ex(font, rl_text, rl.Vector2(car_x, rear_y), fs, 0, COLORS.WHITE_TRANSLUCENT)
     rl.draw_text_ex(font, rr_text, rl.Vector2(car_x + car_w - rr_w, rear_y), fs, 0, COLORS.WHITE_TRANSLUCENT)
@@ -251,27 +251,29 @@ class HudRenderer(Widget):
 
   def _draw_compass(self, rect: rl.Rectangle) -> None:
     sm = ui_state.sm
-    if not (sm.alive["gpsLocationExternal"] and sm.valid["gpsLocationExternal"]):
-      return
-    gps = sm["gpsLocationExternal"]
-    if gps.bearingAccuracyDeg > 45.0:
-      return
+    has_gps = sm.alive.get("gpsLocationExternal", False) and sm.valid.get("gpsLocationExternal", False)
 
-    bearing = gps.bearingDeg % 360.0
-    cardinal = self._bearing_to_cardinal(bearing)
-    text = f"{cardinal}  {bearing:03.0f}°"
+    if has_gps:
+      gps = sm["gpsLocationExternal"]
+      bearing = gps.bearingDeg % 360.0
+      cardinal = self._bearing_to_cardinal(bearing)
+      text = f"{cardinal}  {bearing:03.0f}°"
+      color = COLORS.WHITE_TRANSLUCENT
+    else:
+      text = "---"
+      color = COLORS.GREY
 
     font = self._font_medium
     fs = FONT_SIZES.debug
     text_size = measure_text_cached(font, text, fs)
 
-    # position: below TPMS widget
-    cx = int(rect.x + 55)
-    cy = int(rect.y + 460)
+    # align with TPMS widget, position just below it
+    cx = int(rect.x + 60)
+    cy = int(rect.y + 480)
 
     bg = rl.Rectangle(cx - 12, cy - 8, text_size.x + 24, text_size.y + 16)
     rl.draw_rectangle_rec(bg, rl.Color(0, 0, 0, 120))
-    rl.draw_text_ex(font, text, rl.Vector2(cx, cy), fs, 0, COLORS.WHITE_TRANSLUCENT)
+    rl.draw_text_ex(font, text, rl.Vector2(cx, cy), fs, 0, color)
 
   def _draw_debug_info(self, rect: rl.Rectangle) -> None:
     car_state = ui_state.sm['carState']
