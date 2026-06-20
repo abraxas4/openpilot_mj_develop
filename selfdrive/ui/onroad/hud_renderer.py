@@ -251,10 +251,13 @@ class HudRenderer(Widget):
 
   def _draw_compass(self, rect: rl.Rectangle) -> None:
     sm = ui_state.sm
-    has_gps = sm.alive.get("gpsLocationExternal", False) and sm.valid.get("gpsLocationExternal", False)
+    gps = None
+    for src in ("gpsLocationExternal", "gpsLocation"):
+      if sm.alive.get(src, False) and sm.valid.get(src, False):
+        gps = sm[src]
+        break
 
-    if has_gps:
-      gps = sm["gpsLocationExternal"]
+    if gps is not None:
       bearing = gps.bearingDeg % 360.0
       cardinal = self._bearing_to_cardinal(bearing)
       text = f"{cardinal}  {bearing:03.0f}°"

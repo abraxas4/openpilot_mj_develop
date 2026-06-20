@@ -216,11 +216,13 @@ class HudRenderer(Widget):
 
   def _draw_compass(self, rect: rl.Rectangle) -> None:
     sm = ui_state.sm
-    if not (sm.alive["gpsLocationExternal"] and sm.valid["gpsLocationExternal"]):
-      return
+    gps = None
+    for src in ("gpsLocationExternal", "gpsLocation"):
+      if sm.alive.get(src, False) and sm.valid.get(src, False):
+        gps = sm[src]
+        break
 
-    gps = sm["gpsLocationExternal"]
-    if gps.speed < 0.5 or gps.bearingAccuracyDeg > 45.0:
+    if gps is None:
       return
 
     bearing = gps.bearingDeg % 360.0
