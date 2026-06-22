@@ -1,3 +1,4 @@
+import math
 import pyray as rl
 from dataclasses import dataclass
 from openpilot.common.constants import CV
@@ -257,26 +258,58 @@ class HudRenderer(Widget):
         gps = sm[src]
         break
 
-    if gps is not None:
-      bearing = gps.bearingDeg % 360.0
-      cardinal = self._bearing_to_cardinal(bearing)
-      text = f"{cardinal}  {bearing:03.0f}°"
-      color = COLORS.WHITE_TRANSLUCENT
-    else:
+    radius = 55
+    cx = int(rect.x + 160)
+    cy = int(rect.y + 525)
+
+    # dark background + border ring
+    rl.draw_circle(cx, cy, radius + 4, rl.Color(0, 0, 0, 140))
+    rl.draw_ring(rl.Vector2(cx, cy), radius + 2, radius + 4, 0, 360, 36, COLORS.BORDER_TRANSLUCENT)
+
+    if gps is None:
       text = "---"
-      color = COLORS.GREY
+      ts = measure_text_cached(self._font_medium, text, FONT_SIZES.debug)
+      rl.draw_text_ex(self._font_medium, text,
+                      rl.Vector2(cx - ts.x / 2, cy - ts.y / 2),
+                      FONT_SIZES.debug, 0, COLORS.GREY)
+      return
 
-    font = self._font_medium
-    fs = FONT_SIZES.debug
-    text_size = measure_text_cached(font, text, fs)
+    bearing = gps.bearingDeg % 360.0
 
-    # align with TPMS widget, position just below it
-    cx = int(rect.x + 60)
-    cy = int(rect.y + 480)
+    # tick marks every 30°
+    for deg in range(0, 360, 30):
+      a = math.radians(deg - bearing)
+      is_cardinal = deg % 90 == 0
+      r_in = radius - (12 if is_cardinal else 6)
+      r_out = radius - 2
+      rl.draw_line_ex(
+        rl.Vector2(cx + r_in * math.sin(a), cy - r_in * math.cos(a)),
+        rl.Vector2(cx + r_out * math.sin(a), cy - r_out * math.cos(a)),
+        3.0 if is_cardinal else 1.5, COLORS.WHITE_TRANSLUCENT)
 
-    bg = rl.Rectangle(cx - 12, cy - 8, text_size.x + 24, text_size.y + 16)
-    rl.draw_rectangle_rec(bg, rl.Color(0, 0, 0, 120))
-    rl.draw_text_ex(font, text, rl.Vector2(cx, cy), fs, 0, color)
+    # cardinal labels (N red, rest white)
+    for label, deg in (("N", 0), ("E", 90), ("S", 180), ("W", 270)):
+      a = math.radians(deg - bearing)
+      lr = radius - 24
+      lx = cx + lr * math.sin(a)
+      ly = cy - lr * math.cos(a)
+      color = rl.Color(255, 80, 80, 255) if label == "N" else COLORS.WHITE_TRANSLUCENT
+      ts = measure_text_cached(self._font_semi_bold, label, 28)
+      rl.draw_text_ex(self._font_semi_bold, label,
+                      rl.Vector2(lx - ts.x / 2, ly - ts.y / 2), 28, 0, color)
+
+    # fixed heading indicator (triangle at 12 o'clock)
+    rl.draw_triangle(
+      rl.Vector2(cx + 7, cy - radius - 2),
+      rl.Vector2(cx, cy - radius + 8),
+      rl.Vector2(cx - 7, cy - radius - 2),
+      COLORS.WHITE)
+
+    # bearing value in center
+    bt = f"{bearing:03.0f}°"
+    bs = measure_text_cached(self._font_medium, bt, 26)
+    rl.draw_text_ex(self._font_medium, bt,
+                    rl.Vector2(cx - bs.x / 2, cy - bs.y / 2), 26, 0, COLORS.WHITE)
 
   def _draw_debug_info(self, rect: rl.Rectangle) -> None:
     car_state = ui_state.sm['carState']
