@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openpilot_mj_develop — Feature Summary</title>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e;
+    --accent: #58a6ff; --green: #3fb950; --red: #f85149;
+    --orange: #d29922; --purple: #bc8cff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; padding: 48px 20px;
+  }
+  .container { max-width: 880px; margin: 0 auto; }
+  h1 {
+    font-size: 1.8rem; margin-bottom: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .subtitle { color: var(--muted); margin-bottom: 48px; font-size: 0.9rem; }
+  .subtitle code {
+    background: var(--card); padding: 2px 8px; border-radius: 4px;
+    font-size: 0.82rem; border: 1px solid var(--border);
+  }
+  h2 {
+    font-size: 1.3rem; margin-bottom: 16px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section { margin-bottom: 48px; }
+  .section p { color: var(--muted); font-size: 0.9rem; margin-bottom: 12px; }
+
+  .feature {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px 22px; margin-bottom: 10px;
+  }
+  .feature:hover { border-color: var(--accent); }
+  .feature h3 { font-size: 0.95rem; margin-bottom: 6px; }
+  .feature .detail {
+    color: var(--muted); font-size: 0.85rem;
+  }
+  .feature .detail ul { margin: 6px 0 0 18px; }
+  .feature .detail li { margin-bottom: 3px; }
+
+  .tag {
+    display: inline-block; font-size: 0.68rem; font-weight: 600;
+    padding: 2px 8px; border-radius: 12px; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-right: 6px; vertical-align: middle;
+  }
+  .tag-ctrl { background: rgba(63,185,80,0.15); color: var(--green); }
+  .tag-ui   { background: rgba(88,166,255,0.15); color: var(--accent); }
+  .tag-infra{ background: rgba(188,140,255,0.15); color: var(--purple); }
+
+  .diagram {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px; margin: 16px 0; overflow-x: auto;
+  }
+  .diagram pre {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.8rem; color: var(--muted); line-height: 1.5;
+  }
+  .diagram pre .hl  { color: var(--accent); }
+  .diagram pre .hlg { color: var(--green); }
+  .diagram pre .hlr { color: var(--red); }
+  .diagram pre .hlo { color: var(--orange); }
+
+  .files {
+    margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .file {
+    font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.72rem;
+    background: rgba(88,166,255,0.1); color: var(--accent);
+    padding: 2px 8px; border-radius: 4px;
+  }
+
+  footer {
+    margin-top: 60px; padding-top: 16px; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 0.78rem; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>openpilot_mj_develop</h1>
+<p class="subtitle">
+  Branch <code>frogpilot_port</code> &middot;
+  Fork <code>abraxas4/openpilot_mj_develop</code> &middot;
+  Hyundai Azera HEV 6th Gen &middot; comma 3x
+</p>
+
+<!-- ============================================ -->
+<!-- 1. Infrastructure -->
+<!-- ============================================ -->
+<div class="section">
+  <h2>Infrastructure</h2>
+
+  <div class="feature">
+    <h3><span class="tag tag-infra">infra</span> Hyundai Azera HEV 6세대 Fingerprint</h3>
+    <div class="detail">
+      Azera HEV 6세대의 CAN fingerprint가 등록되어 있으며, 차량 인식 시 자동으로 Hyundai 제어 로직이 적용됨.
+    </div>
+    <div class="files"><span class="file">opendbc/car/hyundai/fingerprints.py</span></div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-infra">infra</span> opendbc 커스텀 Fork (abraxas4)</h3>
+    <div class="detail">
+      opendbc 서브모듈이 abraxas4 fork를 참조. Hyundai TPMS11 등 커스텀 DBC 메시지 정의 포함.
+    </div>
+    <div class="files"><span class="file">.gitmodules</span></div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 2. Always-On Lateral -->
+<!-- ============================================ -->
+<div class="section">
+  <h2>Always-On Lateral (AOL)</h2>
+  <p>openpilot이 disengage 되어도 lateral(조향) 제어를 계속 유지하는 기능.</p>
+
+  <div class="diagram">
+<pre>
+<span class="hl">Driver</span> brake/gas override → openpilot disengage
+                                    │
+                              AOL enabled?
+                              ╱          ╲
+                           Yes            No → lateral 해제
+                            │
+                    <span class="hlg">Lateral-only 유지</span>
+                            │
+            ┌───────────────┼────────────────┐
+            │               │                │
+     <span class="hlo">Temp fault</span>      <span class="hlo">High-speed</span>       <span class="hlr">Standstill</span>
+     1s debounce    steer fault       5초 후 해제
+     유지             1s debounce       brake hold 시
+                     유지               즉시 해제
+</pre>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ctrl">control</span> Lateral-Only 제어</h3>
+    <div class="detail">
+      FrogPilot의 Hyundai lateral-only 동작을 포팅.
+      Disengage 상태에서 longitudinal(가감속)은 드라이버에게 넘기고, lateral(조향)만 openpilot이 유지.
+      저속 engage 및 steering 제한도 완화되어 있음.
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/controls/controlsd.py</span>
+      <span class="file">selfdrive/car/hyundai/carcontroller.py</span>
+    </div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ctrl">control</span> Safety Wiring &amp; Heartbeat</h3>
+    <div class="detail">
+      <ul>
+        <li>panda safety layer에 AOL 연결 — disengage 상태에서도 lateral CAN 메시지가 safety check 통과</li>
+        <li>pandad heartbeat를 AOL 활성 시 engaged로 유지 — heartbeat timeout으로 인한 AOL 해제 방지</li>
+      </ul>
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/pandad/pandad.py</span>
+    </div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ctrl">control</span> Temp Fault Debounce</h3>
+    <div class="detail">
+      Hyundai MDPS가 발생시키는 일시적 steering fault를 1초간 debounce 처리.
+      주행 중(moving) fault가 깜빡여도 lateral 제어가 끊기지 않음.
+      고속에서 <code>steerUnavailable</code> flicker도 controlsd 레벨에서 debounce.
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/controls/controlsd.py</span>
+    </div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ctrl">control</span> Standstill 처리</h3>
+    <div class="detail">
+      <ul>
+        <li>정차 시 AOL lateral을 즉시 해제하지 않고 <strong>5초 delay</strong> 후 해제</li>
+        <li>주행 중 lateral drop 시 <strong>3초간 hold</strong>하여 일시적 끊김 방지</li>
+        <li>브레이크 홀드 진입 시에는 불필요한 조향 차단</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 3. Onroad HUD -->
+<!-- ============================================ -->
+<div class="section">
+  <h2>Onroad HUD</h2>
+  <p>주행 화면에 표시되는 커스텀 위젯.</p>
+
+  <div class="diagram">
+<pre>
+┌────────────────────────────────────────────────────────────┐
+│ <span class="hl">┌─MAX─┐</span>                  <span class="hlo">0</span> km/h                    <span class="hlr">[EXP]</span> │
+│ <span class="hl">│ ??? │</span>                                        BRK OFF  │
+│ <span class="hl">└─────┘</span>                                   TPMS 38/39   │
+│                                                 38/39    │
+│ <span class="hlg">FL:38       FR:39</span>                                       │
+│ ┌──────────────────┐                                      │
+│ │       <span class="hlo">PSI</span>        │  ◀─ TPMS 위젯                      │
+│ └──────────────────┘     (차체 상면도)                    │
+│ <span class="hlg">RL:38       RR:39</span>                                       │
+│                                                           │
+│      ╭─────────────╮                                      │
+│      │  <span class="hlr">N</span>          │                                      │
+│      │<span class="hl">W</span>   <span class="hlo">045°</span>   <span class="hl">E</span> │  ◀─ 회전 나침반                    │
+│      │  <span class="hl">S</span>          │     (GPS bearing)                    │
+│      ╰─────────────╯                                      │
+│                                                           │
+│ <span class="hl">⊕</span>                                    <span class="hlo">[DRIVING LOG]</span>      │
+└────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ui">UI</span> TPMS 위젯</h3>
+    <div class="detail">
+      좌측 상단 set-speed 박스 아래에 차체 상면도(top-view) 사각형을 그리고, 네 모서리에 FL/FR/RL/RR 공기압을 PSI 정수로 표시.
+      <ul>
+        <li>데이터 소스: <code>carState.tpms.fl/fr/rl/rr</code></li>
+        <li>너비 200px — set-speed 박스와 좌측 정렬</li>
+        <li>차체 내부에 "PSI" 단위 라벨</li>
+        <li>우측 상단에 한 줄 요약도 별도 표시: <code>TPMS 38/39 38/39</code></li>
+      </ul>
+    </div>
+    <div class="files"><span class="file">selfdrive/ui/onroad/hud_renderer.py</span></div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ui">UI</span> 회전 그래픽 나침반</h3>
+    <div class="detail">
+      TPMS 위젯 아래에 원형 나침반 (반지름 110px). GPS bearing에 따라 N/E/S/W 라벨과 눈금이 회전.
+      <ul>
+        <li>30&deg; 간격 눈금 (cardinal 방위는 굵게)</li>
+        <li>N은 빨간색, E/S/W는 흰색</li>
+        <li>12시 고정 삼각형 = 현재 진행 방향</li>
+        <li>중앙에 방위각 숫자 (예: <code>045°</code>)</li>
+        <li>GPS 소스: <code>gpsLocationExternal</code> 우선, 없으면 <code>gpsLocation</code>으로 fallback</li>
+        <li>GPS 미수신 시 "---" 표시</li>
+      </ul>
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/ui/onroad/hud_renderer.py</span>
+      <span class="file">selfdrive/ui/ui_state.py</span>
+    </div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ui">UI</span> 디버그 정보</h3>
+    <div class="detail">
+      우측 상단에 한 줄 텍스트로 표시 (<code>show_debug_info</code> 활성 시):
+      <ul>
+        <li><code>BRK ON/OFF</code> — 브레이크등 상태 (<code>frogpilotCarState.brakeLights</code>)</li>
+        <li><code>TPMS 38/39 38/39</code> — 4륜 공기압 요약</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ui">UI</span> Driving Log 패널 (mici HUD)</h3>
+    <div class="detail">
+      우측 하단에 실시간 제어 상태를 표시하는 패널:
+      <ul>
+        <li><strong>mode</strong>: op ON/OFF, active, AOL 상태</li>
+        <li><strong>control</strong>: lat/long 활성 여부, gear</li>
+        <li><strong>driver</strong>: gas/brake/override/blinker</li>
+        <li><strong>steer</strong>: steering angle, torque</li>
+        <li><strong>alerts</strong>: 현재 활성 onroad events</li>
+      </ul>
+    </div>
+    <div class="files"><span class="file">selfdrive/ui/mici/onroad/hud_renderer.py</span></div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 4. Tools -->
+<!-- ============================================ -->
+<div class="section">
+  <h2>Analysis Tools</h2>
+
+  <div class="feature">
+    <h3><span class="tag tag-infra">tool</span> AOL Route Analyzer</h3>
+    <div class="detail">
+      openpilot route 로그에서 AOL 동작을 분석하는 스크립트.
+      Fault 패턴, 해제 원인, lateral 제어 상태 변화를 추출.
+    </div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-infra">tool</span> Log Analysis Helper</h3>
+    <div class="detail">
+      route 로그를 파싱하여 제어 이벤트를 분석하는 범용 헬퍼 스크립트.
+    </div>
+  </div>
+</div>
+
+<footer>
+  openpilot_mj_develop &middot; branch <code>frogpilot_port</code> &middot; abraxas4
+</footer>
+
+</div>
+</body>
+</html>
