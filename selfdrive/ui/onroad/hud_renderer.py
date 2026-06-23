@@ -258,9 +258,9 @@ class HudRenderer(Widget):
         gps = sm[src]
         break
 
-    radius = 55
-    cx = int(rect.x + 160)
-    cy = int(rect.y + 525)
+    radius = 110
+    cx = int(rect.x + 172)
+    cy = int(rect.y + 590)
 
     # dark background + border ring
     rl.draw_circle(cx, cy, radius + 4, rl.Color(0, 0, 0, 140))
@@ -290,26 +290,26 @@ class HudRenderer(Widget):
     # cardinal labels (N red, rest white)
     for label, deg in (("N", 0), ("E", 90), ("S", 180), ("W", 270)):
       a = math.radians(deg - bearing)
-      lr = radius - 24
+      lr = radius - 44
       lx = cx + lr * math.sin(a)
       ly = cy - lr * math.cos(a)
       color = rl.Color(255, 80, 80, 255) if label == "N" else COLORS.WHITE_TRANSLUCENT
-      ts = measure_text_cached(self._font_semi_bold, label, 28)
+      ts = measure_text_cached(self._font_semi_bold, label, 48)
       rl.draw_text_ex(self._font_semi_bold, label,
-                      rl.Vector2(lx - ts.x / 2, ly - ts.y / 2), 28, 0, color)
+                      rl.Vector2(lx - ts.x / 2, ly - ts.y / 2), 48, 0, color)
 
     # fixed heading indicator (triangle at 12 o'clock)
     rl.draw_triangle(
-      rl.Vector2(cx + 7, cy - radius - 2),
-      rl.Vector2(cx, cy - radius + 8),
-      rl.Vector2(cx - 7, cy - radius - 2),
+      rl.Vector2(cx + 12, cy - radius - 4),
+      rl.Vector2(cx, cy - radius + 14),
+      rl.Vector2(cx - 12, cy - radius - 4),
       COLORS.WHITE)
 
     # bearing value in center
     bt = f"{bearing:03.0f}°"
-    bs = measure_text_cached(self._font_medium, bt, 26)
+    bs = measure_text_cached(self._font_medium, bt, 44)
     rl.draw_text_ex(self._font_medium, bt,
-                    rl.Vector2(cx - bs.x / 2, cy - bs.y / 2), 26, 0, COLORS.WHITE)
+                    rl.Vector2(cx - bs.x / 2, cy - bs.y / 2), 44, 0, COLORS.WHITE)
 
   def _draw_debug_info(self, rect: rl.Rectangle) -> None:
     car_state = ui_state.sm['carState']
