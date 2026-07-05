@@ -306,6 +306,137 @@
   </div>
 </div>
 
+<!-- ============================================ -->
+<!-- Repository & Submodule Structure -->
+<!-- ============================================ -->
+<div class="section">
+  <h2>Repository &amp; Submodule 구조</h2>
+  <p>abraxas4가 commaai/openpilot을 fork한 구조와 각 서브모듈의 출처 및 커스터마이즈 여부.</p>
+
+  <!-- Level diagram -->
+  <div class="diagram">
+<pre>
+<span class="hl">Level 0 — Main Repository</span>
+
+  GitHub: <span class="hlg">abraxas4/openpilot_mj_develop</span>
+  │  origin  → https://github.com/abraxas4/openpilot_mj_develop.git  (push 대상)
+  └  upstream → https://github.com/commaai/openpilot.git              (upstream 동기화 전용)
+
+  ※ commaai/openpilot 을 fork → frogpilot_port 브랜치에서 커스텀 개발
+
+
+<span class="hl">Level 1 — Submodules (.gitmodules)</span>
+
+  ┌─────────────────┬─────────────────────────┬──────────────┬────────────────────────────────────────┐
+  │ path            │ fork 여부               │ 고정 커밋    │ 실제 remote origin                     │
+  ├─────────────────┼─────────────────────────┼──────────────┼────────────────────────────────────────┤
+  │ opendbc_repo/   │ <span class="hlg">abraxas4/opendbc  ★</span>     │ frogpilot_port│ github.com/abraxas4/opendbc.git        │
+  │                 │ (upstream: commaai)     │ branch       │                                        │
+  ├─────────────────┼─────────────────────────┼──────────────┼────────────────────────────────────────┤
+  │ panda/          │ commaai 직접 참조       │ b19b66a6     │ github.com/commaai/panda.git           │
+  ├─────────────────┼─────────────────────────┼──────────────┼────────────────────────────────────────┤
+  │ msgq_repo/      │ commaai 직접 참조       │ b7688b9b     │ github.com/commaai/msgq.git            │
+  ├─────────────────┼─────────────────────────┼──────────────┼────────────────────────────────────────┤
+  │ rednose_repo/   │ commaai 직접 참조       │ 7ffefa3d     │ github.com/commaai/rednose.git         │
+  ├─────────────────┼─────────────────────────┼──────────────┼────────────────────────────────────────┤
+  │ teleoprtc_repo/ │ commaai 직접 참조       │ 22df5778     │ github.com/commaai/teleoprtc.git       │
+  ├─────────────────┼─────────────────────────┼──────────────┼────────────────────────────────────────┤
+  │ tinygrad_repo/  │ 3rd-party               │ 7cbfa189     │ github.com/tinygrad/tinygrad.git       │
+  └─────────────────┴─────────────────────────┴──────────────┴────────────────────────────────────────┘
+
+  ★ = 커스터마이즈된 서브모듈 (abraxas4 fork)
+</pre>
+  </div>
+
+  <!-- Fork relationship diagram -->
+  <div class="diagram">
+<pre>
+<span class="hl">Fork 관계 다이어그램</span>
+
+  commaai/openpilot ──────────── fork ──────────▶ abraxas4/openpilot_mj_develop
+        │                                                    │
+        │ submodule (직접)                                   │ submodule (fork)
+        ▼                                                    ▼
+  commaai/opendbc ─────────── fork ───────────▶ abraxas4/opendbc
+        │                                          (frogpilot_port branch)
+        │                                          커스텀 추가:
+        │                                          · TPMS11 CAN 파싱
+        │                                          · CarState tpms 필드
+        ▼
+  commaai/panda           ← openpilot이 직접 참조 (fork 없음)
+  commaai/msgq            ← openpilot이 직접 참조 (fork 없음)
+  commaai/rednose         ← openpilot이 직접 참조 (fork 없음)
+  commaai/teleoprtc       ← openpilot이 직접 참조 (fork 없음)
+  tinygrad/tinygrad       ← 3rd-party, 직접 참조  (fork 없음)
+</pre>
+  </div>
+
+  <!-- URL resolution explanation -->
+  <div class="feature">
+    <h3>상대 URL 해석 방식</h3>
+    <div class="detail">
+      <code>.gitmodules</code>에서 commaai 서브모듈은 상대 경로로 지정되어 있음:
+      <ul>
+        <li><code>url = ../../commaai/panda.git</code></li>
+        <li><code>url = ../../commaai/msgq.git</code> 등</li>
+      </ul>
+      <br>
+      이 상대 경로는 <strong>부모 저장소의 GitHub URL 기준</strong>으로 해석됨:
+      <br><br>
+      <code>https://github.com/abraxas4/openpilot_mj_develop</code>
+      &nbsp;+&nbsp; <code>../../commaai/panda</code>
+      &nbsp;=&nbsp; <code>https://github.com/commaai/panda</code>
+      <br><br>
+      즉 fork 없이 commaai 원본을 그대로 참조. <code>git clone --recurse-submodules</code> 시
+      GitHub에서 자동으로 올바른 URL로 해석.
+    </div>
+  </div>
+
+  <!-- opendbc custom fork explanation -->
+  <div class="feature">
+    <h3><span class="tag tag-infra">fork</span> abraxas4/opendbc — 유일한 커스텀 서브모듈</h3>
+    <div class="detail">
+      opendbc만 abraxas4 fork를 사용. <code>frogpilot_port</code> 브랜치에 커스텀 커밋이 추가되어 있음:
+      <ul>
+        <li><code>CarState</code>에 <code>tpms</code> 필드 추가</li>
+        <li>Hyundai <strong>TPMS11</strong> CAN 메시지 파싱 — FL/FR/RL/RR 공기압(PSI)</li>
+        <li>commaai/opendbc를 <code>upstream</code>으로 등록하여 동기화 가능</li>
+      </ul>
+      <br>
+      openpilot_mj_develop의 <code>.gitmodules</code>:
+      <br>
+      <code>url = ../../abraxas4/opendbc.git</code>
+      &nbsp;→&nbsp; <code>https://github.com/abraxas4/opendbc.git</code>
+    </div>
+    <div class="files">
+      <span class="file">opendbc_repo/</span>
+      <span class="file">opendbc/car/hyundai/carstate.py</span>
+    </div>
+  </div>
+
+  <!-- Submodule mechanics -->
+  <div class="feature">
+    <h3>서브모듈 동작 원리</h3>
+    <div class="detail">
+      Git 서브모듈은 특정 <strong>커밋 해시</strong>를 고정하여 참조함.
+      브랜치나 태그가 아닌 정확한 커밋 SHA가 부모 저장소에 기록됨.
+      <br><br>
+      <strong>결과:</strong>
+      <ul>
+        <li>opendbc_repo는 <code>frogpilot_port</code> 브랜치의 특정 커밋(<code>ed4c0869</code>)에 고정</li>
+        <li>panda/msgq 등은 commaai 원본의 특정 커밋에 고정 (detached HEAD)</li>
+        <li>부모 repo에서 <code>git submodule update</code> 실행 시 고정된 커밋으로 checkout됨</li>
+        <li>서브모듈을 업데이트하려면 서브모듈 내에서 pull → 부모 repo에서 새 커밋 SHA를 commit</li>
+      </ul>
+      <br>
+      <strong>upstream 동기화 방법:</strong>
+      <br>
+      <code>git submodule update --remote opendbc_repo</code> → 최신 커밋으로 이동 →
+      부모 repo에서 <code>git add opendbc_repo &amp;&amp; git commit</code>
+    </div>
+  </div>
+</div>
+
 <footer>
   openpilot_mj_develop &middot; branch <code>frogpilot_port</code> &middot; abraxas4
 </footer>
