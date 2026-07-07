@@ -396,7 +396,12 @@ class DriverMonitoring:
       enabled = sm['selfdriveState'].enabled
       wrong_gear = sm['carState'].gearShifter not in (car.CarState.GearShifter.drive, car.CarState.GearShifter.low)
       standstill = sm['carState'].standstill
-      driver_engaged = sm['carState'].steeringPressed or sm['carState'].gasPressed
+      # Use a lower raw torque threshold for DM engagement detection than STEER_THRESHOLD (150),
+      # because Hyundai Azera's steering wheel has poor capacitive hand detection.
+      # This only affects DM awareness reset; steeringPressed (STEER_THRESHOLD=150) is
+      # still used separately for AOL debounce and lateral override logic.
+      driver_engaged = sm['carState'].steeringPressed or sm['carState'].gasPressed or \
+                       abs(sm['carState'].steeringTorque) > 30
       brake_disengage_prob = sm['modelV2'].meta.disengagePredictions.brakeDisengageProbs[0] # brake disengage prob in next 2s
       steering_angle_deg = sm['carState'].steeringAngleDeg
       rpyCalib = sm['liveCalibration'].rpyCalib
