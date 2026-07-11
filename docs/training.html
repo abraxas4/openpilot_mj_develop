@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openpilot — 학습 및 트레이닝 가이드</title>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e;
+    --accent: #58a6ff; --green: #3fb950; --red: #f85149;
+    --orange: #d29922; --purple: #bc8cff; --yellow: #e3b341;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; padding: 48px 20px;
+  }
+  .container { max-width: 920px; margin: 0 auto; }
+
+  h1 {
+    font-size: 1.8rem; margin-bottom: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .subtitle { color: var(--muted); margin-bottom: 48px; font-size: 0.9rem; }
+  .subtitle code {
+    background: var(--card); padding: 2px 8px; border-radius: 4px;
+    font-size: 0.82rem; border: 1px solid var(--border);
+  }
+
+  h2 {
+    font-size: 1.25rem; margin-bottom: 14px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+  }
+  .section { margin-bottom: 48px; }
+  .section > p { color: var(--muted); font-size: 0.9rem; margin-bottom: 16px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px 24px; margin-bottom: 12px;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card h3 { font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .card .body { color: var(--muted); font-size: 0.85rem; }
+  .card .body ul { margin: 8px 0 0 18px; }
+  .card .body li { margin-bottom: 4px; }
+  .card .body p { margin-top: 6px; }
+
+  .tag {
+    display: inline-block; font-size: 0.68rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .tag-auto   { background: rgba(63,185,80,0.15);  color: var(--green); }
+  .tag-manual { background: rgba(88,166,255,0.15); color: var(--accent); }
+  .tag-no     { background: rgba(248,81,73,0.12);  color: var(--red); }
+  .tag-cloud  { background: rgba(188,140,255,0.15);color: var(--purple); }
+
+  .badge-yes  { color: var(--green);  font-weight: 700; }
+  .badge-no   { color: var(--red);    font-weight: 700; }
+  .badge-part { color: var(--orange); font-weight: 700; }
+
+  .files { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .file {
+    font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.72rem;
+    background: rgba(88,166,255,0.1); color: var(--accent);
+    padding: 2px 8px; border-radius: 4px;
+  }
+
+  .diagram {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px; margin: 16px 0; overflow-x: auto;
+  }
+  .diagram pre {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.8rem; color: var(--muted); line-height: 1.6;
+  }
+  .diagram pre .hl  { color: var(--accent); }
+  .diagram pre .hlg { color: var(--green); }
+  .diagram pre .hlr { color: var(--red); }
+  .diagram pre .hlo { color: var(--orange); }
+  .diagram pre .hlp { color: var(--purple); }
+
+  /* Summary table */
+  .tbl-wrap { overflow-x: auto; margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th {
+    background: var(--card); color: var(--muted); font-weight: 600;
+    padding: 10px 14px; border: 1px solid var(--border); text-align: left;
+  }
+  td { padding: 9px 14px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  td code {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.78rem; background: rgba(88,166,255,0.1);
+    color: var(--accent); padding: 1px 5px; border-radius: 3px;
+  }
+
+  .notice {
+    background: rgba(227,179,65,0.1); border: 1px solid rgba(227,179,65,0.3);
+    border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;
+    font-size: 0.88rem; color: var(--yellow);
+  }
+
+  footer {
+    margin-top: 60px; padding-top: 16px; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 0.78rem; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>openpilot — 학습 및 트레이닝 가이드</h1>
+<p class="subtitle">
+  <code>abraxas4/openpilot_mj_develop</code> &middot;
+  실제 코드베이스 기반 분석 &middot; Hyundai Azera HEV 6th Gen
+</p>
+
+<div class="notice">
+  ⚠️ openpilot의 학습은 두 가지로 나뉩니다:
+  <strong>자동 학습</strong>(주행하면 자동으로 적용되는 물리 파라미터 추정)과
+  <strong>신경망 재학습</strong>(불가 — 모델은 사전학습되어 고정됨).
+  운전 습관을 직접 학습시키는 기능은 현재 없습니다.
+</div>
+
+<!-- ============================================================ -->
+<!-- ARCHITECTURE -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>전체 구조 개요</h2>
+  <div class="diagram">
+<pre>
+                     ┌─────────────────────────────────────┐
+                     │         주행 중 자동 학습 (Layer 1~4) │
+                     └─────────────────────────────────────┘
+
+  카메라 ──▶ <span class="hlg">calibrationd</span>  ──▶ CalibrationParams  (카메라 장착 각도)
+  GPS/IMU ──▶ <span class="hlg">paramsd</span>        ──▶ LiveParametersV2   (스티어링비, 타이어 강성)
+  MDPS ──▶   <span class="hlg">torqued</span>        ──▶ LiveTorqueParameters (토크-횡가속도 매핑)
+  CAN ──▶    <span class="hlg">lagd</span>           ──▶ (지연 추정, 캐시 없음)
+
+              ↓ 실시간 반영 (매 프레임)
+         <span class="hl">controlsd</span>  ←→  <span class="hl">LateralMPC / LongMPC</span>
+              ↓
+         CAN 출력 (조향/가감속)
+
+
+                     ┌─────────────────────────────────────┐
+                     │      신경망 모델 (고정, 학습 불가)      │
+                     └─────────────────────────────────────┘
+
+  카메라 ──▶ <span class="hlr">driving_vision.onnx</span> (46MB)  ──▶ 차선/전방차/경로 인식
+             <span class="hlr">driving_policy.onnx</span> (14MB) ──▶ 조향/가감속 명령
+             <span class="hlr">dmonitoring_model.onnx</span>      ──▶ 운전자 상태 인식
+             ↑
+     comma.ai 서버에서 사전학습된 모델 (변경 불가)
+
+
+                     ┌─────────────────────────────────────┐
+                     │        데이터 업로드 (단방향)           │
+                     └─────────────────────────────────────┘
+
+  주행 로그 ──▶ <span class="hlp">uploader.py</span> ──▶ api.commadotai.com  (comma.ai 서버 학습용)
+                                          ↓
+                              comma.ai 서버에서 다음 버전 모델 학습
+                              (개인 맞춤 아님, 피드백 없음)
+</pre>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- AUTO LEARNING (LAYER 1-4) -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>&#x1F7E2; 자동 학습 — 주행하면 자동 적용</h2>
+  <p>아무것도 하지 않아도 주행 중 자동으로 추정/기억됩니다.</p>
+
+  <div class="card">
+    <h3><span class="tag tag-auto">자동</span> Layer 1 — 카메라 보정 (calibrationd)</h3>
+    <div class="body">
+      카메라의 장착 각도(Roll/Pitch/Yaw)와 높이를 비주얼 오도메트리로 자동 추정.
+      <ul>
+        <li>고속도로 직선 주행 5블록 이상 시 calibrated 상태 도달</li>
+        <li>최대 50블록까지 계속 정밀화</li>
+        <li>~50초마다 <code>CalibrationParams</code>에 저장, 재시동 후에도 유지</li>
+      </ul>
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/locationd/calibrationd.py</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-auto">자동</span> Layer 2 — 차량 동역학 파라미터 (paramsd)</h3>
+    <div class="body">
+      확장 칼만 필터(EKF)로 차량 고유 파라미터를 실시간 추정. <strong>가장 중요한 자동 학습 레이어.</strong>
+      <ul>
+        <li><strong>스티어링 비율(steerRatio)</strong> — 핸들 각도 대비 조향량</li>
+        <li><strong>타이어 강성 계수(stiffnessFactor)</strong> — 노면/타이어 상태 반영</li>
+        <li><strong>스티어링 각도 오프셋</strong> — 센서 바이어스 보정</li>
+        <li><strong>도로 경사(roll)</strong> — 편도로 경사 추정</li>
+      </ul>
+      <p>
+        steerRatio·각도 오프셋은 재시동 후에도 유지.
+        stiffnessFactor는 매 주행마다 1.0으로 초기화 (노면 조건 가정).
+        ~60초마다 <code>LiveParametersV2</code>에 저장.
+      </p>
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/locationd/paramsd.py</span>
+      <span class="file">selfdrive/locationd/car_kf.py</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-auto">자동</span> Layer 3 — 토크 파라미터 학습 (torqued)</h3>
+    <div class="body">
+      조향 토크 vs. 횡가속도 관계를 데이터 버킷팅으로 선형 피팅. 토크 기반 제어 차량에 적용.
+      <ul>
+        <li><strong>횡가속도 계수(latAccelFactor)</strong></li>
+        <li><strong>횡가속도 오프셋(latAccelOffset)</strong></li>
+        <li><strong>마찰 계수(friction)</strong> — 타이어 히스테리시스에서 추정</li>
+        <li>최소 4,000개 데이터 포인트 수집 후 유효화</li>
+        <li>~60초마다 <code>LiveTorqueParameters</code>에 저장</li>
+      </ul>
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/locationd/torqued.py</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-auto">자동</span> Layer 4 — 제어 지연 추정 (lagd)</h3>
+    <div class="body">
+      조향 명령과 실제 차량 반응 사이의 시간 지연을 FFT 교차상관으로 추정.
+      피드포워드 제어의 지연 보상에 활용. 캐시에 저장되지 않음.
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/locationd/lagd.py</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MANUAL TUNING -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>&#x1F527; 수동 튜닝 — 직접 설정 가능한 항목</h2>
+  <p>코드 또는 파라미터를 직접 수정하여 주행 특성을 조정하는 방법.</p>
+
+  <div class="card">
+    <h3><span class="tag tag-manual">수동</span> 종방향 제어 파라미터 (longcontrol)</h3>
+    <div class="body">
+      가감속 응답 특성은 차량별 고정 PID 파라미터로 결정됨. 자동 학습 없음.
+      <ul>
+        <li>kP/kI breakpoint 테이블 수정으로 응답성 조정</li>
+        <li>앞차 추종 거리: <code>long_mpc.py</code>의 비용 함수 가중치</li>
+        <li>가감속 프로파일: <code>longitudinalPlan</code>의 속도/가속도 제한</li>
+      </ul>
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/controls/lib/longcontrol.py</span>
+      <span class="file">selfdrive/controls/lib/longitudinal_mpc_lib/long_mpc.py</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-manual">수동</span> 횡방향 제어 파라미터 (latcontrol_torque)</h3>
+    <div class="body">
+      Azera는 토크 기반 제어 사용. Layer 3 자동 학습 외에 기준값을 수동으로 설정 가능.
+      <ul>
+        <li><code>STEER_THRESHOLD</code>, <code>STEER_DRIVER_ALLOWANCE</code> 등</li>
+        <li>현재 값: STEER_THRESHOLD=150, STEER_DRIVER_ALLOWANCE=50</li>
+      </ul>
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/controls/lib/latcontrol_torque.py</span>
+      <span class="file">opendbc_repo/opendbc/car/hyundai/values.py</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-manual">수동</span> 데이터 로그 오프라인 분석</h3>
+    <div class="body">
+      comma 3x는 모든 주행을 <code>rlog.zst</code> / <code>qlog.zst</code>로 저장.
+      PC에서 분석하여 제어 파라미터를 수동으로 개선 가능.
+      <ul>
+        <li>60초 단위 세그먼트: 카메라(HEVC), CAN, 센서 데이터 포함</li>
+        <li><code>tools/lib/route.py</code>로 로그 접근</li>
+        <li><code>tools/plotjuggler/</code>로 시각화</li>
+        <li><code>selfdrive/debug/car/</code>에 차량별 분석 스크립트</li>
+      </ul>
+    </div>
+    <div class="files">
+      <span class="file">system/loggerd/</span>
+      <span class="file">tools/lib/route.py</span>
+      <span class="file">selfdrive/debug/car/</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- NOT POSSIBLE -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>&#x274C; 현재 불가능한 것</h2>
+
+  <div class="card">
+    <h3><span class="tag tag-no">불가</span> 신경망 모델 온디바이스 재학습</h3>
+    <div class="body">
+      <code>driving_vision.onnx</code>, <code>driving_policy.onnx</code>는 고정된 사전학습 모델.
+      comma 3x에서 직접 재학습 불가 (연산 자원 부족, 데이터 수천 시간 필요).
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/modeld/models/driving_vision.onnx</span>
+      <span class="file">selfdrive/modeld/models/driving_policy.onnx</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-no">불가</span> 개인 운전 스타일 자동 학습</h3>
+    <div class="body">
+      "내가 이 구간에서 이렇게 운전했으니 다음에도 그렇게"와 같은 개인화 학습은 없음.
+      longitudinal MPC의 비용 함수는 고정. 사용자 프로파일 시스템 없음.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-cloud">단방향</span> comma.ai 서버 데이터 업로드</h3>
+    <div class="body">
+      주행 로그는 <code>uploader.py</code>를 통해 <code>api.commadotai.com</code>으로 업로드됨.
+      comma.ai가 이 데이터로 다음 버전 모델을 학습하지만:
+      <ul>
+        <li>개인 맞춤 모델이 기기로 돌아오지 않음</li>
+        <li>fleet 전체 모델 개선에만 기여</li>
+        <li>개인 운전 습관 반영 없음</li>
+      </ul>
+    </div>
+    <div class="files">
+      <span class="file">system/loggerd/uploader.py</span>
+      <span class="file">common/api.py</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY TABLE -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>&#x1F4CB; 요약 테이블</h2>
+  <div class="tbl-wrap">
+    <table>
+      <tr>
+        <th>기능</th>
+        <th>가능 여부</th>
+        <th>방식</th>
+        <th>자동 여부</th>
+        <th>재시동 후 유지</th>
+      </tr>
+      <tr>
+        <td>카메라 보정</td>
+        <td><span class="badge-yes">✅ YES</span></td>
+        <td>비주얼 오도메트리 + 칼만필터</td>
+        <td>자동</td>
+        <td><span class="badge-yes">유지</span></td>
+      </tr>
+      <tr>
+        <td>스티어링 비율 학습</td>
+        <td><span class="badge-yes">✅ YES</span></td>
+        <td>EKF (paramsd)</td>
+        <td>자동</td>
+        <td><span class="badge-yes">유지</span></td>
+      </tr>
+      <tr>
+        <td>타이어 강성 학습</td>
+        <td><span class="badge-yes">✅ YES</span></td>
+        <td>EKF (paramsd)</td>
+        <td>자동</td>
+        <td><span class="badge-no">매번 리셋</span></td>
+      </tr>
+      <tr>
+        <td>토크-횡가속도 매핑</td>
+        <td><span class="badge-yes">✅ YES</span></td>
+        <td>선형 피팅 (torqued)</td>
+        <td>자동</td>
+        <td><span class="badge-yes">유지</span></td>
+      </tr>
+      <tr>
+        <td>제어 지연 추정</td>
+        <td><span class="badge-yes">✅ YES</span></td>
+        <td>FFT 교차상관 (lagd)</td>
+        <td>자동</td>
+        <td><span class="badge-no">리셋</span></td>
+      </tr>
+      <tr>
+        <td>가감속 스타일 학습</td>
+        <td><span class="badge-no">❌ NO</span></td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>경로/구간별 습관 학습</td>
+        <td><span class="badge-no">❌ NO</span></td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>신경망 온디바이스 재학습</td>
+        <td><span class="badge-no">❌ NO</span></td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>종방향 튜닝 (수동)</td>
+        <td><span class="badge-part">⚠️ 수동</span></td>
+        <td>코드 파라미터 수정</td>
+        <td>수동</td>
+        <td><span class="badge-yes">유지</span></td>
+      </tr>
+      <tr>
+        <td>comma.ai 서버 학습 기여</td>
+        <td><span class="badge-part">⚠️ 단방향</span></td>
+        <td>로그 업로드</td>
+        <td>자동</td>
+        <td>개인 피드백 없음</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PRACTICAL -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>&#x1F697; 실질적인 권장 사항 (Azera 기준)</h2>
+  <div class="card">
+    <h3>충분한 주행으로 자동 학습 수렴시키기</h3>
+    <div class="body">
+      <ul>
+        <li><strong>100km+ 주행</strong> — steerRatio, 각도 오프셋이 Azera에 최적화됨</li>
+        <li><strong>다양한 커브 주행</strong> — torqued 데이터 포인트 4,000개 이상 축적</li>
+        <li><strong>고속도로 직선</strong> — calibrationd가 카메라 각도 정밀화</li>
+        <li>학습된 파라미터는 <code>/persist/</code>에 저장되어 재시동 후에도 유지</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <h3>운전 습관 반영이 필요하다면</h3>
+    <div class="body">
+      현재 코드에서 직접 수정 가능한 항목:
+      <ul>
+        <li><code>long_mpc.py</code> — 앞차 추종 거리, 가감속 비용 함수 가중치</li>
+        <li><code>longcontrol.py</code> — PID kP/kI 브레이크포인트</li>
+        <li>변경 후 commit/push하면 기기 업데이트 시 적용</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<footer>
+  abraxas4/openpilot_mj_develop &middot; 코드베이스 직접 분석 기반
+</footer>
+
+</div>
+</body>
+</html>
