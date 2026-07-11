@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>openpilot 기초 용어 가이드</title>
+<style>
+  :root { --bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+          --accent:#58a6ff;--green:#3fb950;--purple:#bc8cff;--orange:#d29922; }
+  * { margin:0;padding:0;box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+         background:var(--bg);color:var(--text);line-height:1.7;padding:48px 20px; }
+  .container { max-width:760px;margin:0 auto; }
+  h1 { font-size:1.8rem;margin-bottom:8px;
+       background:linear-gradient(90deg,var(--accent),var(--purple));
+       -webkit-background-clip:text;-webkit-text-fill-color:transparent; }
+  .sub { color:var(--muted);margin-bottom:40px;font-size:0.9rem; }
+  .grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:40px; }
+  .card { background:var(--card);border:1px solid var(--border);border-radius:8px;
+          padding:24px;text-decoration:none;display:block;transition:border-color .2s; }
+  .card:hover { border-color:var(--accent); }
+  .num { font-size:2rem;font-weight:700;color:var(--accent);margin-bottom:8px; }
+  .title { font-size:1.1rem;font-weight:600;margin-bottom:8px; }
+  .desc { color:var(--muted);font-size:0.85rem;line-height:1.6; }
+  .keywords { margin-top:12px;display:flex;flex-wrap:wrap;gap:6px; }
+  .kw { font-size:0.7rem;background:rgba(88,166,255,0.1);color:var(--accent);
+        padding:2px 8px;border-radius:10px; }
+  footer { color:var(--muted);font-size:0.78rem;text-align:center;
+           border-top:1px solid var(--border);padding-top:16px;margin-top:40px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>openpilot 기초 용어 가이드</h1>
+<p class="sub">임베디드 펌웨어 개발자를 위한 AI / 자율주행 기초 개념 설명<br>
+tinygrad 문서에 등장하는 키워드를 모두 포함합니다.</p>
+
+<div class="grid">
+  <a class="card" href="primer_1_geometry.html">
+    <div class="num">1</div>
+    <div class="title">3D 공간 &amp; 카메라</div>
+    <div class="desc">차량/카메라의 자세와 공간 변환을 설명합니다.</div>
+    <div class="keywords">
+      <span class="kw">DOF</span><span class="kw">Roll/Pitch/Yaw</span>
+      <span class="kw">Euler Angle</span><span class="kw">6-DOF</span>
+      <span class="kw">Perspective Transform</span><span class="kw">Warp</span>
+      <span class="kw">NV12/YUV</span><span class="kw">Calibration</span>
+    </div>
+  </a>
+
+  <a class="card" href="primer_2_ai.html">
+    <div class="num">2</div>
+    <div class="title">AI &amp; 신경망 기초</div>
+    <div class="desc">인공지능, 학습, 추론의 개념을 설명합니다.</div>
+    <div class="keywords">
+      <span class="kw">AI / ML</span><span class="kw">신경망</span>
+      <span class="kw">뉴런/레이어</span><span class="kw">가중치/편향</span>
+      <span class="kw">Training vs Inference</span><span class="kw">ONNX</span>
+      <span class="kw">사전학습 모델</span><span class="kw">Loss</span>
+    </div>
+  </a>
+
+  <a class="card" href="primer_3_deeplearning.html">
+    <div class="num">3</div>
+    <div class="title">딥러닝 구조</div>
+    <div class="desc">openpilot에 실제 사용되는 딥러닝 구성 요소를 설명합니다.</div>
+    <div class="keywords">
+      <span class="kw">Tensor</span><span class="kw">Conv2D</span>
+      <span class="kw">BatchNorm</span><span class="kw">Activation</span>
+      <span class="kw">Sigmoid/Softmax</span><span class="kw">LSTM/GRU</span>
+      <span class="kw">Hidden State</span><span class="kw">MDN</span>
+    </div>
+  </a>
+
+  <a class="card" href="primer_4_system.html">
+    <div class="num">4</div>
+    <div class="title">GPU &amp; 시스템</div>
+    <div class="desc">GPU 실행, JIT, 메시징 시스템 등을 설명합니다.</div>
+    <div class="keywords">
+      <span class="kw">GPU vs CPU</span><span class="kw">OpenCL</span>
+      <span class="kw">JIT 컴파일</span><span class="kw">ISA</span>
+      <span class="kw">Zero-copy</span><span class="kw">Cereal/pub-sub</span>
+      <span class="kw">IPC</span><span class="kw">Rolling Buffer</span>
+    </div>
+  </a>
+</div>
+
+<footer>abraxas4/openpilot_mj_develop &middot; 기초 용어 가이드</footer>
+</div>
+</body>
+</html>

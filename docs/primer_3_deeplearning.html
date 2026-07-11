@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>3. 딥러닝 구조</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+        --accent:#58a6ff;--green:#3fb950;--red:#f85149;--orange:#d29922;--purple:#bc8cff;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.8;padding:48px 20px;}
+  .container{max-width:860px;margin:0 auto;}
+  h1{font-size:1.7rem;margin-bottom:4px;
+     background:linear-gradient(90deg,var(--accent),var(--purple));
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .nav{color:var(--muted);font-size:0.85rem;margin-bottom:40px;}
+  .nav a{color:var(--accent);text-decoration:none;}
+  h2{font-size:1.2rem;margin:40px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  p{color:var(--muted);font-size:0.88rem;margin-bottom:10px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;
+        padding:20px 24px;margin:14px 0;}
+  .term{font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:6px;}
+  .eng{font-size:0.8rem;color:var(--muted);font-style:italic;margin-left:8px;}
+  .example{background:#010409;border-left:3px solid var(--accent);padding:12px 16px;
+            border-radius:0 6px 6px 0;margin:10px 0;font-size:0.83rem;color:var(--muted);}
+  .example strong{color:var(--accent);}
+  pre{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.78rem;
+      background:#010409;border:1px solid var(--border);border-radius:6px;
+      padding:14px;overflow-x:auto;color:var(--muted);margin:10px 0;line-height:1.6;}
+  .diagram{background:#010409;border:1px solid var(--border);border-radius:8px;
+            padding:20px;margin:12px 0;overflow-x:auto;}
+  .diagram pre{background:none;border:none;padding:0;margin:0;}
+  .a{color:var(--accent);} .g{color:var(--green);} .o{color:var(--orange);}
+  .r{color:var(--red);} .p{color:var(--purple);}
+  footer{margin-top:60px;padding-top:16px;border-top:1px solid var(--border);
+         color:var(--muted);font-size:0.78rem;text-align:center;}
+  footer a{color:var(--accent);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>③ 딥러닝 구조</h1>
+<p class="nav"><a href="primer_2_ai.html">← ② AI 기초</a> &nbsp;|&nbsp;
+<a href="primer_index.html">목차</a> &nbsp;|&nbsp;
+<a href="primer_4_system.html">④ GPU &amp; 시스템 →</a></p>
+
+<!-- ======================== Tensor ======================== -->
+<h2>Tensor — 다차원 배열</h2>
+
+<div class="card">
+  <div class="term">Tensor <span class="eng">— 텐서</span></div>
+  <p>C의 다차원 배열과 완전히 같은 개념입니다. 신경망에서는 이 배열을 "Tensor"라고 부릅니다.</p>
+  <pre>
+// C에서 익숙한 표현:
+float scalar        = 3.14;           // 0차원 (숫자 1개)
+float vector[4]     = {1,2,3,4};      // 1차원 (4개)
+float matrix[3][4];                   // 2차원 (3×4)
+float cube[2][3][4];                  // 3차원 (2×3×4)
+float tensor[1][12][128][256];        // 4차원 ← 이것이 img_q!
+
+// Python에서:
+import numpy as np
+x = np.zeros((1, 12, 128, 256), dtype=np.float32)
+  </pre>
+  <div class="example">
+    <strong>openpilot 적용:</strong><br>
+    <code>img_q</code>의 shape = <code>(1, 12, 128, 256)</code><br>
+    → [배치 1개][6채널×2프레임 = 12][세로 128][가로 256]<br>
+    → C로는 <code>float img_q[1][12][128][256]</code> 와 동일.
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">Shape / Dimension</div>
+  <p>텐서의 각 축의 크기를 나타냅니다. <code>(1, 12, 128, 256)</code>은 4차원 텐서로 1×12×128×256 = 393,216개의 float32 값을 담습니다.</p>
+  <pre>
+  (1, 12, 128, 256) 텐서의 메모리:
+  393,216 × 4 bytes = 1.5 MB
+
+  Shape 읽는 법:
+  (배치, 채널, 높이, 너비)   ← 이미지 텐서 관례
+  (배치, 시간, 특징수)       ← 시계열 텐서 관례
+  </pre>
+</div>
+
+<div class="card">
+  <div class="term">float32 / uint8 / dtype</div>
+  <p>텐서 안의 숫자 타입입니다. C의 <code>float</code>, <code>uint8_t</code>와 동일합니다.</p>
+  <pre>
+  uint8  = 0~255  (카메라 원시 픽셀)
+  float32 = ±3.4×10³⁸ (신경망 계산용)
+
+  // C에서:
+  uint8_t  raw_pixel;   // 카메라 이미지
+  float    model_input; // 신경망 입력
+  </pre>
+</div>
+
+<!-- ======================== Conv2D ======================== -->
+<h2>Conv2D — 2D 합성곱</h2>
+
+<div class="card">
+  <div class="term">Conv2D <span class="eng">— 2D Convolution</span></div>
+  <p>이미지에 작은 필터(커널)를 슬라이딩하며 곱하고 더하는 연산입니다. 디지털 신호처리의 FIR 필터를 2D로 확장한 것입니다.</p>
+  <div class="diagram">
+<pre>
+  이미지 (5×5):          필터 (3×3):
+  ┌───────────────┐      ┌─────────┐
+  │ 1  2  3  0  1│      │ 0  1  0 │
+  │ 4  5  6  2  3│  ×   │ 1 -4  1 │ = 엣지 감지 필터
+  │ 7  8  9  4  5│      │ 0  1  0 │
+  │ 2  3  4  1  2│      └─────────┘
+  │ 1  2  3  0  1│
+  └───────────────┘
+          │
+          ▼ 슬라이딩
+  출력 (3×3): 엣지가 강조된 이미지
+</pre>
+  </div>
+  <p>신경망에서는 이 필터의 값(W)을 학습으로 찾습니다. 처음 레이어는 엣지/선을 검출하는 필터, 나중 레이어는 차선/차량을 검출하는 필터가 자동으로 만들어집니다.</p>
+  <div class="example">
+    <strong>openpilot 적용:</strong> driving_vision.onnx의 핵심 연산.<br>
+    카메라 이미지에 수십~수백 개의 필터를 순차 적용해 차선, 앞차, 도로 경계를 인식합니다.
+  </div>
+</div>
+
+<!-- ======================== BatchNorm ======================== -->
+<h2>Batch Normalization</h2>
+
+<div class="card">
+  <div class="term">BatchNorm <span class="eng">— 배치 정규화</span></div>
+  <p>레이어 출력값들을 평균 0, 분산 1로 정규화하는 과정입니다. 학습을 안정적으로 만들어줍니다.</p>
+  <p>임베디드 비유: ADC 출력을 0~1 범위로 스케일링하는 것과 유사합니다.</p>
+  <pre>
+  // 정규화 수식:
+  output = (x - mean) / sqrt(variance + ε)
+
+  // C 비유:
+  float normalize(float x, float mean, float var) {
+      return (x - mean) / sqrt(var + 1e-5f);
+  }
+  </pre>
+</div>
+
+<!-- ======================== Activation ======================== -->
+<h2>활성화 함수 (Activation Function)</h2>
+
+<div class="card">
+  <div class="term">왜 활성화 함수가 필요한가?</div>
+  <p>활성화 함수 없이 레이어를 쌓으면 결국 하나의 선형 방정식과 같아집니다. 비선형 함수(활성화)를 추가해야 복잡한 패턴을 학습할 수 있습니다.</p>
+</div>
+
+<div class="card">
+  <div class="term">ReLU <span class="eng">Rectified Linear Unit</span></div>
+  <p>가장 많이 사용하는 활성화 함수. 0 이하는 0으로, 0 이상은 그대로 통과시킵니다.</p>
+  <pre>
+  // C로 구현:
+  float relu(float x) { return x > 0 ? x : 0; }
+
+  입력:  [-3, -1, 0, 2, 5]
+  출력:  [ 0,  0, 0, 2, 5]
+  </pre>
+</div>
+
+<div class="card">
+  <div class="term">Sigmoid <span class="eng">— S자 함수</span></div>
+  <p>어떤 실수 입력이든 0~1 사이로 압축합니다. "확률"로 해석할 때 사용합니다.</p>
+  <pre>
+  sigmoid(x) = 1 / (1 + e^(-x))
+
+  입력:  [-10,  -2,   0,   2,  10]
+  출력:  [0.00, 0.12, 0.50, 0.88, 1.00]
+  </pre>
+  <div class="example">
+    <strong>openpilot 적용:</strong><br>
+    <code>lane_lines_prob</code> = sigmoid(raw) → 차선 존재 확률 0~1<br>
+    <code>lead_prob</code>       = sigmoid(raw) → 앞차 감지 확률 0~1<br>
+    0.5 이상이면 "있다", 이하면 "없다"로 판단.
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">Softmax <span class="eng">— 확률 분포</span></div>
+  <p>여러 값의 합이 정확히 1이 되도록 정규화합니다. "이 중 하나를 선택"할 때 사용합니다.</p>
+  <pre>
+  입력:  [2.0, 1.0, 0.1]
+  출력:  [0.66, 0.24, 0.10]  ← 합 = 1.0
+
+  // "직진, 좌회전, 우회전 중 하나" 확률 분포
+  // 0.66 = 직진, 0.24 = 좌회전, 0.10 = 우회전
+  </pre>
+  <div class="example">
+    <strong>openpilot 적용:</strong><br>
+    <code>desire_state</code> = softmax(raw, 8개 클래스)<br>
+    = [직진 확률, 좌차선변경 확률, 우차선변경 확률, ...] 합이 1
+  </div>
+</div>
+
+<!-- ======================== LSTM/GRU ======================== -->
+<h2>LSTM / GRU — 순환 신경망</h2>
+
+<div class="card">
+  <div class="term">왜 순환 구조가 필요한가?</div>
+  <p>일반 신경망은 현재 입력만 봅니다. 하지만 자율주행에서는 "1초 전에 차가 어디 있었는지"가 중요합니다. 과거 정보를 기억해서 현재 판단에 쓰는 구조가 순환 신경망입니다.</p>
+  <div class="diagram">
+<pre>
+  일반 신경망:
+  프레임t ──▶ 신경망 ──▶ 출력t
+  (현재만 봄)
+
+  순환 신경망 (LSTM):
+  프레임t ──▶ 신경망 ──▶ 출력t
+                 ↑↓
+            hidden_state  ← "기억"
+                 │
+  프레임t+1 ──▶ 신경망 ──▶ 출력t+1
+  (현재 + 과거 기억)
+</pre>
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">LSTM <span class="eng">Long Short-Term Memory</span></div>
+  <p>순환 신경망의 한 종류. "무엇을 기억하고 무엇을 잊을지"를 게이트(gate)로 제어합니다.</p>
+  <pre>
+  // C State Machine 비유:
+  // ATM이 이전 고객 정보를 기억했다가 다음 입력에 활용하는 것과 유사
+
+  typedef struct {
+      float hidden[512];  // 단기 기억
+      float cell[512];    // 장기 기억
+  } LSTMState;
+
+  // 매 프레임:
+  LSTMState next = lstm_forward(current_frame, current_state);
+  current_state = next;  // 다음 프레임으로 전달
+  </pre>
+  <div class="example">
+    <strong>openpilot 적용:</strong><br>
+    <code>hidden_state</code> = (1, 512) 크기의 텐서.<br>
+    매 프레임 출력으로 나와서 다음 프레임 입력(<code>features_buffer</code>)으로 들어갑니다.<br>
+    24프레임(약 1.2초)의 기억을 유지합니다.
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">Hidden State <span class="eng">— 은닉 상태</span></div>
+  <p>LSTM/GRU가 이전 프레임에서 다음 프레임으로 전달하는 "기억" 벡터입니다. 수백 개의 float 값이 담겨 있으며, 이 값들이 무엇을 의미하는지는 사람이 해석하기 어렵습니다. (신경망이 스스로 결정하는 내부 표현)</p>
+  <pre>
+  hidden_state = [0.12, -0.34, 0.89, ..., 0.05]  // 512개 float
+
+  이 512개 숫자가:
+  - "앞차가 점점 가까워지고 있다"
+  - "좌측 차선변경 중이다"
+  - "곧 커브가 있다"
+  같은 정보를 내포하지만 직접 읽기 불가.
+  </pre>
+</div>
+
+<!-- ======================== MDN ======================== -->
+<h2>MDN — 혼합 밀도 네트워크</h2>
+
+<div class="card">
+  <div class="term">MDN <span class="eng">Mixture Density Network</span></div>
+  <p>단일 예측값 대신 여러 가설(Gaussian 분포)의 혼합으로 출력하는 신경망 구조입니다. 불확실한 상황에서 여러 가능성을 동시에 표현합니다.</p>
+  <div class="diagram">
+<pre>
+  일반 출력:
+  "앞차 거리 = 45.2m"   ← 틀릴 수 있는 단일값
+
+  MDN 출력 (2 가설):
+  가설1: 평균=45.2m, 표준편차=2.0m, 가중치=0.7
+  가설2: 평균=12.5m, 표준편차=5.0m, 가중치=0.3
+
+  → 0.7 확률로 앞차가 45m에 있고
+    0.3 확률로 옆 차선 차가 12m에 있음
+</pre>
+  </div>
+  <div class="example">
+    <strong>openpilot 적용:</strong> plan, lead, lane_lines 모두 MDN 출력.<br>
+    각 출력은 mean(평균)과 std(표준편차)로 쌍을 이룹니다:<br>
+    <code>plan</code> + <code>plan_stds</code> — 계획 경로 + 불확실성<br>
+    <code>lane_lines</code> + <code>lane_lines_stds</code> — 차선 위치 + 불확실성
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">표준편차 (Standard Deviation) / 불확실성</div>
+  <p>예측값이 얼마나 퍼져있는지(불확실한지) 나타내는 숫자입니다.</p>
+  <pre>
+  앞차 거리 예측: 평균 = 45.0m, 표준편차 = 1.0m
+  → 실제 거리는 약 44~46m 범위일 가능성이 높음 (68%)
+
+  앞차 거리 예측: 평균 = 45.0m, 표준편차 = 10.0m
+  → 실제 거리는 35~55m 범위 가능성 높음 (불확실)
+  </pre>
+  <div class="example">
+    <strong>openpilot 적용:</strong> std(표준편차)가 크면 신경망이 해당 예측에 자신이 없다는 뜻.<br>
+    confidence(GREEN/YELLOW/RED)는 이 불확실성을 기반으로 계산됩니다.
+  </div>
+</div>
+
+<!-- ======================== Recurrent ======================== -->
+<h2>Recurrent Connection — 순환 연결</h2>
+
+<div class="card">
+  <div class="term">Recurrent <span class="eng">— 순환</span></div>
+  <p>출력의 일부가 다시 입력으로 돌아오는 구조입니다. 임베디드에서 "이전 상태를 static 변수로 저장해 다음 인터럽트에서 사용"하는 것과 동일한 개념입니다.</p>
+  <pre>
+  // C 펌웨어 비유 (ATM 지폐 감별):
+  static float prev_thickness = 0.0f;  // 이전 상태 저장
+
+  void IRQ_sensor_handler() {
+      float current = read_sensor();
+      float result = process(current, prev_thickness); // 현재 + 과거
+      prev_thickness = current;  // 다음 인터럽트를 위해 저장
+  }
+
+  // openpilot modeld:
+  # Python 버전:
+  prev_hidden = model_output['hidden_state']  # 저장
+
+  # 다음 프레임:
+  output = model(img, ..., features=prev_hidden)  # 현재 + 과거
+  </pre>
+</div>
+
+<footer>
+<a href="primer_2_ai.html">← ② AI 기초</a> &nbsp;|&nbsp;
+<a href="primer_index.html">목차</a> &nbsp;|&nbsp;
+<a href="primer_4_system.html">④ GPU &amp; 시스템 →</a>
+</footer>
+</div>
+</body>
+</html>

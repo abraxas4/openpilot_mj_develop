@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>1. 3D 공간 &amp; 카메라 기초</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+        --accent:#58a6ff;--green:#3fb950;--red:#f85149;--orange:#d29922;--purple:#bc8cff;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.8;padding:48px 20px;}
+  .container{max-width:860px;margin:0 auto;}
+  h1{font-size:1.7rem;margin-bottom:4px;
+     background:linear-gradient(90deg,var(--accent),var(--purple));
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .nav{color:var(--muted);font-size:0.85rem;margin-bottom:40px;}
+  .nav a{color:var(--accent);text-decoration:none;}
+  h2{font-size:1.2rem;margin:40px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  h3{font-size:1rem;color:var(--accent);margin:20px 0 8px;}
+  p{color:var(--muted);font-size:0.88rem;margin-bottom:10px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;
+        padding:20px 24px;margin:14px 0;}
+  .card p{margin-bottom:6px;}
+  .term{font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:6px;}
+  .eng{font-size:0.8rem;color:var(--muted);font-style:italic;margin-left:8px;}
+  .example{background:#010409;border-left:3px solid var(--accent);padding:12px 16px;
+            border-radius:0 6px 6px 0;margin:10px 0;font-size:0.83rem;color:var(--muted);}
+  .example strong{color:var(--accent);}
+  pre{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.78rem;
+      background:#010409;border:1px solid var(--border);border-radius:6px;
+      padding:14px;overflow-x:auto;color:var(--muted);margin:10px 0;line-height:1.6;}
+  .diagram{background:#010409;border:1px solid var(--border);border-radius:8px;
+            padding:20px;margin:12px 0;overflow-x:auto;}
+  .diagram pre{background:none;border:none;padding:0;margin:0;}
+  .a{color:var(--accent);} .g{color:var(--green);} .o{color:var(--orange);}
+  .r{color:var(--red);} .p{color:var(--purple);}
+  .badge{display:inline-block;font-size:0.68rem;font-weight:700;padding:2px 8px;
+          border-radius:10px;text-transform:uppercase;margin-right:4px;}
+  .b-key{background:rgba(88,166,255,0.15);color:var(--accent);}
+  .b-op{background:rgba(63,185,80,0.15);color:var(--green);}
+  footer{margin-top:60px;padding-top:16px;border-top:1px solid var(--border);
+         color:var(--muted);font-size:0.78rem;text-align:center;}
+  footer a{color:var(--accent);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>① 3D 공간 &amp; 카메라 기초</h1>
+<p class="nav"><a href="primer_index.html">← 목차</a> &nbsp;|&nbsp;
+다음: <a href="primer_2_ai.html">② AI &amp; 신경망 기초 →</a></p>
+
+<!-- ======================== DOF ======================== -->
+<h2>DOF — 자유도 (Degree of Freedom)</h2>
+
+<div class="card">
+  <div class="term">DOF <span class="eng">Degree of Freedom</span></div>
+  <p>"어떤 물체가 독립적으로 움직일 수 있는 방향의 수"입니다.</p>
+  <p>ATM 카드 투입구를 생각해보세요. 카드는 앞뒤로만 밀립니다 → <strong>1-DOF</strong>.<br>
+  책상 위 마우스는 좌우+앞뒤로 움직입니다 → <strong>2-DOF</strong>.<br>
+  공중의 드론은 앞뒤+좌우+위아래 → <strong>3-DOF</strong>.<br>
+  거기에 기울기 3방향(Roll, Pitch, Yaw)까지 더하면 → <strong>6-DOF</strong>.</p>
+  <div class="example">
+    <strong>openpilot 적용:</strong><br>
+    카메라의 pose(자세) 출력이 6-DOF입니다.<br>
+    <code>pose = [x, y, z,  rx, ry, rz]</code><br>
+    앞 3개 = 3D 위치 이동량, 뒤 3개 = 3D 회전량.
+  </div>
+</div>
+
+<!-- ======================== Roll/Pitch/Yaw ======================== -->
+<h2>Roll / Pitch / Yaw</h2>
+
+<div class="card">
+  <div class="term">Pitch <span class="eng">— 앞뒤 기울기</span></div>
+  <p>앞바퀴가 내려가고 뒷바퀴가 올라가는 기울기입니다. 오르막/내리막에서 발생합니다.</p>
+  <div class="diagram">
+<pre>
+  앞 ↓          ↑ 뒤
+  ────────────────
+  <span class="a">Pitch + (앞이 내려감)</span>
+
+  오르막길: 앞이 올라감 → Pitch -
+  내리막길: 앞이 내려감 → Pitch +
+</pre>
+  </div>
+  <div class="example">
+    <strong>openpilot 적용:</strong> <code>liveCalibration.rpyCalib[1]</code> = Pitch값.<br>
+    카메라가 위를 향해 달렸다면 Pitch 보정 필요. calibrationd가 자동 측정합니다.
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">Roll <span class="eng">— 좌우 기울기</span></div>
+  <p>왼쪽/오른쪽으로 기우는 각도입니다. 편도로(banked road)나 차체 자체 기울기에서 발생합니다.</p>
+  <div class="diagram">
+<pre>
+  왼쪽 ↓    ↑ 오른쪽
+  ──────────────────
+    <span class="a">Roll + (왼쪽이 내려감)</span>
+
+  좌회전 구간의 경사진 도로: Roll 발생
+</pre>
+  </div>
+  <div class="example">
+    <strong>openpilot 적용:</strong> <code>liveParameters</code>가 도로의 Roll을 추정해<br>
+    조향 제어 시 좌우 편차를 보정합니다.
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">Yaw <span class="eng">— 좌우 회전 (헤딩)</span></div>
+  <p>수직축(하늘-땅 방향)을 중심으로 좌우로 도는 회전입니다. 핸들을 꺾으면 Yaw가 발생합니다.</p>
+  <div class="diagram">
+<pre>
+       ↑ 차 앞
+       │
+  ←────┼────→   <span class="a">Yaw = 위에서 내려다본 회전</span>
+       │
+       ↓
+
+  좌회전: Yaw + (반시계)
+  우회전: Yaw - (시계)
+</pre>
+  </div>
+  <div class="example">
+    <strong>openpilot 적용:</strong> GPS bearing이 Yaw 방향.<br>
+    나침반에 표시되는 방위각(045°)이 Yaw입니다.
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">Euler Angle <span class="eng">— 오일러 각</span></div>
+  <p>Roll, Pitch, Yaw를 각각 숫자 3개로 표현한 것입니다. [roll, pitch, yaw] = [0.01, -0.02, 1.57]처럼.</p>
+  <pre>
+// C 코드로 비유하자면:
+typedef struct {
+    float roll;   // 좌우 기울기 (rad)
+    float pitch;  // 앞뒤 기울기 (rad)
+    float yaw;    // 좌우 회전   (rad)
+} EulerAngle;
+  </pre>
+  <div class="example">
+    <strong>openpilot 적용:</strong> <code>liveCalibration.rpyCalib = [roll, pitch, yaw]</code><br>
+    이 3개 숫자로 "카메라가 얼마나 삐뚤게 달렸는지" 표현합니다.
+  </div>
+</div>
+
+<!-- ======================== 좌표계 ======================== -->
+<h2>3D 좌표계</h2>
+
+<div class="card">
+  <div class="term">World / Camera / Device 좌표계</div>
+  <p>같은 물체도 어느 기준점에서 보느냐에 따라 좌표가 달라집니다.</p>
+  <div class="diagram">
+<pre>
+  <span class="g">World 좌표계</span>: 지구 기준. GPS 좌표가 여기.
+    x = 동쪽, y = 북쪽, z = 위쪽
+
+  <span class="a">Device 좌표계</span>: 차량 기준.
+    x = 앞방향, y = 왼쪽, z = 위쪽
+
+  <span class="o">Camera 좌표계</span>: 카메라 렌즈 기준.
+    x = 오른쪽, y = 아래쪽, z = 앞방향(광축)
+</pre>
+  </div>
+  <div class="example">
+    <strong>openpilot 적용:</strong> 신경망이 출력하는 차선 위치는 Device 좌표계 기준.<br>
+    <code>lane_lines[0][t][0]</code> = 왼쪽 차선까지 횡방향 거리(m)
+  </div>
+</div>
+
+<!-- ======================== Perspective Transform ======================== -->
+<h2>Perspective Transform / Warp</h2>
+
+<div class="card">
+  <div class="term">Perspective Transform <span class="eng">— 원근 변환</span></div>
+  <p>카메라는 멀리 있는 것을 작게, 가까운 것을 크게 찍습니다. 이걸 보정해서 "실제 위에서 내려다본 것처럼" 변환하는 것입니다.</p>
+  <div class="diagram">
+<pre>
+  원본 카메라 이미지:         Warp 후 (조감도 시점):
+  ┌────────────────┐          ┌────────────────┐
+  │  차선이 V자로  │   →      │  차선이 평행선  │
+  │  수렴하여 보임 │  3×3     │  으로 보임      │
+  │  /────────\   │  행렬    │  │        │     │
+  │ /          \  │  변환    │  │        │     │
+  └────────────────┘          └────────────────┘
+</pre>
+  </div>
+  <p>이 변환에 사용하는 수식이 <strong>3×3 행렬</strong>입니다. 행렬 곱 한 번으로 모든 픽셀 위치가 재계산됩니다.</p>
+  <div class="example">
+    <strong>openpilot 적용:</strong><br>
+    <code>tfm</code> = 도로 카메라용 3×3 변환 행렬<br>
+    <code>big_tfm</code> = 광각 카메라용 3×3 변환 행렬<br>
+    이 행렬은 <code>liveCalibration</code>의 Roll/Pitch/Yaw값에서 계산됩니다.<br>
+    → GPU에서 1920×1088 이미지를 128×256으로 warp하여 신경망에 입력합니다.
+  </div>
+</div>
+
+<!-- ======================== NV12 / YUV ======================== -->
+<h2>이미지 포맷: NV12 / YUV</h2>
+
+<div class="card">
+  <div class="term">RGB vs YUV</div>
+  <p>이미지를 표현하는 두 가지 방식입니다.</p>
+  <p><strong>RGB:</strong> 빨강(R), 초록(G), 파랑(B) 각 픽셀에 3바이트. 우리 눈에 친숙한 방식.</p>
+  <p><strong>YUV:</strong> 밝기(Y)와 색상(U,V)을 분리. 카메라/영상 압축에 사용. 카메라 센서가 출력하는 기본 형식.</p>
+  <div class="diagram">
+<pre>
+  픽셀 하나:
+  RGB: [R=255, G=128, B=0]  → 주황색
+  YUV: [Y=밝기값, U=청록성분, V=적색성분]
+
+  <span class="a">Y (Luma)</span>   = 밝기 정보만. 흑백TV처럼.
+  <span class="o">U (Cb)</span>     = 파란색 색차
+  <span class="g">V (Cr)</span>     = 빨간색 색차
+</pre>
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">NV12 포맷</div>
+  <p>YUV의 한 종류로, 카메라가 실제로 출력하는 형식입니다. 모바일 카메라 표준입니다.</p>
+  <pre>
+  1920×1088 NV12 메모리 레이아웃:
+  ┌────────────────────────────────────────┐
+  │  Y 평면  (1920×1088 = 2,088,960 bytes) │  ← 밝기
+  ├────────────────────────────────────────┤
+  │  UV 평면 (1920×544  = 1,044,480 bytes) │  ← 색상
+  │  [U0,V0, U1,V1, U2,V2, ...]           │  ← U와 V가 섞여있음(interleaved)
+  └────────────────────────────────────────┘
+
+  총 = 3,133,440 bytes ≈ 3MB (프레임당)
+  </pre>
+  <div class="example">
+    <strong>openpilot 적용:</strong> Warp Stage에서<br>
+    1. Y 평면만 추출 (밝기)<br>
+    2. UV 평면을 U/V로 분리 (deinterleave)<br>
+    3. 각각 perspective warp → 128×256 크기로 축소<br>
+    4. 6채널로 합치기: [Y_t0, U_t0, V_t0, Y_t1, U_t1, V_t1]
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">Deinterleave <span class="eng">— 분리</span></div>
+  <p>NV12에서 UV 평면은 [U,V,U,V,U,V...] 순으로 섞여 있습니다. 이를 [U,U,U...], [V,V,V...]로 분리하는 것이 deinterleave입니다.</p>
+  <pre>
+  // C 비유:
+  uint8_t uv[4] = {U0, V0, U1, V1};  // interleaved
+  uint8_t u[2]  = {U0, U1};           // deinterleaved
+  uint8_t v[2]  = {V0, V1};           // deinterleaved
+  </pre>
+</div>
+
+<!-- ======================== Calibration ======================== -->
+<h2>Calibration — 카메라 보정</h2>
+
+<div class="card">
+  <div class="term">Calibration <span class="eng">— 보정</span></div>
+  <p>ATM에서 카드 투입구 위치를 공장 출하 시 맞추는 것과 같습니다. 카메라도 차에 부착할 때마다 각도가 조금씩 다릅니다. 이를 소프트웨어로 자동 측정·보정하는 것이 Calibration입니다.</p>
+  <div class="example">
+    <strong>openpilot 적용 (calibrationd.py):</strong><br>
+    주행 중 카메라 영상을 분석해 Roll/Pitch/Yaw를 자동 추정.<br>
+    고속도로 직선 구간 5분 이상 주행하면 "Calibrated" 상태가 됩니다.<br>
+    결과: <code>liveCalibration.rpyCalib = [0.001, -0.012, 0.003]</code> (라디안)
+  </div>
+</div>
+
+<footer>
+<a href="primer_index.html">← 목차</a> &nbsp;|&nbsp;
+<a href="primer_2_ai.html">② AI &amp; 신경망 기초 →</a>
+</footer>
+</div>
+</body>
+</html>

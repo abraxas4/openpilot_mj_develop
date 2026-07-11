@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>2. AI &amp; 신경망 기초</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+        --accent:#58a6ff;--green:#3fb950;--red:#f85149;--orange:#d29922;--purple:#bc8cff;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.8;padding:48px 20px;}
+  .container{max-width:860px;margin:0 auto;}
+  h1{font-size:1.7rem;margin-bottom:4px;
+     background:linear-gradient(90deg,var(--accent),var(--purple));
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .nav{color:var(--muted);font-size:0.85rem;margin-bottom:40px;}
+  .nav a{color:var(--accent);text-decoration:none;}
+  h2{font-size:1.2rem;margin:40px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  h3{font-size:1rem;color:var(--accent);margin:18px 0 8px;}
+  p{color:var(--muted);font-size:0.88rem;margin-bottom:10px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;
+        padding:20px 24px;margin:14px 0;}
+  .term{font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:6px;}
+  .eng{font-size:0.8rem;color:var(--muted);font-style:italic;margin-left:8px;}
+  .example{background:#010409;border-left:3px solid var(--accent);padding:12px 16px;
+            border-radius:0 6px 6px 0;margin:10px 0;font-size:0.83rem;color:var(--muted);}
+  .example strong{color:var(--accent);}
+  pre{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.78rem;
+      background:#010409;border:1px solid var(--border);border-radius:6px;
+      padding:14px;overflow-x:auto;color:var(--muted);margin:10px 0;line-height:1.6;}
+  .diagram{background:#010409;border:1px solid var(--border);border-radius:8px;
+            padding:20px;margin:12px 0;overflow-x:auto;}
+  .diagram pre{background:none;border:none;padding:0;margin:0;}
+  .a{color:var(--accent);} .g{color:var(--green);} .o{color:var(--orange);}
+  .r{color:var(--red);} .p{color:var(--purple);}
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0;}
+  .compare-box{background:var(--card);border:1px solid var(--border);
+               border-radius:6px;padding:14px;}
+  .compare-box h4{color:var(--accent);margin-bottom:8px;font-size:0.9rem;}
+  .compare-box p{font-size:0.82rem;}
+  footer{margin-top:60px;padding-top:16px;border-top:1px solid var(--border);
+         color:var(--muted);font-size:0.78rem;text-align:center;}
+  footer a{color:var(--accent);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>② AI &amp; 신경망 기초</h1>
+<p class="nav"><a href="primer_1_geometry.html">← ① 3D 공간</a> &nbsp;|&nbsp;
+<a href="primer_index.html">목차</a> &nbsp;|&nbsp;
+<a href="primer_3_deeplearning.html">③ 딥러닝 구조 →</a></p>
+
+<!-- ======================== AI/ML ======================== -->
+<h2>AI / ML이란?</h2>
+
+<div class="card">
+  <div class="term">AI vs ML vs 딥러닝</div>
+  <p>세 개가 포함 관계입니다:</p>
+  <div class="diagram">
+<pre>
+  ┌─────────────────────────────────────────────────────┐
+  │  <span class="a">AI (인공지능)</span>  — 컴퓨터가 지능적으로 보이는 모든 것      │
+  │  ┌───────────────────────────────────────────────┐  │
+  │  │  <span class="o">ML (기계학습)</span>  — 데이터로 스스로 규칙을 찾는 것   │  │
+  │  │  ┌─────────────────────────────────────────┐  │  │
+  │  │  │  <span class="g">딥러닝</span>  — 신경망을 쌓아 학습하는 ML     │  │  │
+  │  │  │  (openpilot이 여기 해당)                │  │  │
+  │  │  └─────────────────────────────────────────┘  │  │
+  │  └───────────────────────────────────────────────┘  │
+  └─────────────────────────────────────────────────────┘
+</pre>
+  </div>
+  <p><strong>전통 프로그래밍:</strong> 개발자가 규칙을 직접 코드로 작성. "앞차가 40m 이내이면 브레이크"</p>
+  <p><strong>ML:</strong> 수백만 건의 주행 데이터를 주면, 컴퓨터가 스스로 규칙을 찾아냄.</p>
+  <div class="example">
+    <strong>openpilot 적용:</strong> comma.ai는 차선 인식 규칙을 직접 코드로 짜지 않았습니다.<br>
+    수천만 km의 주행 영상을 신경망에 학습시켜, 신경망이 스스로 "차선이 무엇인지" 찾아내게 했습니다.
+  </div>
+</div>
+
+<!-- ======================== 신경망 기초 ======================== -->
+<h2>신경망 (Neural Network) 기초</h2>
+
+<div class="card">
+  <div class="term">뉴런 (Neuron) / 노드</div>
+  <p>신경망의 가장 작은 단위입니다. 여러 입력을 받아, 가중합을 계산하고, 결과를 출력합니다.</p>
+  <pre>
+// 뉴런 하나를 C로 표현하면:
+float neuron(float inputs[], float weights[], int n, float bias) {
+    float sum = bias;
+    for (int i = 0; i < n; i++)
+        sum += inputs[i] * weights[i];   // 가중합
+    return activation(sum);              // 활성화 함수 통과
+}
+  </pre>
+  <div class="example">
+    <strong>비유:</strong> ATM의 지폐 감별 센서와 유사합니다.<br>
+    여러 센서값(빛 투과율, 두께, 자성...)을 받아 → 각 특징에 가중치 적용 → 진짜/위조 판별.
+  </div>
+</div>
+
+<div class="card">
+  <div class="term">가중치 (Weight) / 편향 (Bias)</div>
+  <p>뉴런의 각 입력에 곱해지는 계수가 <strong>가중치(W)</strong>입니다. 입력 없이 더해지는 상수가 <strong>편향(b)</strong>입니다.</p>
+  <pre>
+  출력 = W1×입력1 + W2×입력2 + W3×입력3 + b
+
+  예) 차선 인식 뉴런:
+  차선_점수 = 0.8×밝기 + (-0.3)×색상_빨강 + 0.5×직선성 + 0.1
+
+  W = [0.8, -0.3, 0.5]  // 가중치 (학습으로 결정됨)
+  b = 0.1               // 편향 (학습으로 결정됨)
+  </pre>
+  <p>이 W와 b 값이 <strong>"학습"으로 결정</strong>됩니다. openpilot 모델은 이미 학습이 완료된 W,b값들을 파일에 저장해 사용합니다.</p>
+</div>
+
+<div class="card">
+  <div class="term">레이어 (Layer)</div>
+  <p>뉴런 여러 개를 나란히 모은 것이 레이어입니다. 레이어를 여러 개 쌓으면 "깊은(Deep)" 신경망이 됩니다.</p>
+  <div class="diagram">
+<pre>
+  입력       Layer 1      Layer 2      출력
+  ┌────┐   ┌────────┐   ┌────────┐   ┌────┐
+  │이미지│──▶│특징추출│──▶│패턴인식│──▶│차선 │
+  │픽셀 │   │(64뉴런)│   │(128   │   │위치 │
+  │     │   │        │   │뉴런)   │   │     │
+  └────┘   └────────┘   └────────┘   └────┘
+
+  * 앞 레이어: 단순한 특징 (엣지, 선)
+  * 뒤 레이어: 복잡한 특징 (차선, 차량, 도로)
+</pre>
+  </div>
+</div>
+
+<!-- ======================== Training vs Inference ======================== -->
+<h2>Training vs Inference</h2>
+
+<div class="compare">
+  <div class="compare-box">
+    <h4>Training (학습)</h4>
+    <p>수백만 개의 예제를 보여주며 W,b를 자동으로 찾는 과정.<br><br>
+    몇 주~몇 달이 걸리고, 수천 개의 GPU가 필요합니다.<br><br>
+    comma.ai 서버에서 진행. 기기에서는 불가.</p>
+  </div>
+  <div class="compare-box">
+    <h4>Inference (추론)</h4>
+    <p>이미 학습된 W,b를 이용해 새 입력에 대해 결과를 계산하는 것.<br><br>
+    매우 빠름 (20ms 이내). 기기에서 실행.<br><br>
+    openpilot이 주행 중 하는 것이 바로 이것.</p>
+  </div>
+</div>
+
+<div class="example">
+  <strong>openpilot 비유:</strong><br>
+  Training = 공장에서 ATM 지폐 감별기를 "교육"하는 것 (수만 장의 진폐/위폐 학습)<br>
+  Inference = 현장에서 고객 지폐를 실시간으로 판별하는 것
+</div>
+
+<!-- ======================== 사전학습 모델 ======================== -->
+<h2>사전학습 모델 / Pre-trained Model</h2>
+
+<div class="card">
+  <div class="term">사전학습 모델 <span class="eng">Pre-trained Model</span></div>
+  <p>이미 학습이 완료된 신경망을 파일로 저장한 것입니다. openpilot의 <code>driving_policy.onnx</code>가 이것입니다.</p>
+  <p>이 파일에는 수십억 개의 W,b 숫자가 저장되어 있습니다. 기기는 이 파일을 불러와 실행만 합니다.</p>
+  <div class="example">
+    <strong>비유:</strong> 임베디드 펌웨어에서 ROM에 구워진 캘리브레이션 테이블과 같습니다.<br>
+    공장(comma.ai)에서 만든 테이블을 현장(차 안)에서 조회만 하는 것.
+  </div>
+</div>
+
+<!-- ======================== ONNX ======================== -->
+<h2>ONNX 포맷</h2>
+
+<div class="card">
+  <div class="term">ONNX <span class="eng">Open Neural Network Exchange</span></div>
+  <p>신경망 모델을 저장하는 표준 파일 포맷입니다. 어떤 학습 프레임워크(PyTorch, TensorFlow 등)로 만들어도 ONNX로 변환하면 다른 환경에서 실행 가능합니다.</p>
+  <pre>
+  // ONNX 파일에 담긴 것:
+  1. 그래프 구조: 어떤 연산을 어떤 순서로 할지
+     Conv → BatchNorm → ReLU → Conv → ...
+  2. 가중치: 각 연산의 W, b 값 (수백 MB)
+  3. 입출력 명세: 텐서 이름, shape, dtype
+  </pre>
+  <div class="example">
+    <strong>openpilot 적용:</strong><br>
+    <code>driving_supercombo.onnx</code> (또는 <code>driving_vision.onnx</code>)<br>
+    → tinygrad가 이를 읽어 Adreno 630 GPU용 코드로 변환해 실행합니다.
+  </div>
+</div>
+
+<!-- ======================== Loss / Gradient ======================== -->
+<h2>Loss / Gradient (학습 원리 이해용)</h2>
+
+<div class="card">
+  <div class="term">Loss <span class="eng">— 오차/손실</span></div>
+  <p>신경망 출력과 정답의 차이를 숫자로 표현한 것입니다. 학습의 목표는 Loss를 최소화하는 W,b를 찾는 것입니다.</p>
+  <pre>
+  // 예시: 앞차 거리 예측
+  신경망 출력: 32.5m
+  실제 거리:   30.0m
+  Loss = (32.5 - 30.0)² = 6.25
+
+  Loss가 작을수록 신경망이 잘 학습된 것.
+  </pre>
+</div>
+
+<div class="card">
+  <div class="term">Gradient Descent <span class="eng">— 경사 하강법</span></div>
+  <p>Loss를 줄이는 방향으로 W,b를 조금씩 수정하는 알고리즘입니다. "산에서 경사를 따라 내려가는" 것과 같습니다.</p>
+  <div class="diagram">
+<pre>
+      Loss
+        │
+    높음│ ●  ← 현재 W값
+        │  ↘
+        │    ●
+        │      ↘
+    낮음│        ● ← 최적 W값 (Loss 최소)
+        └──────────────────── W값
+         나쁜             좋은
+
+  매 학습 step마다 W를 Loss가 줄어드는 방향으로 조금 이동
+</pre>
+  </div>
+  <div class="example">
+    <strong>openpilot과의 관계:</strong> Training 시에만 해당.<br>
+    기기에서 Inference할 때는 W가 고정되어 변하지 않습니다.
+  </div>
+</div>
+
+<!-- ======================== Feature / Label ======================== -->
+<h2>Feature / Label</h2>
+
+<div class="card">
+  <div class="term">Feature <span class="eng">— 특징/입력 데이터</span></div>
+  <p>신경망에 입력하는 데이터입니다. 카메라 이미지 픽셀값, 속도, 조향각 등이 Feature입니다.</p>
+  <p><strong>openpilot:</strong> 카메라 영상(img_q), 이전 상태(features_buffer), 차선변경 의도(desire_q) 등이 Feature입니다.</p>
+</div>
+
+<div class="card">
+  <div class="term">Label <span class="eng">— 정답 데이터</span></div>
+  <p>Training 시 "정답"으로 사용하는 값입니다. openpilot에서는 사람 드라이버의 실제 조향값, 브레이크 타이밍 등이 Label로 사용됩니다.</p>
+  <div class="example">
+    <strong>openpilot Training 예시:</strong><br>
+    Feature: 카메라 프레임<br>
+    Label: 그 순간 사람이 실제로 조향한 각도, 가속페달 양<br>
+    → "이 화면을 보면 이렇게 운전해야 한다"를 학습
+  </div>
+</div>
+
+<!-- ======================== Hypothesis ======================== -->
+<h2>Hypothesis <span style="font-size:0.9rem;color:var(--muted);font-style:italic">— 가설</span></h2>
+
+<div class="card">
+  <div class="term">다중 가설 출력</div>
+  <p>하나의 답 대신 여러 가능한 답(가설)을 확률과 함께 출력하는 방식입니다. 불확실한 상황에서 더 안전합니다.</p>
+  <div class="diagram">
+<pre>
+  단일 출력 (기존):
+  "앞차까지 거리: 45.0m"
+
+  다중 가설 출력 (MDN):
+  가설1: 45.0m (확률 70%)  ← 주된 경로: 직진 차선
+  가설2: 22.0m (확률 20%)  ← 옆 차선 끼어들기
+  가설3: 80.0m (확률 10%)  ← 앞차 없음
+</pre>
+  </div>
+  <div class="example">
+    <strong>openpilot 적용:</strong> <code>lead</code> 출력이 3개(leadsV3[0~2])인 이유가 여기에 있습니다.<br>
+    가장 확률 높은 앞차([0])를 주로 사용하고, 나머지는 보조 정보입니다.
+  </div>
+</div>
+
+<footer>
+<a href="primer_1_geometry.html">← ① 3D 공간</a> &nbsp;|&nbsp;
+<a href="primer_index.html">목차</a> &nbsp;|&nbsp;
+<a href="primer_3_deeplearning.html">③ 딥러닝 구조 →</a>
+</footer>
+</div>
+</body>
+</html>
