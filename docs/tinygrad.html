@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>openpilot — tinygrad 추론 엔진 기술 문서</title>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e;
+    --accent: #58a6ff; --green: #3fb950; --red: #f85149;
+    --orange: #d29922; --purple: #bc8cff; --yellow: #e3b341;
+    --teal: #39d353;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.7; padding: 48px 20px;
+  }
+  .container { max-width: 980px; margin: 0 auto; }
+
+  h1 { font-size: 1.8rem; margin-bottom: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { color: var(--muted); margin-bottom: 48px; font-size: 0.9rem; }
+  .subtitle code { background: var(--card); padding: 2px 8px; border-radius: 4px;
+    font-size: 0.82rem; border: 1px solid var(--border); }
+
+  h2 { font-size: 1.25rem; margin-bottom: 14px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1rem; margin-bottom: 10px; color: var(--accent); }
+  .section { margin-bottom: 52px; }
+  .section > p { color: var(--muted); font-size: 0.88rem; margin-bottom: 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px 24px; margin-bottom: 14px; }
+  .card:hover { border-color: var(--accent); }
+  .card h3 { margin-bottom: 8px; }
+  .card p, .card li { color: var(--muted); font-size: 0.85rem; }
+  .card ul { margin-left: 18px; margin-top: 6px; }
+  .card li { margin-bottom: 3px; }
+
+  /* Code blocks */
+  pre {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.78rem; background: #010409;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 16px; overflow-x: auto; line-height: 1.6;
+    color: var(--muted); margin: 10px 0;
+  }
+  pre .c  { color: #6e7681; font-style: italic; }
+  pre .k  { color: var(--purple); }
+  pre .s  { color: var(--green); }
+  pre .n  { color: var(--accent); }
+  pre .v  { color: var(--orange); }
+  pre .hl { color: var(--yellow); }
+
+  /* Diagram */
+  .diagram { background: #010409; border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px; margin: 14px 0; overflow-x: auto; }
+  .diagram pre { background: none; border: none; padding: 0; margin: 0; }
+  .diagram pre .a { color: var(--accent); }
+  .diagram pre .g { color: var(--green); }
+  .diagram pre .r { color: var(--red); }
+  .diagram pre .o { color: var(--orange); }
+  .diagram pre .p { color: var(--purple); }
+  .diagram pre .y { color: var(--yellow); }
+  .diagram pre .t { color: var(--teal); }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th { background: #1c2128; color: var(--muted); font-weight: 600;
+    padding: 9px 12px; border: 1px solid var(--border); text-align: left; }
+  td { padding: 8px 12px; border: 1px solid var(--border); vertical-align: top; color: var(--muted); }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  td code, th code {
+    font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.75rem;
+    background: rgba(88,166,255,0.1); color: var(--accent);
+    padding: 1px 5px; border-radius: 3px; }
+  td strong { color: var(--text); }
+
+  .tag { display: inline-block; font-size: 0.68rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 10px; text-transform: uppercase;
+    letter-spacing: 0.4px; margin-right: 4px; vertical-align: middle; }
+  .tag-in  { background: rgba(63,185,80,0.15);  color: var(--green); }
+  .tag-out { background: rgba(88,166,255,0.15); color: var(--accent); }
+  .tag-hw  { background: rgba(188,140,255,0.15);color: var(--purple); }
+  .tag-nn  { background: rgba(227,179,65,0.15); color: var(--yellow); }
+  .tag-mem { background: rgba(248,81,73,0.12);  color: var(--red); }
+
+  .files { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .file { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.7rem;
+    background: rgba(88,166,255,0.08); color: var(--accent);
+    padding: 2px 8px; border-radius: 4px; }
+
+  footer { margin-top: 60px; padding-top: 16px; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 0.78rem; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>tinygrad 추론 엔진 기술 문서</h1>
+<p class="subtitle">
+  <code>openpilot/selfdrive/modeld/</code> &middot;
+  Snapdragon 845 / Adreno 630 &middot; 20 Hz 실시간 추론
+</p>
+
+<!-- ====================================================== -->
+<!-- 1. 전체 파이프라인 -->
+<!-- ====================================================== -->
+<div class="section">
+  <h2>1. 전체 파이프라인 개요</h2>
+  <div class="diagram">
+<pre>
+<span class="a">카메라 (road)</span>  1920×1088 NV12 (YUV)
+<span class="a">카메라 (wide)</span>  1920×1088 NV12 (YUV)
+        │
+        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  <span class="y">WARP STAGE</span>  (tinygrad JIT — Adreno 630 GPU)                   │
+│                                                                 │
+│  · Y/U/V 평면 분리 (NV12 디코딩)                                  │
+│  · Perspective Transform (3×3 행렬, calibration 기반)            │
+│  · 6채널 텐서로 reshape: 2프레임 × 3채널(Y,U,V)                  │
+│  · 출력: img_q (1,12,128,256)  big_img_q (1,12,128,256)         │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+        ┌────────────────────┤
+        │  features_buffer   │ (1,24,512) ← 이전 프레임 recurrent 상태
+        │  desire_q          │ (1,25,8)   ← 차선변경 의도 히스토리
+        │  traffic_convention│ (1,2)      ← LHD/RHD
+        │  action_t          │ (1,2)      ← 제어 지연 보상값
+        └────────────────────┤
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  <span class="g">POLICY STAGE</span>  driving_policy.onnx → tinygrad JIT              │
+│               (driving_tinygrad.pkl, Adreno 630 실행)            │
+│                                                                 │
+│  핵심 연산: Conv2D → BatchNorm → LSTM/GRU → MDN 출력             │
+│  출력 텐서: (1, N_total_outputs) — 이후 슬라이싱                  │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+                 <span class="p">parse_model_outputs.py</span>
+           (softmax / sigmoid / MDN 파싱)
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+         <span class="o">modelV2</span>      <span class="o">cameraOdometry</span>  <span class="o">drivingModelData</span>
+         (cereal)        (pose)        (action)
+              │
+              ▼
+       <span class="r">controlsd / selfdrived</span>  →  CAN 출력 (조향 / 가감속)
+</pre>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 2. 입력 텐서 -->
+<!-- ====================================================== -->
+<div class="section">
+  <h2>2. 입력 텐서 상세</h2>
+  <p>Policy Stage가 받는 모든 입력. Warp Stage 출력이 img_q/big_img_q로 전달됨.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <tr>
+        <th>입력 이름</th><th>Shape</th><th>타입</th><th>의미</th><th>출처</th>
+      </tr>
+      <tr>
+        <td><code>img_q</code></td>
+        <td><code>(1, 12, 128, 256)</code></td>
+        <td>float32</td>
+        <td>도로 카메라 2프레임 × 6채널(Y,U,V) — warped 후</td>
+        <td>Warp Stage 출력</td>
+      </tr>
+      <tr>
+        <td><code>big_img_q</code></td>
+        <td><code>(1, 12, 128, 256)</code></td>
+        <td>float32</td>
+        <td>광각 카메라 2프레임 × 6채널</td>
+        <td>Warp Stage 출력</td>
+      </tr>
+      <tr>
+        <td><code>features_buffer</code></td>
+        <td><code>(1, 24, 512)</code></td>
+        <td>float32</td>
+        <td>이전 24프레임의 hidden state — 순환 연결</td>
+        <td>이전 프레임 hidden_state 출력</td>
+      </tr>
+      <tr>
+        <td><code>desire_q</code></td>
+        <td><code>(1, 25, 8)</code></td>
+        <td>float32</td>
+        <td>차선변경 의도 히스토리 (8 클래스: keep, left, right 등)</td>
+        <td>selfdrived → modeld</td>
+      </tr>
+      <tr>
+        <td><code>traffic_convention</code></td>
+        <td><code>(1, 2)</code></td>
+        <td>float32</td>
+        <td>좌측통행/우측통행 one-hot: LHD=[1,0], RHD=[0,1]</td>
+        <td>IsRhdDetected param</td>
+      </tr>
+      <tr>
+        <td><code>action_t</code></td>
+        <td><code>(1, 2)</code></td>
+        <td>float32</td>
+        <td>[lat_delay + frame_delay, long_delay + frame_delay]<br>
+            제어 명령→실제 반응 지연 보상</td>
+        <td>lagd 추정값</td>
+      </tr>
+      <tr>
+        <td><code>tfm</code></td>
+        <td><code>(3, 3)</code></td>
+        <td>float32</td>
+        <td>도로 카메라 perspective transform 행렬</td>
+        <td>liveCalibration (pitch/yaw/roll)</td>
+      </tr>
+      <tr>
+        <td><code>big_tfm</code></td>
+        <td><code>(3, 3)</code></td>
+        <td>float32</td>
+        <td>광각 카메라 perspective transform 행렬</td>
+        <td>liveCalibration</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Warp Stage: 카메라 → img_q 변환 과정</h3>
+    <pre>
+<span class="c"># 입력: NV12 YUV 버퍼 (1920×1088, uint8, GPU 메모리 직접 참조)</span>
+raw_frame  →  Y 평면 추출 (1920×1088)
+           →  UV 평면 추출 (960×544, interleaved)
+           →  UV deinterleave → U, V 분리
+           →  warp_perspective(Y, tfm, 512×256 출력)
+           →  warp_perspective(U, tfm, 256×128 출력)
+           →  warp_perspective(V, tfm, 256×128 출력)
+           →  [Y0, U0, V0, Y1, U1, V1] 채널 스택 (2프레임)
+           →  reshape → (1, 12, 128, 256)  <span class="c"># img_q</span>
+    </pre>
+    <div class="files">
+      <span class="file">openpilot/selfdrive/modeld/compile_modeld.py:138-208</span>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 3. 출력 텐서 -->
+<!-- ====================================================== -->
+<div class="section">
+  <h2>3. 출력 텐서 상세</h2>
+  <p>Policy Stage 출력은 1차원 flat 텐서로 나온 후 metadata의 슬라이스 정보로 분리됨.</p>
+
+  <h3 style="margin-bottom:10px">3-1. 경로 계획 (Plan)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>출력 이름</th><th>Shape</th><th>내용</th></tr>
+      <tr>
+        <td><code>plan</code></td>
+        <td><code>(1, 33, 15)</code></td>
+        <td>33개 시간 스텝 × 15값: position(x,y,z), velocity(vx,vy,vz), accel(ax,ay,az), euler(3), angular_rate(3)</td>
+      </tr>
+      <tr>
+        <td><code>plan_stds</code></td>
+        <td><code>(1, 33, 15)</code></td>
+        <td>plan 각 값의 표준편차 (불확실성)</td>
+      </tr>
+      <tr>
+        <td><code>action</code></td>
+        <td><code>(1, 2)</code></td>
+        <td>[desired_curvature, desired_accel] — 즉각 제어 명령</td>
+      </tr>
+    </table>
+  </div>
+
+  <pre>
+<span class="c"># Plan 인덱스 구조 (constants.py)</span>
+plan[0, t, 0:3]  = position(x, y, z)          <span class="c"># 미터</span>
+plan[0, t, 3:6]  = velocity(vx, vy, vz)        <span class="c"># m/s</span>
+plan[0, t, 6:9]  = acceleration(ax, ay, az)    <span class="c"># m/s²</span>
+plan[0, t, 9:12] = euler_angle(roll, pitch, yaw)
+plan[0, t,12:15] = orientation_rate(3)         <span class="c"># rad/s</span>
+
+<span class="c"># 시간 인덱스 T_IDXS (33개, 0~10초, 2차 간격)</span>
+T_IDXS = [0, 0.03, 0.12, 0.27, 0.48, 0.75, 1.08, ... , 10.0]
+
+<span class="c"># 공간 인덱스 X_IDXS (33개, 0~192m, 2차 간격)</span>
+X_IDXS = [0, 0.24, 0.96, 2.16, 3.84, 6.00, ... , 192.0]
+  </pre>
+
+  <h3 style="margin-bottom:10px;margin-top:20px">3-2. 차선 / 도로 인식</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>출력 이름</th><th>Shape</th><th>내용</th></tr>
+      <tr><td><code>lane_lines</code></td><td><code>(1,4,33,2)</code></td><td>차선 4개 × 33m × (y,z) 위치</td></tr>
+      <tr><td><code>lane_lines_prob</code></td><td><code>(1,8)</code></td><td>차선 존재 확률 (sigmoid)</td></tr>
+      <tr><td><code>lane_lines_stds</code></td><td><code>(1,4,33,2)</code></td><td>차선 위치 불확실성</td></tr>
+      <tr><td><code>road_edges</code></td><td><code>(1,2,33,2)</code></td><td>도로 가장자리 좌/우 × 33m × (y,z)</td></tr>
+      <tr><td><code>road_edges_stds</code></td><td><code>(1,2,33,2)</code></td><td>도로 가장자리 불확실성</td></tr>
+    </table>
+  </div>
+
+  <h3 style="margin-bottom:10px;margin-top:20px">3-3. 앞차 감지 (Lead Vehicle)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>출력 이름</th><th>Shape</th><th>내용</th></tr>
+      <tr><td><code>lead_prob</code></td><td><code>(1,3)</code></td><td>앞차 3개 감지 확률 (sigmoid)</td></tr>
+      <tr>
+        <td><code>lead</code></td>
+        <td><code>(1,3,6,4)</code></td>
+        <td>앞차 3개 × 6 타임스텝 × (x, y, v_x, v_y)<br>
+            x=종방향 거리(m), v_x=상대속도(m/s)</td>
+      </tr>
+      <tr><td><code>lead_stds</code></td><td><code>(1,3,6,4)</code></td><td>앞차 예측 불확실성</td></tr>
+    </table>
+  </div>
+
+  <h3 style="margin-bottom:10px;margin-top:20px">3-4. Meta / 안전 예측</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>출력 이름</th><th>Shape</th><th>내용</th></tr>
+      <tr><td><code>desire_state</code></td><td><code>(1,8)</code></td><td>현재 차선변경 의도 (softmax)</td></tr>
+      <tr><td><code>desire_pred</code></td><td><code>(1,4,8,8)</code></td><td>미래 4단계 의도 예측</td></tr>
+      <tr>
+        <td><code>meta</code></td>
+        <td><code>(1,55)</code></td>
+        <td>engagement_prob(1) + disengage_preds(30) + driver_input_preds(24)<br>
+            t=2,4,6,8,10초의 brake/gas/steer/hard_brake 확률</td>
+      </tr>
+      <tr><td><code>hidden_state</code></td><td><code>(1,512)</code></td><td>다음 프레임으로 전달되는 recurrent 상태</td></tr>
+    </table>
+  </div>
+
+  <pre>
+<span class="c"># meta 텐서 인덱스 구조 (t = 2,4,6,8,10초)</span>
+meta[0, 0]           = engagement_probability
+meta[0, 1,7,13,19,25] = gas_disengage_prob     <span class="c"># 5 timesteps</span>
+meta[0, 2,8,14,20,26] = brake_disengage_prob
+meta[0, 3,9,15,21,27] = steer_override_prob
+meta[0, 4,10,16,22,28] = hard_brake_3ms2_prob
+meta[0, 5,11,17,23,29] = hard_brake_4ms2_prob
+meta[0, 6,12,18,24,30] = hard_brake_5ms2_prob
+
+<span class="c"># Confidence score 계산 (fill_model_msg.py)</span>
+score = weighted_avg(brake_disengage_buffer[-5:])
+if   score &lt; 0.01165: confidence = GREEN
+elif score &lt; 0.06157: confidence = YELLOW
+else:                  confidence = RED
+  </pre>
+
+  <h3 style="margin-bottom:10px;margin-top:20px">3-5. 카메라 자세 (Pose)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>출력 이름</th><th>Shape</th><th>내용</th></tr>
+      <tr><td><code>pose</code></td><td><code>(1,6)</code></td><td>카메라 6-DOF 자세: [x,y,z, rx,ry,rz]</td></tr>
+      <tr><td><code>pose_stds</code></td><td><code>(1,6)</code></td><td>자세 불확실성</td></tr>
+      <tr><td><code>wide_from_device_euler</code></td><td><code>(1,3)</code></td><td>광각 카메라 상대 회전각</td></tr>
+      <tr><td><code>road_transform</code></td><td><code>(1,3)</code></td><td>도로면 변환 계수</td></tr>
+    </table>
+  </div>
+
+  <h3 style="margin-bottom:10px;margin-top:20px">3-6. 운전자 모니터링 모델 출력</h3>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>출력 이름</th><th>내용</th></tr>
+      <tr><td><code>face_prob</code></td><td>얼굴 감지 확률</td></tr>
+      <tr><td><code>face_descs</code></td><td>얼굴 방향 [orient_x, orient_y, orient_z, pos_x, pos_y] + 표준편차 6개</td></tr>
+      <tr><td><code>left/right_eye_prob</code></td><td>눈 가시성 확률</td></tr>
+      <tr><td><code>left/right_blink_prob</code></td><td>눈 깜빡임 확률</td></tr>
+      <tr><td><code>sunglasses_prob</code></td><td>선글라스 착용 확률</td></tr>
+      <tr><td><code>using_phone_prob</code></td><td>핸드폰 사용 확률</td></tr>
+      <tr><td><code>sleep_prob</code></td><td>졸음 확률</td></tr>
+      <tr><td><code>wheel_on_right</code></td><td>우측 핸들 여부 (RHD 자동감지)</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 4. tinygrad 알고리즘 -->
+<!-- ====================================================== -->
+<div class="section">
+  <h2>4. tinygrad 내부 알고리즘</h2>
+
+  <div class="card">
+    <h3>ONNX → GPU 실행까지 5단계</h3>
+    <div class="diagram" style="margin-top:10px">
+<pre>
+<span class="y">1. ONNX 파싱</span>  (tinygrad/nn/onnx.py)
+   OnnxPBBufferedReader → computational graph 추출
+   · Nodes: Conv, Reshape, MatMul, LSTM, LayerNorm 등 200+ 연산자
+   · Initializers: 가중치 & 바이어스 텐서
+   · Inputs/Outputs: 텐서 명세 (이름, shape, dtype)
+
+        ↓
+
+<span class="y">2. Tinygrad IR 변환</span>
+   ONNX op → tinygrad Tensor 연산 매핑
+   예) ONNX Conv → Tensor.conv2d()
+       ONNX LSTM → Tensor.lstm() (unrolled)
+       ONNX Softmax → Tensor.softmax()
+
+        ↓
+
+<span class="y">3. JIT 컴파일</span>  (TinyJit, compile_modeld.py)
+   · 3회 warm-up 실행으로 GPU 커널 추출
+   · prune=True: 불필요한 연산 제거
+   · 직렬화 → driving_tinygrad.pkl (external buffer 지원)
+   · 이후 실행은 컴파일된 커널 직접 디스패치
+
+        ↓
+
+<span class="y">4. 디바이스별 렌더링</span>  (tinygrad/runtime/ops_qcom.py)
+   QCOMCLRenderer → OpenCL 스타일 컴퓨트 셰이더 생성
+   IR3Renderer    → Adreno IR3 ISA 어셈블리 생성
+   PKT7/PKT4 패킷 → GPU Command Buffer 구성
+
+        ↓
+
+<span class="y">5. GPU 실행</span>  (Adreno 630, KGSL IOCTL)
+   QCOMComputeQueue.exec() → KGSL ioctl 제출
+   THREAD64 모드, Cache flush, Memory barrier
+   결과 → CPU 메모리 전송
+</pre>
+    </div>
+    <div class="files">
+      <span class="file">tinygrad_repo/tinygrad/nn/onnx.py</span>
+      <span class="file">tinygrad_repo/tinygrad/runtime/ops_qcom.py</span>
+      <span class="file">openpilot/selfdrive/modeld/compile_modeld.py</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>출력 파싱 알고리즘 (MDN)</h3>
+    <p>모델은 Mixture Density Network(MDN) 방식으로 출력. 단일 예측이 아닌 여러 가설(hypothesis)의 분포를 출력.</p>
+    <pre>
+<span class="c"># parse_model_outputs.py: MDN 파싱</span>
+<span class="k">def</span> <span class="n">parse_mdn</span>(raw, n_hypotheses):
+    n_values = (raw.shape[2] - n_hypotheses) // 2
+
+    pred_mu  = raw[:, :, :n_values]               <span class="c"># 평균 궤적</span>
+    pred_std = exp(raw[:, :, n_values:2*n_values]) <span class="c"># 표준편차 (log-space)</span>
+    weights  = softmax(raw[:, :, -n_hypotheses:])  <span class="c"># 가설 가중치</span>
+
+    <span class="c"># 가중치 기준 정렬 (가장 확률 높은 가설 = [0])</span>
+    sort_idx = argsort(weights, descending=True)
+    <span class="k">return</span> pred_mu[sort_idx], pred_std[sort_idx], weights[sort_idx]
+
+<span class="c"># 이진 출력 (lane_lines_prob, lead_prob, meta)</span>
+prob = sigmoid(raw)
+
+<span class="c"># 범주형 출력 (desire_state, desire_pred)</span>
+dist = softmax(raw, axis=-1)
+    </pre>
+  </div>
+
+  <div class="card">
+    <h3>순환 연결 (Temporal Context)</h3>
+    <p>매 프레임 hidden_state를 다음 프레임에 피드백하여 시계열 문맥 유지.</p>
+    <pre>
+<span class="c"># modeld.py: 매 프레임</span>
+model_output = policy_jit(img_q, big_img_q, feat_q, desire_q, packed_npy)
+
+<span class="c"># 출력 → 다음 입력으로</span>
+npy[<span class="s">'prev_feat'</span>] = model_output[hidden_state_slice]  <span class="c"># (1, 512)</span>
+
+<span class="c"># features_buffer: 24프레임 롤링 윈도우</span>
+feat_q[<span class="s">'features_buffer'</span>] = rolling_window(npy[<span class="s">'prev_feat'</span>], size=24)
+<span class="c"># → (1, 24, 512): 약 1.2초(24프레임 × 50ms)의 문맥 보존</span>
+    </pre>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 5. 하드웨어 & 성능 -->
+<!-- ====================================================== -->
+<div class="section">
+  <h2>5. 하드웨어 백엔드 (Snapdragon 845 / Adreno 630)</h2>
+
+  <div class="card">
+    <h3>실행 구조</h3>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>구성요소</th><th>내용</th></tr>
+        <tr><td>SoC</td><td>Qualcomm Snapdragon 845</td></tr>
+        <tr><td>GPU</td><td>Adreno 630 (OpenCL 2.0)</td></tr>
+        <tr><td>GPU 드라이버</td><td>KGSL (Kernel Graphics Support Library) IOCTL</td></tr>
+        <tr><td>셰이더 컴파일러</td><td>IR3 ISA (Adreno 전용 ISA)</td></tr>
+        <tr><td>패킷 포맷</td><td>PKT7 (compute), PKT4 (register write)</td></tr>
+        <tr><td>스레드 모드</td><td>THREAD64</td></tr>
+        <tr><td>모델 실행 주파수</td><td>20 Hz (50ms/프레임)</td></tr>
+        <tr><td>카메라 → 모델 프레임 비율</td><td>frame_skip=4 (카메라 80Hz → 모델 20Hz)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>메모리 최적화</h3>
+    <pre>
+<span class="c"># 카메라 버퍼 직접 참조 (zero-copy)</span>
+<span class="c"># modeld.py: GPU 메모리에 텐서 뷰 생성, 복사 없음</span>
+cache_key = (key, ctypes_ptr_of_yuv_buffer)
+<span class="k">if</span> cache_key <span class="k">not in</span> blob_cache:
+    blob_cache[cache_key] = Tensor.from_blob(ptr, (yuv_size,),
+                                              dtype=<span class="s">'uint8'</span>,
+                                              device=WARP_DEV)
+
+<span class="c"># 입력 큐: 롤링 버퍼 방식 (shift + cat)</span>
+<span class="c"># 매 프레임 전체 복사 대신 새 프레임만 append</span>
+img_buf = img_buf[1:].cat(new_frame, dim=0)  <span class="c"># (5,6,128,256)</span>
+    </pre>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 6. 모델 파일 -->
+<!-- ====================================================== -->
+<div class="section">
+  <h2>6. 모델 파일 목록</h2>
+  <p><code>openpilot/selfdrive/modeld/models/</code></p>
+  <div class="tbl-wrap">
+    <table>
+      <tr><th>파일</th><th>용도</th><th>포맷</th><th>비고</th></tr>
+      <tr><td><code>driving_supercombo.onnx</code></td><td>메인 모델 참조</td><td>ONNX</td><td>stub (135B), 실제 데이터는 pkl</td></tr>
+      <tr><td><code>driving_tinygrad.pkl</code></td><td>컴파일된 Policy JIT</td><td>Pickle + ext. buffer</td><td>Adreno 630 최적화</td></tr>
+      <tr><td><code>big_driving_tinygrad.pkl</code></td><td>USB GPU용 Policy JIT</td><td>Pickle + ext. buffer</td><td>외장 GPU 연결 시</td></tr>
+      <tr><td><code>driving_metadata.pkl</code></td><td>입출력 슬라이스 정보</td><td>Pickle dict</td><td>output_slices, input_shapes</td></tr>
+      <tr><td><code>dmonitoring_model.onnx</code></td><td>운전자 모니터링 모델</td><td>ONNX</td><td>7.3 MB</td></tr>
+      <tr><td><code>dmonitoring_model_tinygrad.pkl</code></td><td>운전자 모니터링 JIT</td><td>Pickle</td><td></td></tr>
+      <tr><td><code>dm_warp_WxH_tinygrad.pkl</code></td><td>DM Warp JIT (해상도별)</td><td>Pickle</td><td>카메라 해상도마다 생성</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 7. 데이터 흐름 요약 -->
+<!-- ====================================================== -->
+<div class="section">
+  <h2>7. 데이터 흐름 한눈에 보기</h2>
+  <div class="diagram">
+<pre>
+<span class="a">━━━━ 입력 (20 Hz) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+
+  Road Camera  (1920×1088, NV12) ──┐
+  Wide Camera  (1920×1088, NV12) ──┼──▶ Warp ──▶ img_q, big_img_q
+  Calibration  (rpy euler)       ──┘            (1,12,128,256)
+
+  Previous hidden_state ──▶ features_buffer (1,24,512)
+  Desire intent         ──▶ desire_q        (1,25,8)
+  LHD/RHD flag          ──▶ traffic_conv    (1,2)
+  lagd delay estimate   ──▶ action_t        (1,2)
+
+<span class="g">━━━━ 신경망 처리 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+
+  Conv2D → BatchNorm → Activation (반복)
+  → LSTM/GRU (시계열 처리)
+  → MDN 헤드 (다중 가설 출력)
+  → flat 텐서 (1, N) 출력
+
+<span class="o">━━━━ 출력 파싱 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+
+  ┌─ plan          (33 timesteps, 0~10s)  ──▶  경로 계획
+  ├─ action        (즉각 제어)             ──▶  curvature, accel → controlsd
+  ├─ lane_lines    (4개 × 33m)            ──▶  차선 시각화
+  ├─ road_edges    (2개 × 33m)            ──▶  도로 경계
+  ├─ lead          (3개 앞차, 6 timestep) ──▶  radarState 보완
+  ├─ meta          (brake/disengage 확률) ──▶  selfdrived 안전 판단
+  ├─ desire_state  (8 클래스)              ──▶  차선변경 의도
+  ├─ pose          (6-DOF)                ──▶  liveCalibration 업데이트
+  └─ hidden_state  (512)                  ──▶  다음 프레임 입력으로 피드백
+</pre>
+  </div>
+</div>
+
+<footer>
+  abraxas4/openpilot_mj_develop &middot; 코드베이스 직접 분석 기반 &middot;
+  <code>openpilot/selfdrive/modeld/</code> &middot; <code>tinygrad_repo/tinygrad/</code>
+</footer>
+
+</div>
+</body>
+</html>
