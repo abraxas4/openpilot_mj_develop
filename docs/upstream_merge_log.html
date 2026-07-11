@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Upstream Merge &amp; Build Fix Log</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+        --accent:#58a6ff;--green:#3fb950;--red:#f85149;--orange:#d29922;--purple:#bc8cff;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.75;padding:48px 20px;}
+  .container{max-width:900px;margin:0 auto;}
+  h1{font-size:1.7rem;margin-bottom:6px;
+     background:linear-gradient(90deg,var(--accent),var(--purple));
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .subtitle{color:var(--muted);margin-bottom:48px;font-size:0.88rem;}
+  .subtitle code{background:var(--card);padding:2px 8px;border-radius:4px;
+    font-size:0.8rem;border:1px solid var(--border);}
+
+  h2{font-size:1.2rem;margin:40px 0 14px;padding-bottom:8px;
+     border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+  h3{font-size:0.95rem;color:var(--accent);margin:16px 0 8px;}
+  p{color:var(--muted);font-size:0.87rem;margin-bottom:8px;}
+
+  .card{background:var(--card);border:1px solid var(--border);
+        border-radius:8px;padding:18px 22px;margin:12px 0;}
+  .card p{margin-bottom:6px;}
+
+  pre{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.76rem;
+      background:#010409;border:1px solid var(--border);border-radius:6px;
+      padding:14px;overflow-x:auto;color:var(--muted);margin:10px 0;line-height:1.6;}
+  pre .a{color:var(--accent);} pre .g{color:var(--green);}
+  pre .r{color:var(--red);}   pre .o{color:var(--orange);}
+  pre .p{color:var(--purple);}
+
+  .badge{display:inline-block;font-size:0.68rem;font-weight:700;padding:2px 8px;
+          border-radius:10px;text-transform:uppercase;letter-spacing:0.4px;margin-right:4px;}
+  .b-ok  {background:rgba(63,185,80,0.15); color:var(--green);}
+  .b-fix {background:rgba(88,166,255,0.15);color:var(--accent);}
+  .b-bug {background:rgba(248,81,73,0.12); color:var(--red);}
+  .b-warn{background:rgba(210,153,34,0.15);color:var(--orange);}
+
+  .files{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;}
+  .file{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.71rem;
+        background:rgba(88,166,255,0.08);color:var(--accent);padding:2px 8px;border-radius:4px;}
+
+  .timeline{border-left:2px solid var(--border);margin:16px 0;padding-left:24px;}
+  .tl-item{position:relative;margin-bottom:20px;}
+  .tl-item::before{content:'';position:absolute;left:-29px;top:6px;
+    width:10px;height:10px;border-radius:50%;background:var(--accent);}
+  .tl-item.ok::before{background:var(--green);}
+  .tl-item.bug::before{background:var(--red);}
+  .tl-item.warn::before{background:var(--orange);}
+  .tl-title{font-weight:600;font-size:0.9rem;margin-bottom:4px;}
+  .tl-body{color:var(--muted);font-size:0.83rem;}
+
+  footer{margin-top:60px;padding-top:16px;border-top:1px solid var(--border);
+         color:var(--muted);font-size:0.78rem;text-align:center;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Upstream Merge &amp; Build Fix Log</h1>
+<p class="subtitle">
+  <code>frogpilot_port</code> ← <code>commaai/openpilot upstream/master</code> &middot;
+  <code>abraxas4/opendbc frogpilot_port</code> rebase &middot; 2026-07-11
+</p>
+
+<!-- ====================================================== -->
+<!-- 1. 구조 변경 -->
+<!-- ====================================================== -->
+<h2>1. Upstream 구조 변경 요약</h2>
+<p>이번 upstream merge의 핵심은 <strong>모든 Python 코드가 루트에서 <code>openpilot/</code> 서브디렉토리로 이동</strong>한 것입니다.</p>
+
+<pre>
+<span class="r">이전 (우리 브랜치):</span>
+/data/openpilot/
+├── selfdrive/          ← 실제 코드
+├── cereal/             ← 메시지 정의
+├── common/
+├── system/
+└── openpilot/          ← 심볼릭 링크 (selfdrive → ../selfdrive 등)
+
+<span class="g">이후 (upstream 머지 후):</span>
+/data/openpilot/
+├── openpilot/          ← 실제 코드 (이동됨)
+│   ├── selfdrive/
+│   ├── cereal/
+│   ├── common/
+│   └── system/
+└── SConstruct, launch_*.sh 등
+</pre>
+
+<div class="card">
+  <h3>머지 전 준비</h3>
+  <p>기존 <code>openpilot/</code> 심볼릭 링크(openpilot/selfdrive → ../selfdrive 등)가 Windows에서 실제 디렉토리로 확장되어 merge 충돌 발생. 심볼릭 링크를 먼저 제거 후 merge.</p>
+  <div class="files"><span class="file">openpilot/__init__.py</span><span class="file">openpilot/selfdrive (symlink)</span></div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 2. Merge 충돌 해결 -->
+<!-- ====================================================== -->
+<h2>2. Merge 충돌 해결 (5개 파일)</h2>
+
+<div class="card">
+  <h3><span class="badge b-fix">fix</span> card.py — cereal import 경로</h3>
+  <p>upstream이 <code>from openpilot.cereal import log</code>로 변경, 우리는 FrogPilot의 <code>custom</code> 모듈도 필요.</p>
+  <pre>
+<span class="r">- from cereal import car, custom, log</span>
+<span class="g">+ from openpilot.cereal import log, custom
++ from opendbc.car.structs import car</span></pre>
+  <div class="files"><span class="file">openpilot/selfdrive/car/card.py</span></div>
+</div>
+
+<div class="card">
+  <h3><span class="badge b-fix">fix</span> ui_state.py — 새 필드 + 기존 필드 병합</h3>
+  <p>upstream이 <code>experimental_mode</code>, <code>usbgpu</code> 필드 추가. 우리의 <code>show_debug_info</code>와 params 업데이트 로직 모두 유지.</p>
+  <div class="files"><span class="file">openpilot/selfdrive/ui/ui_state.py</span></div>
+</div>
+
+<div class="card">
+  <h3><span class="badge b-fix">fix</span> controlsd.py — steerControlType + AOL 디버그</h3>
+  <p>upstream이 <code>steerControlType</code>(curvature vs angle)에 따라 분기하는 로직 추가. 우리의 AOL 고속 디버그 로깅은 그 뒤에 유지.</p>
+  <pre>
+<span class="g">+   if CP.steerControlType == curvature:
++       actuators.curvature = float(lateral_output)
++   else:
++       actuators.steeringAngleDeg = float(lateral_output)
++   # AOL 디버그 로깅 (기존 유지)</span></pre>
+  <div class="files"><span class="file">openpilot/selfdrive/controls/controlsd.py</span></div>
+</div>
+
+<div class="card">
+  <h3><span class="badge b-fix">fix</span> pandad.cc — SubMaster + AOL heartbeat</h3>
+  <p>upstream이 <code>deviceState</code> 추가. 우리의 <code>frogpilotCarState</code> (AOL heartbeat)도 유지. <code>is_onroad</code> 취득 방식을 params → deviceState로 변경.</p>
+  <pre>
+<span class="g">SubMaster sm({"selfdriveState", "frogpilotCarState", "deviceState"});
+// ...
+const bool heartbeat_engaged = engaged || (alwaysOnLateralEnabled);
+if (sm.updated("deviceState")) { is_onroad = ...; }</span></pre>
+  <div class="files"><span class="file">openpilot/selfdrive/pandad/pandad.cc</span></div>
+</div>
+
+<div class="card">
+  <h3><span class="badge b-fix">fix</span> opendbc_repo — abraxas4 fork 유지</h3>
+  <p>upstream이 commaai/opendbc 최신으로 변경하려 함. 우리의 TPMS11 커스텀 커밋이 있는 abraxas4/opendbc <code>frogpilot_port</code>를 유지.</p>
+</div>
+
+<!-- ====================================================== -->
+<!-- 3. 기기 부팅 실패 → 진단 -->
+<!-- ====================================================== -->
+<h2>3. 기기 부팅 실패 진단</h2>
+
+<div class="timeline">
+  <div class="tl-item bug">
+    <div class="tl-title">openpilot 부팅 안 됨</div>
+    <div class="tl-body">기기 화면 멈춤, SSH 접속은 가능. tmux 세션 없음.</div>
+  </div>
+
+  <div class="tl-item bug">
+    <div class="tl-title">build.py 2시간 넘게 멈춤</div>
+    <div class="tl-body">
+      CPU 0% idle. 원인: scons 빌드 실패 후 <code>build.py</code>가 기기 화면에 에러 팝업(<code>TextWindow</code>)을 띄우고 터치 입력을 기다리는 중.
+      SSH에서는 보이지 않아 영원히 멈춘 것처럼 보임.
+    </div>
+  </div>
+
+  <div class="tl-item warn">
+    <div class="tl-title">scons / cythonize / capnpc not found</div>
+    <div class="tl-body">
+      도구들이 <code>/usr/local/venv/bin/</code>에 있으나 SSH 세션 PATH에 없음.
+      <code>export PATH=/usr/local/venv/bin:/usr/bin:/bin</code> 추가로 해결.
+    </div>
+  </div>
+
+  <div class="tl-item bug">
+    <div class="tl-title">scons 26% 에서 SIGABRT — "Duplicate ID @0x8e2af1e708af8b8d"</div>
+    <div class="tl-body">
+      <code>long_mpc.py</code> 실행 중 capnp C++ 레이어에서 abort. 같은 capnp 스키마 ID가 두 번 등록되어 발생.
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 4. capnp Duplicate ID 근본 원인 분석 -->
+<!-- ====================================================== -->
+<h2>4. capnp Duplicate ID 원인 분석</h2>
+
+<pre>
+<span class="r">문제 흐름:</span>
+
+long_mpc.py 실행 (scons subprocess)
+│
+├── from openpilot.cereal import log
+│   └── cereal/__init__.py 실행
+│       └── capnp.load(log.capnp, imports=[opendbc_car_path])
+│           └── log.capnp: "using Car = import '/car.capnp'"
+│               └── car.capnp 로드 → <span class="o">ID 0x8e2af1e708af8b8d 등록 (1회)</span>
+│
+└── from opendbc.car.interfaces import ACCEL_MIN, ACCEL_MAX
+    └── opendbc/car/structs.py 실행
+        └── try: from cereal import car
+            └── <span class="r">ImportError!</span>
+                (scons PYTHONPATH = /data/openpilot:opendbc_repo:...
+                 'cereal' 없음. 'openpilot.cereal'만 있음)
+            └── except: capnp.load(car.capnp) ← imports 없이
+                └── <span class="r">ID 0x8e2af1e708af8b8d 재등록 시도 → "Duplicate ID" ABORT</span>
+</pre>
+
+<div class="card">
+  <h3>핵심: <code>cereal</code> vs <code>openpilot.cereal</code></h3>
+  <p>upstream 머지 후 <code>cereal</code>은 <code>/data/openpilot/openpilot/cereal/</code>로 이동했습니다.
+  scons PYTHONPATH에는 <code>/data/openpilot</code>이 있어 <code>openpilot.cereal</code>로는 접근 가능하지만,
+  루트에 <code>cereal/</code>가 없으므로 bare <code>cereal</code>은 ImportError.</p>
+  <p>opendbc의 <code>structs.py</code>는 <code>from cereal import car</code>를 시도하다 실패하고,
+  fallback으로 <code>capnp.load(car.capnp)</code>를 실행해 중복 등록을 유발.</p>
+</div>
+
+<!-- ====================================================== -->
+<!-- 5. 최종 수정 -->
+<!-- ====================================================== -->
+<h2>5. 최종 수정 내용</h2>
+
+<div class="card">
+  <h3><span class="badge b-fix">fix 1</span> openpilot/cereal/__init__.py — car 먼저 로드 + export</h3>
+  <p><code>log.capnp</code>보다 먼저 <code>car.capnp</code>를 로드해 pycapnp 캐시에 등록.
+  <code>car</code>를 module attribute로 export해서 <code>from openpilot.cereal import car</code>가 가능하게.</p>
+  <pre>
+  opendbc_import_path = os.path.join(os.path.realpath(opendbc_path.as_posix()), 'car')
+<span class="g">+ car    = capnp.load(opendbc_import_path + "/car.capnp", imports=[opendbc_import_path])
+</span>  log    = capnp.load(CEREAL_PATH + "/log.capnp",    imports=[opendbc_import_path])
+  custom = capnp.load(CEREAL_PATH + "/custom.capnp", imports=[opendbc_import_path])</pre>
+  <p>이제 <code>log.capnp</code>가 <code>car.capnp</code>를 import할 때 이미 캐시된 버전을 재사용 → 중복 없음.</p>
+  <div class="files"><span class="file">openpilot/cereal/__init__.py</span></div>
+</div>
+
+<div class="card">
+  <h3><span class="badge b-fix">fix 2</span> opendbc/car/structs.py — openpilot.cereal 먼저 시도</h3>
+  <p>새 openpilot 구조에서 <code>openpilot.cereal</code>을 먼저 시도. 성공하면 이미 로드된 car 스키마를 재사용해 중복 등록 없음.</p>
+  <pre>
+<span class="g">try:
+  from openpilot.cereal import car   # 새 openpilot 패키지 구조 (cereal이 먼저 로드)
+except ImportError:
+  try:
+    from cereal import car           # standalone / 구버전 구조
+  except ImportError:
+    capnp.remove_import_hook()
+    car = capnp.load(BASEDIR + "/car.capnp", imports=[BASEDIR])</span></pre>
+  <div class="files"><span class="file">opendbc_repo/opendbc/car/structs.py</span></div>
+</div>
+
+<div class="card">
+  <h3><span class="badge b-fix">fix 3</span> abraxas4/opendbc frogpilot_port rebase</h3>
+  <p>기기의 opendbc_repo가 <code>origin/master</code> (commaai clone, <code>930eeb14</code>)를 추적하고 있어서
+  우리 커밋이 반영되지 않은 것이 추가 원인이었음.</p>
+  <p><code>upstream/master</code> (<code>930eeb14</code>) 위에 TPMS 커밋 + structs.py 수정을 cherry-pick 후
+  <code>abraxas4/opendbc frogpilot_port</code>에 force push.</p>
+  <pre>
+  upstream/master (930eeb14) ← commaai opendbc 최신
+       ↓ cherry-pick
+  942ed24c  car: add TPMS fields (Hyundai TPMS11 파싱)
+       ↓
+  d1486865  car: fix capnp duplicate ID (structs.py 수정)  ← 최종 HEAD</pre>
+</div>
+
+<!-- ====================================================== -->
+<!-- 6. 기기 복구 절차 -->
+<!-- ====================================================== -->
+<h2>6. 기기 복구 절차</h2>
+
+<div class="card">
+  <pre>
+<span class="a"># 1. opendbc를 올바른 브랜치로 전환</span>
+cd /data/openpilot/opendbc_repo
+git fetch origin
+git checkout origin/frogpilot_port       <span class="a"># d1486865</span>
+
+<span class="a"># 2. 빌드 실행 (PATH 포함)</span>
+cd /data/openpilot
+export PATH=/usr/local/venv/bin:/usr/bin:/bin
+export PYTHONPATH=/data/openpilot
+scons -j4 2>&amp;1 | grep -v "^progress:"
+
+<span class="g"># 결과: scons: done building targets.  ✓</span>
+
+<span class="a"># 3. 재부팅</span>
+sudo reboot</pre>
+</div>
+
+<!-- ====================================================== -->
+<!-- 7. 영구 반영 -->
+<!-- ====================================================== -->
+<h2>7. 영구 반영 — 다음 재설치 시</h2>
+
+<p>현재 기기는 opendbc_repo가 detached HEAD 상태입니다. 재설치 시에는 <code>.gitmodules</code>에 브랜치를 명시하거나, <code>launch_chffrplus.sh</code>에서 올바른 브랜치를 checkout하는 로직이 필요합니다. 현재 임시 해결 상태입니다.</p>
+
+<div class="card">
+  <h3>수정된 파일 전체 목록</h3>
+  <div class="files">
+    <span class="file">openpilot/cereal/__init__.py</span>
+    <span class="file">openpilot/selfdrive/car/card.py</span>
+    <span class="file">openpilot/selfdrive/ui/ui_state.py</span>
+    <span class="file">openpilot/selfdrive/controls/controlsd.py</span>
+    <span class="file">openpilot/selfdrive/pandad/pandad.cc</span>
+    <span class="file">opendbc_repo/opendbc/car/structs.py</span>
+    <span class="file">opendbc_repo/opendbc/car/car.capnp</span>
+    <span class="file">opendbc_repo/opendbc/car/hyundai/carstate.py</span>
+  </div>
+</div>
+
+<footer>
+  abraxas4/openpilot_mj_develop &middot; frogpilot_port &middot; 2026-07-11
+</footer>
+
+</div>
+</body>
+</html>
