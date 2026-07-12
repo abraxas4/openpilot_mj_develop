@@ -96,14 +96,13 @@ class SelfdriveD:
     self.is_metric = self.params.get_bool("IsMetric")
     self.is_ldw_enabled = self.params.get_bool("IsLdwEnabled")
     self.disengage_on_accelerator = self.params.get_bool("DisengageOnAccelerator")
+    self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
 
     car_recognized = self.CP.brand != 'mock'
 
     # cleanup old params
     if not self.CP.alphaLongitudinalAvailable:
       self.params.remove("AlphaLongitudinalEnabled")
-    if not self.CP.openpilotLongitudinalControl:
-      self.params.remove("ExperimentalMode")
 
     self.CS_prev = car.CarState.new_message()
     self.AM = AlertManager()
@@ -118,6 +117,11 @@ class SelfdriveD:
     self.distance_traveled = 0
     self.last_functional_fan_frame = 0
     self.events_prev = []
+    self.hyundai_pedal_pressed_frames = 0
+    self.hyundai_controls_blocked_frames = 0
+    self.hyundai_cancel_reenable_cooldown_frames = 0
+    self.hyundai_recent_cancel_frames = 0
+    self.hyundai_reenable_request_frames = 0
     self.logged_comm_issue = None
     self.not_running_prev = None
     self.experimental_mode = False
@@ -212,10 +216,73 @@ class SelfdriveD:
         set_offroad_alert("Offroad_DriverMonitoringUncertain", True)
         self.dm_uncertain_alerted = True
 
+    if self.CP.brand == 'hyundai' and self.slow_speed_engage:
+      if self.hyundai_cancel_reenable_cooldown_frames > 0:
+        self.hyundai_cancel_reenable_cooldown_frames -= 1
+      if self.hyundai_recent_cancel_frames > 0:
+        self.hyundai_recent_cancel_frames -= 1
+      if self.hyundai_reenable_request_frames > 0:
+        self.hyundai_reenable_request_frames -= 1
+      if self.enabled or CS.brakePressed or not CS.cruiseState.available:
+        self.hyundai_reenable_request_frames = 0
+
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:
       car_events = self.car_events.update(CS, self.CS_prev, self.sm['carControl']).to_msg()
+      if self.slow_speed_engage:
+        filtered_events = {"belowEngageSpeed", "speedTooLow"}
+        if self.CP.brand == 'hyundai':
+          filtered_events.add("wrongCarMode")
+          if self.hyundai_recent_cancel_frames == 0:
+            filtered_events.add("pcmDisable")
+          interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
+          active_pandas = [ps for ps in self.sm['pandaStates'] if ps.safetyModel not in IGNORED_SAFETY_MODES]
+          hyundai_cancel_pressed = any(be.type == ButtonType.cancel for be in CS.buttonEvents)
+          hyundai_reenable_pressed = any(be.type in (ButtonType.accelCruise, ButtonType.decelCruise, ButtonType.resumeCruise)
+                                         for be in CS.buttonEvents)
+          if hyundai_cancel_pressed:
+            self.hyundai_cancel_reenable_cooldown_frames = int(1.0 / DT_CTRL)
+            self.hyundai_recent_cancel_frames = int(1.5 / DT_CTRL)
+            self.hyundai_reenable_request_frames = 0
+
+          if hyundai_reenable_pressed and not self.enabled and CS.cruiseState.available and not CS.brakePressed:
+            self.hyundai_reenable_request_frames = int(2.5 / DT_CTRL)
+
+          hyundai_pandas_healthy = len(active_pandas) > 0 and all((not ps.safetyRxChecksInvalid) and len(ps.faults) == 0
+                                                                  for ps in active_pandas)
+          hyundai_interrupt_rate_can2_only = interrupt_rate_can2_fault is not None and len(active_pandas) > 0 and all(
+            (not ps.safetyRxChecksInvalid) and len(ps.faults) > 0 and all(f == interrupt_rate_can2_fault for f in ps.faults)
+            for ps in active_pandas
+          )
+
+          if ((not CS.cruiseState.enabled) or (not hyundai_pandas_healthy) or
+              hyundai_interrupt_rate_can2_only or self.hyundai_cancel_reenable_cooldown_frames > 0):
+            filtered_events.add("buttonEnable")
+
+          low_speed_interrupt_rate_case = CS.vEgo < 11.11 and hyundai_interrupt_rate_can2_only
+          if CS.vEgo < (self.CP.minSteerSpeed + 0.5) or low_speed_interrupt_rate_case:
+            filtered_events.add("steerTempUnavailable")
+            filtered_events.add("steerTempUnavailableSilent")
+        car_events = [e for e in car_events if str(e.name) not in filtered_events]
       self.events.add_from_msg(car_events)
+
+      if (self.slow_speed_engage and self.CP.brand == 'hyundai' and CS.cruiseState.available and
+          CS.cruiseState.enabled and not self.enabled and not CS.brakePressed):
+        active_pandas = [ps for ps in self.sm['pandaStates'] if ps.safetyModel not in IGNORED_SAFETY_MODES]
+        interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
+        hyundai_pandas_healthy = len(active_pandas) > 0 and all((not ps.safetyRxChecksInvalid) and len(ps.faults) == 0
+                                                                for ps in active_pandas)
+        hyundai_interrupt_rate_can2_only = interrupt_rate_can2_fault is not None and len(active_pandas) > 0 and all(
+          len(ps.faults) > 0 and all(f == interrupt_rate_can2_fault for f in ps.faults)
+          for ps in active_pandas
+        )
+        allow_button_reenable = hyundai_pandas_healthy and (not hyundai_interrupt_rate_can2_only) and self.hyundai_cancel_reenable_cooldown_frames == 0
+        button_reenable_pressed = any(be.type in (ButtonType.accelCruise, ButtonType.decelCruise, ButtonType.resumeCruise)
+                                      for be in CS.buttonEvents)
+        pending_reenable = self.hyundai_reenable_request_frames > 0
+        if allow_button_reenable and (button_reenable_pressed or pending_reenable):
+          self.events.add(EventName.buttonEnable)
+          self.hyundai_reenable_request_frames = 0
 
       if self.CP.notCar:
         # wait for everything to init first
@@ -224,9 +291,19 @@ class SelfdriveD:
           self.events.add(EventName.pcmEnable)
 
       # Disable on rising edge of accelerator or brake. Also disable on brake when speed > 0
-      if (CS.gasPressed and not self.CS_prev.gasPressed and self.disengage_on_accelerator) or \
-        (CS.brakePressed and (not self.CS_prev.brakePressed or not CS.standstill)) or \
-        (CS.regenBraking and (not self.CS_prev.regenBraking or not CS.standstill)):
+      brake_pressed = CS.brakePressed and (not self.CS_prev.brakePressed or not CS.standstill)
+      if self.CP.brand == 'hyundai' and self.slow_speed_engage:
+        brake_pressed = CS.brakePressed and not self.CS_prev.brakePressed
+
+      pedal_pressed = (CS.gasPressed and not self.CS_prev.gasPressed and self.disengage_on_accelerator) or \
+                      brake_pressed or \
+                      (CS.regenBraking and (not self.CS_prev.regenBraking or not CS.standstill))
+
+      if self.CP.brand == 'hyundai' and self.slow_speed_engage:
+        self.hyundai_pedal_pressed_frames = self.hyundai_pedal_pressed_frames + 1 if pedal_pressed else 0
+        if self.hyundai_pedal_pressed_frames >= 2:
+          self.events.add(EventName.pedalPressed)
+      elif pedal_pressed:
         self.events.add(EventName.pedalPressed)
 
     # Create events for temperature, disk space, and memory
@@ -299,17 +376,38 @@ class SelfdriveD:
                                                     LaneChangeState.laneChangeFinishing):
       self.events.add(EventName.laneChange)
 
+    interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
     for i, pandaState in enumerate(self.sm['pandaStates']):
       # All pandas must match the list of safetyConfigs, and if outside this list, must be silent or noOutput
+      model_mismatch = False
+      param_mismatch = False
+      alt_exp_mismatch = False
       if i < len(self.CP.safetyConfigs):
-        safety_mismatch = pandaState.safetyModel != self.CP.safetyConfigs[i].safetyModel or \
-                          pandaState.safetyParam != self.CP.safetyConfigs[i].safetyParam or \
-                          pandaState.alternativeExperience != self.CP.alternativeExperience
+        model_mismatch = pandaState.safetyModel != self.CP.safetyConfigs[i].safetyModel
+        param_mismatch = pandaState.safetyParam != self.CP.safetyConfigs[i].safetyParam
+        alt_exp_mismatch = pandaState.alternativeExperience != self.CP.alternativeExperience
+        safety_mismatch = model_mismatch or param_mismatch or alt_exp_mismatch
       else:
         safety_mismatch = pandaState.safetyModel not in IGNORED_SAFETY_MODES
 
       # safety mismatch allows some time for pandad to set the safety mode and publish it back from panda
-      if (safety_mismatch and self.sm.frame*DT_CTRL > 10.) or pandaState.safetyRxChecksInvalid or self.mismatch_counter >= 200:
+      mismatch_counter_limit = 400 if (self.CP.brand == 'hyundai' and self.slow_speed_engage) else 200
+      alt_exp_only_mismatch = alt_exp_mismatch and not model_mismatch and not param_mismatch
+      alt_exp_grace_s = 30.0 if (self.CP.brand == 'hyundai' and self.slow_speed_engage) else 10.0
+      safety_mismatch_trigger = safety_mismatch and self.sm.frame * DT_CTRL > (alt_exp_grace_s if alt_exp_only_mismatch else 10.0)
+
+      interrupt_rate_can2_only = (
+        self.CP.brand == 'hyundai' and self.slow_speed_engage and
+        CS.vEgo < 8.33 and
+        self.hyundai_controls_blocked_frames < int(0.7 / DT_CTRL) and
+        interrupt_rate_can2_fault is not None and len(pandaState.faults) > 0 and
+        all(f == interrupt_rate_can2_fault for f in pandaState.faults)
+      )
+      mismatch_counter_trigger = self.mismatch_counter >= mismatch_counter_limit
+      if interrupt_rate_can2_only and not safety_mismatch and not pandaState.safetyRxChecksInvalid:
+        mismatch_counter_trigger = False
+
+      if safety_mismatch_trigger or pandaState.safetyRxChecksInvalid or mismatch_counter_trigger:
         self.events.add(EventName.controlsMismatch)
 
       if log.PandaState.FaultType.relayMalfunction in pandaState.faults:
@@ -474,9 +572,30 @@ class SelfdriveD:
       self.mismatch_counter = 0
 
     # All pandas not in silent mode must have controlsAllowed when openpilot is enabled
-    if self.enabled and any(not ps.controlsAllowed for ps in self.sm['pandaStates']
-           if ps.safetyModel not in IGNORED_SAFETY_MODES):
+    controls_mismatch_now = self.enabled and any(not ps.controlsAllowed for ps in self.sm['pandaStates']
+                                                 if ps.safetyModel not in IGNORED_SAFETY_MODES)
+    hyundai_interrupt_rate_can2_only = False
+    hyundai_interrupt_rate_can2_timeout_frames = int(0.7 / DT_CTRL)
+    if controls_mismatch_now and self.CP.brand == 'hyundai' and self.slow_speed_engage:
+      interrupt_rate_can2_fault = getattr(log.PandaState.FaultType, 'interruptRateCan2', None)
+      if interrupt_rate_can2_fault is not None:
+        active_pandas = [ps for ps in self.sm['pandaStates'] if ps.safetyModel not in IGNORED_SAFETY_MODES]
+        hyundai_interrupt_rate_can2_only = CS.vEgo < 8.33 and len(active_pandas) > 0 and all(
+          (not ps.controlsAllowed) and len(ps.faults) > 0 and all(f == interrupt_rate_can2_fault for f in ps.faults)
+          for ps in active_pandas
+        )
+
+    if controls_mismatch_now and hyundai_interrupt_rate_can2_only:
+      self.hyundai_controls_blocked_frames += 1
+      if self.hyundai_controls_blocked_frames >= hyundai_interrupt_rate_can2_timeout_frames:
+        hyundai_interrupt_rate_can2_only = False
+    else:
+      self.hyundai_controls_blocked_frames = 0
+
+    if controls_mismatch_now and not hyundai_interrupt_rate_can2_only:
       self.mismatch_counter += 1
+    elif not controls_mismatch_now or hyundai_interrupt_rate_can2_only:
+      self.mismatch_counter = 0
 
     return CS
 
@@ -539,7 +658,8 @@ class SelfdriveD:
       self.is_metric = self.params.get_bool("IsMetric")
       self.is_ldw_enabled = self.params.get_bool("IsLdwEnabled")
       self.disengage_on_accelerator = self.params.get_bool("DisengageOnAccelerator")
-      self.experimental_mode = self.params.get_bool("ExperimentalMode") and self.CP.openpilotLongitudinalControl
+      self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
+      self.experimental_mode = self.params.get_bool("ExperimentalMode")
       self.personality = self.params.get("LongitudinalPersonality", return_default=True)
       time.sleep(0.1)
 
