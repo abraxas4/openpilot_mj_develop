@@ -54,6 +54,20 @@
   .file{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.71rem;
         background:rgba(88,166,255,0.08);color:var(--accent);padding:2px 8px;border-radius:4px;}
 
+  /* 참고사항 박스 */
+  .note{background:#0d1f0d;border:1px solid #2ea043;border-left:4px solid #3fb950;
+        border-radius:0 8px 8px 0;padding:16px 20px;margin:16px 0;}
+  .note-title{font-size:0.78rem;font-weight:700;color:#3fb950;
+               text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;}
+  .note p{color:#a5d6a7;font-size:0.83rem;margin-bottom:6px;}
+  .note pre{background:#060e06;border-color:#2ea043;color:#a5d6a7;}
+  .note ul{margin-left:18px;margin-top:4px;}
+  .note li{color:#a5d6a7;font-size:0.83rem;margin-bottom:4px;}
+  .note strong{color:#e6edf3;}
+  .note code{background:rgba(63,185,80,0.15);color:#3fb950;padding:1px 5px;
+              border-radius:3px;font-size:0.78rem;
+              font-family:'SFMono-Regular',Consolas,monospace;}
+
   footer{margin-top:60px;padding-top:16px;border-top:1px solid var(--border);
          color:var(--muted);font-size:0.78rem;text-align:center;}
 </style>
@@ -104,6 +118,39 @@ ls -lt /data/media/0/realdata/ | head -10</pre>
     </div>
   </div>
 
+  <div class="note">
+    <div class="note-title">📁 참고사항 — openpilot 로그는 여러 종류의 파일로 나뉩니다</div>
+    <p>단순한 텍스트 로그 파일 1개가 아닙니다. 크게 두 영역으로 나뉩니다:</p>
+    <p><strong>① 드라이브 데이터 — <code>/data/media/0/realdata/</code></strong></p>
+    <ul>
+      <li><code>rlog.zst</code> — <strong>실시간 이진 로그</strong>. carState, modelV2, pandaStates, CAN 메시지 등 모든 cereal 메시지가 압축 저장. 1분(=1세그먼트)씩 분리.</li>
+      <li><code>qlog.zst</code> — rlog의 축약본. 일부 메시지만 포함(comma 서버 업로드용).</li>
+      <li><code>fcamera.hevc</code> — 전방 카메라 영상 (H.265 압축)</li>
+      <li><code>ecamera.hevc</code> — 광각 카메라 영상</li>
+      <li><code>dcamera.hevc</code> — 운전자 모니터링 카메라</li>
+      <li><code>qcamera.ts</code> — 저화질 미리보기 영상</li>
+    </ul>
+    <p>→ CAN 메시지는 <code>rlog.zst</code> 안에 <code>can</code> 타입으로 포함됩니다. 별도 파일이 아닙니다.</p>
+    <p><strong>② 애플리케이션 로그 — <code>/data/log/swaglog.XXXXXXXXXX</code></strong></p>
+    <ul>
+      <li>각 프로세스(manager, pandad, card 등)가 출력하는 <strong>JSON 줄 형식의 텍스트 로그</strong>.</li>
+      <li>ATM 메인보드의 UART 디버그 출력과 유사한 개념.</li>
+      <li>Python의 <code>logging</code> 모듈 출력이 여기 저장됨.</li>
+      <li>rlog는 실시간 데이터, swaglog는 개발자 디버그 메시지로 역할이 다릅니다.</li>
+    </ul>
+    <pre>
+/data/media/0/realdata/
+└── 000001db--caae7c20d0--0/   ← 1번째 60초 세그먼트
+    ├── rlog.zst      ← 이진 데이터 (carState, CAN, modelV2 등)
+    ├── qlog.zst      ← 축약 버전
+    ├── fcamera.hevc  ← 전방 카메라
+    ├── ecamera.hevc  ← 광각 카메라
+    └── qcamera.ts    ← 저화질 미리보기
+
+/data/log/
+└── swaglog.0000013104  ← JSON 텍스트 디버그 로그</pre>
+  </div>
+
   <div class="tl-item">
     <div class="tl-title"><span class="badge b-cmd">strings</span> swaglog 텍스트 추출</div>
     <div class="tl-body">
@@ -131,6 +178,47 @@ print(sorted(types_seen))
       <code>selfdriveState</code>, <code>modelV2</code> — 모두 없음.<br>
       → card.py가 carParams를 publish하지 못했음을 확인.
     </div>
+  </div>
+
+  <div class="note">
+    <div class="note-title">📡 참고사항 — "publish / subscribe" 란? 프로세스 간 통신 구조</div>
+    <p>openpilot은 여러 프로세스(card, selfdrived, modeld, controlsd 등)가 <strong>동시에 독립 실행</strong>됩니다.
+    이 프로세스들이 서로 데이터를 주고받는 방식이 <strong>pub-sub(발행-구독)</strong>입니다.</p>
+
+    <p><strong>파일 기반이 아닙니다 — 공유 메모리(shared memory) 기반</strong></p>
+    <p>파일에 쓰고 읽으면 disk I/O 때문에 너무 느립니다. 대신 RAM의 특정 영역을 여러 프로세스가 공유합니다.</p>
+    <ul>
+      <li><strong>Publisher(발행자)</strong>: 데이터를 공유 메모리의 토픽에 씀</li>
+      <li><strong>Subscriber(구독자)</strong>: 그 토픽을 읽음. 파일이 아닌 RAM이므로 마이크로초 단위 지연</li>
+      <li>기반 기술: <strong>msgq</strong> (openpilot 자체 개발 shared memory 큐) + <strong>cereal</strong> (Cap'n Proto 직렬화)</li>
+    </ul>
+
+    <pre>
+<strong>임베디드 비유 (ATM 기준):</strong>
+
+펌웨어 내부 인터럽트 + 링 버퍼:
+  ISR(인터럽트) → 링버퍼에 데이터 write
+  메인루프     → 링버퍼에서 read
+
+openpilot (프로세스 간):
+  card.py (publisher)  → msgq 공유메모리에 carParams 데이터 write
+  selfdrived (subscriber) → 같은 공유메모리에서 carParams read</pre>
+
+    <pre>
+<strong>openpilot 주요 토픽 예시:</strong>
+
+  토픽명           발행자       주요 구독자
+  ──────────────── ──────────── ──────────────────────────
+  carParams        card.py      selfdrived, controlsd
+  carState         card.py      selfdrived, controlsd, ui
+  modelV2          modeld       selfdrived, controlsd
+  selfdriveState   selfdrived   ui, controlsd, pandad
+  pandaStates      pandad       selfdrived, hardwared</pre>
+
+    <p>→ <strong>card.py가 crash하면</strong>: <code>carParams</code> 토픽에 데이터가 게시되지 않음.
+    selfdrived는 이 토픽을 기다리다가 차 인식이 안 됐다고 판단 → "openpilot unavailable" 표시.</p>
+    <p>이것이 <code>rlog.zst</code> 안에 <code>carParams</code> 메시지 타입이 없었던 이유입니다.
+    crash 발생 시점부터 해당 토픽의 메시지가 rlog에 기록되지 않습니다.</p>
   </div>
 
   <div class="tl-item">
