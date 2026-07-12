@@ -9,38 +9,31 @@
   *{margin:0;padding:0;box-sizing:border-box;}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
        background:var(--bg);color:var(--text);line-height:1.8;padding:48px 20px;}
-  .container{max-width:900px;margin:0 auto;}
+  .container{max-width:920px;margin:0 auto;}
   h1{font-size:1.7rem;margin-bottom:6px;
      background:linear-gradient(90deg,var(--red),var(--orange));
      -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
   .subtitle{color:var(--muted);margin-bottom:48px;font-size:0.88rem;}
   .subtitle code{background:var(--card);padding:2px 8px;border-radius:4px;
     font-size:0.8rem;border:1px solid var(--border);}
-
-  h2{font-size:1.15rem;margin:36px 0 12px;padding-bottom:8px;
-     border-bottom:1px solid var(--border);}
+  h2{font-size:1.15rem;margin:40px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
   h3{font-size:0.95rem;color:var(--accent);margin:16px 0 8px;}
   p{color:var(--muted);font-size:0.87rem;margin-bottom:8px;}
-
-  .card{background:var(--card);border:1px solid var(--border);
-        border-radius:8px;padding:18px 22px;margin:12px 0;}
-  .card p{margin-bottom:6px;}
-
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;
+        padding:18px 22px;margin:12px 0;}
   pre{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.76rem;
       background:#010409;border:1px solid var(--border);border-radius:6px;
       padding:14px;overflow-x:auto;color:var(--muted);margin:10px 0;line-height:1.6;}
   pre .a{color:var(--accent);} pre .g{color:var(--green);}
   pre .r{color:var(--red);}   pre .o{color:var(--orange);}
   pre .c{color:#6e7681;font-style:italic;}
-
   .badge{display:inline-block;font-size:0.68rem;font-weight:700;padding:2px 8px;
           border-radius:10px;text-transform:uppercase;margin-right:4px;}
   .b-symptom{background:rgba(248,81,73,0.12);color:var(--red);}
-  .b-tool  {background:rgba(88,166,255,0.15);color:var(--accent);}
-  .b-cmd   {background:rgba(210,153,34,0.15);color:var(--orange);}
-  .b-fix   {background:rgba(63,185,80,0.15);color:var(--green);}
-  .b-root  {background:rgba(188,140,255,0.15);color:var(--purple);}
-
+  .b-tool{background:rgba(88,166,255,0.15);color:var(--accent);}
+  .b-cmd{background:rgba(210,153,34,0.15);color:var(--orange);}
+  .b-fix{background:rgba(63,185,80,0.15);color:var(--green);}
+  .b-root{background:rgba(188,140,255,0.15);color:var(--purple);}
   .timeline{border-left:2px solid var(--border);margin:12px 0;padding-left:24px;}
   .tl-item{position:relative;margin-bottom:16px;}
   .tl-item::before{content:'';position:absolute;left:-29px;top:7px;
@@ -49,11 +42,9 @@
   .tl-item.bad::before{background:var(--red);}
   .tl-title{font-weight:600;font-size:0.88rem;margin-bottom:4px;}
   .tl-body{color:var(--muted);font-size:0.83rem;}
-
   .files{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;}
   .file{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.71rem;
         background:rgba(88,166,255,0.08);color:var(--accent);padding:2px 8px;border-radius:4px;}
-
   /* 참고사항 박스 */
   .note{background:#0d1f0d;border:1px solid #2ea043;border-left:4px solid #3fb950;
         border-radius:0 8px 8px 0;padding:16px 20px;margin:16px 0;}
@@ -67,9 +58,28 @@
   .note code{background:rgba(63,185,80,0.15);color:#3fb950;padding:1px 5px;
               border-radius:3px;font-size:0.78rem;
               font-family:'SFMono-Regular',Consolas,monospace;}
-
+  /* 튜토리얼 박스 */
+  .tutorial{background:#0d1423;border:2px solid var(--accent);
+             border-radius:8px;padding:20px 24px;margin:20px 0;}
+  .tutorial-title{font-size:0.85rem;font-weight:700;color:var(--accent);
+                   margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .tutorial-step{display:flex;gap:14px;margin-bottom:14px;}
+  .step-num{width:26px;height:26px;border-radius:50%;background:var(--accent);
+             color:#000;font-size:0.75rem;font-weight:700;display:flex;
+             align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+  .step-body{flex:1;}
+  .step-desc{color:var(--muted);font-size:0.83rem;margin-bottom:6px;}
+  .step-body pre{margin:0;}
+  .step-output{background:#010409;border:1px solid var(--border);border-radius:4px;
+                padding:10px;font-family:'SFMono-Regular',Consolas,monospace;
+                font-size:0.74rem;color:#6e7681;margin-top:6px;}
+  .step-output .key{color:var(--orange);font-weight:700;}
   footer{margin-top:60px;padding-top:16px;border-top:1px solid var(--border);
          color:var(--muted);font-size:0.78rem;text-align:center;}
+  table{width:100%;border-collapse:collapse;font-size:0.83rem;}
+  td,th{padding:7px 12px;border:1px solid var(--border);}
+  th{background:var(--card);color:var(--muted);}
+  tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
 </style>
 </head>
 <body>
@@ -79,8 +89,7 @@
 <p class="subtitle">
   발생: 2026-07-12 01:00 &middot;
   기기: comma 3x (tizi) &middot;
-  브랜치: <code>frogpilot_port</code> &middot;
-  커밋: <code>6d18287c</code>
+  브랜치: <code>frogpilot_port</code>
 </p>
 
 <!-- ====================================================== -->
@@ -90,13 +99,13 @@
 <div class="card">
   <p><span class="badge b-symptom">증상</span>
   차량 탑승 후 openpilot GUI 및 카메라 화면은 정상 표시. 그러나 <strong>"openpilot unavailable"</strong> 메시지가 계속 표시되며 engage 불가.</p>
-  <p>upstream merge (commaai/openpilot → frogpilot_port) 이후 첫 실차 테스트에서 발생.</p>
+  <p>upstream merge 이후 첫 실차 테스트에서 발생.</p>
 </div>
 
 <!-- ====================================================== -->
 <!-- 조사 과정 -->
 <!-- ====================================================== -->
-<h2>2. 조사 과정 &amp; 사용 도구</h2>
+<h2>2. 조사 과정</h2>
 
 <div class="timeline">
 
@@ -109,12 +118,12 @@
   </div>
 
   <div class="tl-item">
-    <div class="tl-title"><span class="badge b-cmd">ls</span> swaglog 목록 확인</div>
+    <div class="tl-title"><span class="badge b-cmd">ls</span> 최신 로그 파일 파악</div>
     <div class="tl-body">
-      가장 최근 운전 세션의 로그를 파악.
+      언제 드라이브가 있었는지, 어떤 로그를 봐야 하는지 파악.
       <pre>ls -lt /data/log/ | head -10
 ls -lt /data/media/0/realdata/ | head -10</pre>
-      <strong>결과:</strong> 최신 드라이브 세그먼트 = <code>000001db--caae7c20d0--0,1</code> (Jul 12 00:55~00:56)
+      <strong>결과:</strong> 최신 드라이브 세그먼트 <code>000001db--caae7c20d0--0,1</code>
     </div>
   </div>
 
@@ -124,203 +133,327 @@ ls -lt /data/media/0/realdata/ | head -10</pre>
     <p><strong>① 드라이브 데이터 — <code>/data/media/0/realdata/</code></strong></p>
     <ul>
       <li><code>rlog.zst</code> — <strong>실시간 이진 로그</strong>. carState, modelV2, pandaStates, CAN 메시지 등 모든 cereal 메시지가 압축 저장. 1분(=1세그먼트)씩 분리.</li>
-      <li><code>qlog.zst</code> — rlog의 축약본. 일부 메시지만 포함(comma 서버 업로드용).</li>
-      <li><code>fcamera.hevc</code> — 전방 카메라 영상 (H.265 압축)</li>
-      <li><code>ecamera.hevc</code> — 광각 카메라 영상</li>
-      <li><code>dcamera.hevc</code> — 운전자 모니터링 카메라</li>
-      <li><code>qcamera.ts</code> — 저화질 미리보기 영상</li>
+      <li><code>qlog.zst</code> — rlog의 축약본 (comma 서버 업로드용).</li>
+      <li><code>fcamera.hevc</code> — 전방 카메라 영상 / <code>ecamera.hevc</code> — 광각 카메라</li>
     </ul>
-    <p>→ CAN 메시지는 <code>rlog.zst</code> 안에 <code>can</code> 타입으로 포함됩니다. 별도 파일이 아닙니다.</p>
+    <p>→ CAN 메시지는 <code>rlog.zst</code> 안에 <code>can</code> 타입으로 포함됩니다.</p>
     <p><strong>② 애플리케이션 로그 — <code>/data/log/swaglog.XXXXXXXXXX</code></strong></p>
     <ul>
       <li>각 프로세스(manager, pandad, card 등)가 출력하는 <strong>JSON 줄 형식의 텍스트 로그</strong>.</li>
-      <li>ATM 메인보드의 UART 디버그 출력과 유사한 개념.</li>
-      <li>Python의 <code>logging</code> 모듈 출력이 여기 저장됨.</li>
-      <li>rlog는 실시간 데이터, swaglog는 개발자 디버그 메시지로 역할이 다릅니다.</li>
+      <li>rlog는 실시간 데이터, swaglog는 개발자 디버그 메시지 (역할이 다릅니다).</li>
     </ul>
     <pre>
-/data/media/0/realdata/
-└── 000001db--caae7c20d0--0/   ← 1번째 60초 세그먼트
-    ├── rlog.zst      ← 이진 데이터 (carState, CAN, modelV2 등)
-    ├── qlog.zst      ← 축약 버전
-    ├── fcamera.hevc  ← 전방 카메라
-    ├── ecamera.hevc  ← 광각 카메라
-    └── qcamera.ts    ← 저화질 미리보기
+/data/media/0/realdata/000001db--caae7c20d0--0/
+├── rlog.zst      ← 이진 데이터 (carState, CAN, modelV2 등 모두)
+├── fcamera.hevc  ← 전방 카메라 영상
+└── qlog.zst      ← 축약본
 
-/data/log/
-└── swaglog.0000013104  ← JSON 텍스트 디버그 로그</pre>
+/data/log/swaglog.0000013104  ← JSON 텍스트 디버그 로그</pre>
   </div>
 
   <div class="tl-item">
     <div class="tl-title"><span class="badge b-cmd">strings</span> swaglog 텍스트 추출</div>
     <div class="tl-body">
-      swaglog는 msgpack 바이너리. msgpack 모듈이 없어 <code>strings</code> 명령으로 읽을 수 있는 텍스트 추출.
+      swaglog는 msgpack 바이너리. <code>strings</code>로 읽을 수 있는 텍스트만 추출.
       <pre>strings /data/log/swaglog.0000013104 | grep -iE "unavail|error|harness|fingerprint"</pre>
-      panda 상태 확인: <code>harnessStatus: "notConnected"</code>, <code>ignitionLine: false</code>
-      → 이 로그는 오프로드(차 밖) 시점이었음. 별도 확인 필요.
+      panda 상태 확인: <code>harnessStatus: "notConnected"</code>
     </div>
   </div>
 
   <div class="tl-item">
-    <div class="tl-title"><span class="badge b-tool">openpilot LogReader</span> rlog 분석</div>
+    <div class="tl-title"><span class="badge b-tool">openpilot LogReader</span> rlog 메시지 타입 분석</div>
     <div class="tl-body">
-      openpilot 자체 라이브러리로 압축 rlog를 파싱하여 메시지 타입 확인.
-      <pre>python3 -c "
+      openpilot 자체 라이브러리로 압축 rlog를 파싱, 어떤 타입의 메시지가 있는지 확인.
+      <pre>export PYTHONPATH=/data/openpilot
+export PATH=/usr/local/venv/bin:/usr/bin:/bin
+python3 -c "
 from openpilot.tools.lib.logreader import LogReader
-lr = LogReader(\"/data/media/0/realdata/000001db--caae7c20d0--0/rlog.zst\")
+lr = LogReader('/data/media/0/realdata/000001db--caae7c20d0--0/rlog.zst')
 types_seen = set()
 for msg in lr:
     types_seen.add(msg.which())
 print(sorted(types_seen))
 "</pre>
-      <strong>결과 (주목할 부재):</strong>
+      <strong>결과 — 주목할 부재:</strong>
       <code>carParams</code>, <code>carState</code>, <code>controlsState</code>,
       <code>selfdriveState</code>, <code>modelV2</code> — 모두 없음.<br>
-      → card.py가 carParams를 publish하지 못했음을 확인.
+      → card.py가 carParams를 publish하지 못했음.
     </div>
   </div>
 
   <div class="note">
     <div class="note-title">📡 참고사항 — "publish / subscribe" 란? 프로세스 간 통신 구조</div>
-    <p>openpilot은 여러 프로세스(card, selfdrived, modeld, controlsd 등)가 <strong>동시에 독립 실행</strong>됩니다.
-    이 프로세스들이 서로 데이터를 주고받는 방식이 <strong>pub-sub(발행-구독)</strong>입니다.</p>
-
+    <p>openpilot은 여러 프로세스(card, selfdrived, modeld 등)가 <strong>동시에 독립 실행</strong>됩니다. 이 프로세스들이 서로 데이터를 주고받는 방식이 <strong>pub-sub(발행-구독)</strong>입니다.</p>
     <p><strong>파일 기반이 아닙니다 — 공유 메모리(shared memory) 기반</strong></p>
-    <p>파일에 쓰고 읽으면 disk I/O 때문에 너무 느립니다. 대신 RAM의 특정 영역을 여러 프로세스가 공유합니다.</p>
     <ul>
       <li><strong>Publisher(발행자)</strong>: 데이터를 공유 메모리의 토픽에 씀</li>
-      <li><strong>Subscriber(구독자)</strong>: 그 토픽을 읽음. 파일이 아닌 RAM이므로 마이크로초 단위 지연</li>
-      <li>기반 기술: <strong>msgq</strong> (openpilot 자체 개발 shared memory 큐) + <strong>cereal</strong> (Cap'n Proto 직렬화)</li>
+      <li><strong>Subscriber(구독자)</strong>: 그 토픽을 읽음. RAM이므로 마이크로초 단위 지연</li>
+      <li>기반 기술: <strong>msgq</strong> (shared memory 큐) + <strong>cereal</strong> (Cap'n Proto 직렬화)</li>
     </ul>
-
     <pre>
-<strong>임베디드 비유 (ATM 기준):</strong>
-
-펌웨어 내부 인터럽트 + 링 버퍼:
-  ISR(인터럽트) → 링버퍼에 데이터 write
-  메인루프     → 링버퍼에서 read
+임베디드 비유 (ATM 기준):
+  ISR → 링버퍼 write → 메인루프 read  (프로세스 내부)
 
 openpilot (프로세스 간):
-  card.py (publisher)  → msgq 공유메모리에 carParams 데이터 write
-  selfdrived (subscriber) → 같은 공유메모리에서 carParams read</pre>
-
-    <pre>
-<strong>openpilot 주요 토픽 예시:</strong>
-
-  토픽명           발행자       주요 구독자
-  ──────────────── ──────────── ──────────────────────────
-  carParams        card.py      selfdrived, controlsd
-  carState         card.py      selfdrived, controlsd, ui
-  modelV2          modeld       selfdrived, controlsd
-  selfdriveState   selfdrived   ui, controlsd, pandad
-  pandaStates      pandad       selfdrived, hardwared</pre>
-
-    <p>→ <strong>card.py가 crash하면</strong>: <code>carParams</code> 토픽에 데이터가 게시되지 않음.
-    selfdrived는 이 토픽을 기다리다가 차 인식이 안 됐다고 판단 → "openpilot unavailable" 표시.</p>
-    <p>이것이 <code>rlog.zst</code> 안에 <code>carParams</code> 메시지 타입이 없었던 이유입니다.
-    crash 발생 시점부터 해당 토픽의 메시지가 rlog에 기록되지 않습니다.</p>
+  card.py       → msgq 공유메모리에 carParams write  (publish)
+  selfdrived    → 같은 공유메모리에서 carParams read  (subscribe)
+  rlog.zst에도 기록됨 → 나중에 분석 가능</pre>
+    <p>→ <strong>card.py가 crash하면</strong>: <code>carParams</code> 토픽이 게시되지 않음 → selfdrived가 차 인식 못함 → "openpilot unavailable". rlog에도 carParams 메시지 타입 자체가 없게 됨.</p>
   </div>
 
   <div class="tl-item">
-    <div class="tl-title"><span class="badge b-tool">LogReader</span> errorLogMessage 추출</div>
+    <div class="tl-title"><span class="badge b-tool">LogReader</span> errorLogMessage에서 Traceback 추출</div>
     <div class="tl-body">
-      rlog 안의 에러 메시지를 daemon 별로 필터링.
+      rlog 안의 에러 로그를 daemon 별로 필터링해 crash 원인 파악.
       <pre>python3 -c "
-for msg in LogReader(rlog):
+import json
+from openpilot.tools.lib.logreader import LogReader
+lr = LogReader('/data/media/0/realdata/000001db--caae7c20d0--0/rlog.zst')
+for msg in lr:
     if msg.which() == 'errorLogMessage':
         d = json.loads(msg.errorLogMessage)
         if 'card' in d.get('ctx',{}).get('daemon',''):
-            print(d.get('msg'), d.get('exc_info','')[:500])
+            print(d.get('msg',''))
+            print(d.get('exc_info','')[:500])
 "</pre>
       <strong>결과 — fingerprint 성공 후 crash 발견:</strong>
       <pre class="r">
-[card] {'event': 'fingerprinted', 'car_fingerprint': 'HYUNDAI_AZERA_HEV_6TH_GEN', ...}
+[card] fingerprinted: HYUNDAI_AZERA_HEV_6TH_GEN ✓
 [card] crash
-Traceback (most recent call last):
-  File ".../card.py", line 123, in __init__
-    self.CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.ALWAYS_ON_LATERAL
 AttributeError: type object 'ALTERNATIVE_EXPERIENCE' has no attribute 'ALWAYS_ON_LATERAL'</pre>
     </div>
   </div>
 
   <div class="tl-item ok">
-    <div class="tl-title"><span class="badge b-root">근본 원인 파악</span></div>
+    <div class="tl-title"><span class="badge b-fix">fix 1</span> ALWAYS_ON_LATERAL 상수 복원</div>
     <div class="tl-body">
-      upstream opendbc (<code>930eeb14</code>)에서 <code>ALWAYS_ON_LATERAL</code> 상수 제거됨.
+      upstream opendbc가 이 상수를 제거했음. <code>abraxas4/opendbc</code>에 재추가.
+      <pre class="g">
+# opendbc_repo/opendbc/safety/__init__.py
+ALWAYS_ON_LATERAL = 128</pre>
+    </div>
+  </div>
+
+  <div class="tl-item bad">
+    <div class="tl-title"><span class="badge b-symptom">여전히 unavailable</span> fix 1 후에도 재발</div>
+    <div class="tl-body">
+      realdata 새 세그먼트 없음. 소프트웨어 문제 아닐 가능성 확인.
+    </div>
+  </div>
+
+  <div class="tl-item">
+    <div class="tl-title"><span class="badge b-cmd">messaging.SubMaster</span> 실시간 panda 상태 조회</div>
+    <div class="tl-body">
+      파일이 아닌 현재 운영 중인 pub-sub 채널에서 직접 읽기.
       <pre>python3 -c "
-from opendbc.safety import ALTERNATIVE_EXPERIENCE
-print([x for x in dir(ALTERNATIVE_EXPERIENCE) if not x.startswith('_')])
-"
-<span class="g"># 결과: ['ALLOW_AEB', 'DEFAULT', 'DISABLE_STOCK_AEB', 'RAISE_LONGITUDINAL_LIMITS_TO_ISO_MAX']
-# ALWAYS_ON_LATERAL 없음!</span></pre>
+from openpilot.cereal import messaging
+sm = messaging.SubMaster(['pandaStates','selfdriveState'])
+sm.update(2000)
+p = sm['pandaStates'][0]
+print('ignitionLine:', p.ignitionLine)
+print('harnessStatus:', p.harnessStatus)
+print('voltage mV:', p.voltage)
+print('safetyModel:', p.safetyModel)
+"</pre>
+      <strong>결과 — 소프트웨어 문제 아님 확인:</strong>
+      <pre>
+ignitionLine:  False
+harnessStatus: <span class="r">notConnected</span>
+voltage mV:    <span class="r">4807</span>   ← USB 전압 (~5V). 정상은 12,000~14,000 mV
+safetyModel:   noOutput</pre>
+    </div>
+  </div>
+
+  <div class="tl-item bad">
+    <div class="tl-title"><span class="badge b-root">최종 원인</span> OBD 하네스 미연결 (하드웨어)</div>
+    <div class="tl-body">
+      전압 4.8V = USB 전원만. 차량 OBD 하네스 미연결 또는 시동 미입력.<br>
+      → openpilot이 차량이 없다고 판단 → unavailable 표시.
     </div>
   </div>
 
 </div>
 
 <!-- ====================================================== -->
-<!-- 근본 원인 -->
+<!-- 체크리스트 -->
 <!-- ====================================================== -->
-<h2>3. 근본 원인</h2>
+<h2>3. 하드웨어 체크리스트</h2>
 <div class="card">
-  <h3>흐름</h3>
-  <pre>
-차 시동 ON
-  ↓
-card.py 시작 → ISO-TP 쿼리 (일부 ECU는 0x7f22 negative response → 정상)
-  ↓
-CAN fingerprint 성공: HYUNDAI_AZERA_HEV_6TH_GEN ✓
-  ↓
-car.py __init__() 에서 CP 설정 시:
-  self.CP.alternativeExperience |= <span class="r">ALTERNATIVE_EXPERIENCE.ALWAYS_ON_LATERAL</span>
-  ↓
-<span class="r">AttributeError: 'ALWAYS_ON_LATERAL' not found → crash</span>
-  ↓
-carParams 메시지 미전송 → selfdrived가 car 인식 못함
-  ↓
-<span class="r">"openpilot unavailable" 표시</span>
-</pre>
-
-  <h3>왜 제거됐나?</h3>
-  <p>
-  upstream commaai/opendbc (<code>930eeb14</code>)에서 panda safety 코드 재구성 시
-  <code>ALWAYS_ON_LATERAL</code> 상수가 더 이상 쓰이지 않는 것으로 판단해 제거.
-  우리 <code>card.py</code>는 FrogPilot 포팅 시 추가한 AOL 코드에서 이 상수를 참조 중이었음.
-  </p>
-  <p>
-  panda 펌웨어(<code>9da8467a</code>)는 이 비트를 실제로 체크하지 않음.
-  실제 AOL 동작은 <code>pandad.cc</code>의 heartbeat 로직으로 제어.
-  상수가 없으면 crash만 발생하고 기능적 영향은 없음.
-  </p>
+  <table>
+    <tr><th>확인 항목</th><th>정상</th><th>문제 시</th></tr>
+    <tr>
+      <td>OBD-II 하네스 연결</td>
+      <td>차량 대시보드 아래 OBD 포트에 단단히 체결</td>
+      <td>느슨하거나 빠짐 → 재연결</td>
+    </tr>
+    <tr>
+      <td>voltage (panda)</td>
+      <td>12,000~14,000 mV (시동 시)</td>
+      <td>4,800 mV = USB만 공급 중</td>
+    </tr>
+    <tr>
+      <td>시동 상태</td>
+      <td>ENGINE ON (ACC 아님)</td>
+      <td>ACC만 켜면 ignitionLine = False</td>
+    </tr>
+    <tr>
+      <td>harnessStatus</td>
+      <td>connected</td>
+      <td>notConnected = 하네스 물리적 미연결</td>
+    </tr>
+  </table>
 </div>
 
 <!-- ====================================================== -->
-<!-- 수정 -->
+<!-- 튜토리얼: 사용한 명령어 모음 -->
 <!-- ====================================================== -->
-<h2>4. 수정</h2>
-<div class="card">
-  <h3><span class="badge b-fix">fix</span> abraxas4/opendbc — ALWAYS_ON_LATERAL 상수 복원</h3>
-  <p>panda 펌웨어가 체크하지 않는 비트이므로, 충돌하지 않는 값(128 = 0x80)으로 복원.</p>
-  <pre>
-<span class="c"># opendbc_repo/opendbc/safety/__init__.py</span>
-class ALTERNATIVE_EXPERIENCE:
-  DEFAULT = 0
-  DISABLE_STOCK_AEB = 2
-  RAISE_LONGITUDINAL_LIMITS_TO_ISO_MAX = 8
-  ALLOW_AEB = 16
-<span class="g">+ ALWAYS_ON_LATERAL = 128  # enable AOL in panda safety</span></pre>
-  <div class="files">
-    <span class="file">opendbc_repo/opendbc/safety/__init__.py</span>
+<h2>4. 따라하기 — 진단에 사용한 명령어 전체</h2>
+<p>SSH로 기기에 접속한 후 아래 순서로 실행하면 됩니다. 모든 명령은 기기 터미널에서 실행.</p>
+
+<div class="tutorial">
+  <div class="tutorial-title">🖥️ STEP 0 — SSH 접속 (PC Windows 터미널에서)</div>
+  <div class="tutorial-step">
+    <div class="step-num">0</div>
+    <div class="step-body">
+      <div class="step-desc">PC에서 기기로 원격 접속. IP는 WiFi에서 확인 (설정 → 네트워크).</div>
+      <pre>ssh -i ~/.ssh/openpilot_ed25519 comma@192.168.35.191</pre>
+    </div>
   </div>
 </div>
 
-<div class="card">
-  <h3>기기 적용 방법</h3>
-  <pre>
-cd /data/openpilot/opendbc_repo
-git fetch origin
-git checkout origin/frogpilot_port   <span class="c"># f7639c70</span>
-sudo reboot</pre>
+<div class="tutorial">
+  <div class="tutorial-title">📁 STEP 1 — 최신 로그 파일 위치 파악</div>
+  <div class="tutorial-step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-desc">가장 최근 드라이브 세그먼트와 swaglog 파일을 확인합니다.</div>
+      <pre><span class="c"># 최근 드라이브 세그먼트 목록 (수정 시간 순)</span>
+ls -lt /data/media/0/realdata/ | head -10
+
+<span class="c"># swaglog(텍스트 디버그 로그) 목록</span>
+ls -lt /data/log/ | head -10</pre>
+      <div class="step-output">
+drwxr-xr-x  000001db--caae7c20d0--1  Jul 12 00:56  ← 이게 최신 세그먼트
+drwxr-xr-x  000001db--caae7c20d0--0  Jul 12 00:55
+-rw-r--r--  swaglog.0000013125       Jul 12 01:24  ← 이게 최신 디버그 로그</div>
+    </div>
+  </div>
+</div>
+
+<div class="tutorial">
+  <div class="tutorial-title">🔍 STEP 2 — swaglog에서 에러 빠르게 검색</div>
+  <div class="tutorial-step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-desc"><code>strings</code>로 바이너리에서 텍스트만 뽑아 키워드 검색. 빠른 1차 확인용.</div>
+      <pre><span class="c"># 위에서 찾은 최신 swaglog 파일명을 사용</span>
+strings /data/log/swaglog.0000013125 | grep -iE "error|crash|fingerprint|harness|ignit" | head -30</pre>
+    </div>
+  </div>
+</div>
+
+<div class="tutorial">
+  <div class="tutorial-title">🔬 STEP 3 — rlog에서 메시지 타입 확인 (Python)</div>
+  <div class="tutorial-step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-desc">먼저 환경변수를 설정합니다. 이후 모든 python3 명령에 필요합니다.</div>
+      <pre>export PYTHONPATH=/data/openpilot
+export PATH=/usr/local/venv/bin:/usr/bin:/bin</pre>
+    </div>
+  </div>
+  <div class="tutorial-step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-desc">rlog에 어떤 타입의 메시지가 있는지 목록을 출력합니다. carParams, carState 등이 없으면 card.py가 제대로 동작하지 않은 것.</div>
+      <pre>python3 -c "
+from openpilot.tools.lib.logreader import LogReader
+<span class="c"># 위에서 찾은 최신 세그먼트 경로 사용</span>
+RLOG = '/data/media/0/realdata/000001db--caae7c20d0--0/rlog.zst'
+
+lr = LogReader(RLOG)
+types_seen = set()
+count = 0
+for msg in lr:
+    types_seen.add(msg.which())
+    count += 1
+print('총 메시지 수:', count)
+print('메시지 타입:', sorted(types_seen))
+"</pre>
+      <div class="step-output">
+총 메시지 수: 33659
+메시지 타입: ['accelerometer', 'can', 'clocks', ...]
+<span class="key">← carParams, carState, modelV2 없으면 card.py 미동작</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="tutorial">
+  <div class="tutorial-title">💥 STEP 4 — card.py crash 원인 추출</div>
+  <div class="tutorial-step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <div class="step-desc">rlog의 <code>errorLogMessage</code> 타입에서 card daemon의 Traceback을 추출합니다.</div>
+      <pre>python3 -c "
+import json
+from openpilot.tools.lib.logreader import LogReader
+
+RLOG = '/data/media/0/realdata/000001db--caae7c20d0--0/rlog.zst'
+lr = LogReader(RLOG)
+
+for msg in lr:
+    if msg.which() != 'errorLogMessage':
+        continue
+    try:
+        d = json.loads(msg.errorLogMessage)
+    except:
+        continue
+    daemon = d.get('ctx', {}).get('daemon', '')
+    m = str(d.get('msg', ''))
+    exc = d.get('exc_info', '')
+    <span class="c"># card daemon의 에러/crash만 출력</span>
+    if 'card' in daemon and ('crash' in m or exc):
+        print(f'[{daemon}] {m}')
+        if exc:
+            print(exc[:800])
+"</pre>
+      <div class="step-output">
+[card] fingerprinted: HYUNDAI_AZERA_HEV_6TH_GEN  ← 인식은 됨
+[card] crash
+Traceback:
+  AttributeError: 'ALTERNATIVE_EXPERIENCE' has no attribute 'ALWAYS_ON_LATERAL'
+<span class="key">← 이게 진짜 원인!</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="tutorial">
+  <div class="tutorial-title">📡 STEP 5 — 실시간 panda 상태 조회 (소프트웨어 문제 외 진단)</div>
+  <div class="tutorial-step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <div class="step-desc">현재 실행 중인 openpilot에서 직접 panda 상태를 읽습니다. 하드웨어 문제(하네스, 전압) 진단에 사용.</div>
+      <pre>python3 -c "
+from openpilot.cereal import messaging
+
+sm = messaging.SubMaster(['pandaStates', 'selfdriveState'])
+sm.update(2000)  <span class="c"># 2초 대기 후 읽기</span>
+
+ps = sm['pandaStates']
+if ps:
+    p = ps[0]
+    print('ignitionLine: ', p.ignitionLine)   <span class="c"># True = 시동 ON</span>
+    print('harnessStatus:', p.harnessStatus)  <span class="c"># connected 여야 정상</span>
+    print('voltage mV:   ', p.voltage)        <span class="c"># 12000~14000 mV 여야 정상</span>
+    print('safetyModel:  ', p.safetyModel)    <span class="c"># noOutput 이면 문제</span>
+"</pre>
+      <div class="step-output">
+ignitionLine:  False
+harnessStatus: <span class="key">notConnected  ← 하네스 미연결!</span>
+voltage mV:    <span class="key">4807          ← USB 전압(정상은 12000~14000)</span>
+safetyModel:   noOutput</div>
+    </div>
+  </div>
 </div>
 
 <!-- ====================================================== -->
@@ -328,31 +461,14 @@ sudo reboot</pre>
 <!-- ====================================================== -->
 <h2>5. 요약</h2>
 <div class="card">
-  <table style="width:100%;border-collapse:collapse;font-size:0.83rem;">
-    <tr>
-      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted);width:160px">증상</td>
-      <td style="padding:6px 10px;border:1px solid var(--border)">openpilot unavailable (차 인식 안 됨)</td>
-    </tr>
-    <tr style="background:rgba(255,255,255,0.02)">
-      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted)">진단 도구</td>
-      <td style="padding:6px 10px;border:1px solid var(--border)">SSH, strings, openpilot LogReader, python3</td>
-    </tr>
-    <tr>
-      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted)">핵심 명령</td>
-      <td style="padding:6px 10px;border:1px solid var(--border)">rlog errorLogMessage → exc_info Traceback 추출</td>
-    </tr>
-    <tr style="background:rgba(255,255,255,0.02)">
-      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted)">원인</td>
-      <td style="padding:6px 10px;border:1px solid var(--border)">opendbc 930eeb14에서 <code>ALWAYS_ON_LATERAL</code> 상수 제거 → card.py crash</td>
-    </tr>
-    <tr>
-      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted)">수정</td>
-      <td style="padding:6px 10px;border:1px solid var(--border)"><code>opendbc/safety/__init__.py</code>에 <code>ALWAYS_ON_LATERAL = 128</code> 복원</td>
-    </tr>
-    <tr style="background:rgba(255,255,255,0.02)">
-      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted)">push</td>
-      <td style="padding:6px 10px;border:1px solid var(--border)"><code>abraxas4/opendbc frogpilot_port</code> → <code>f7639c70</code></td>
-    </tr>
+  <table>
+    <tr><th>항목</th><th>내용</th></tr>
+    <tr><td>증상</td><td>openpilot unavailable (차 인식 안 됨)</td></tr>
+    <tr><td>1차 원인</td><td>card.py crash — <code>ALWAYS_ON_LATERAL</code> 상수 없음 (upstream opendbc에서 제거됨)</td></tr>
+    <tr><td>fix 1</td><td><code>opendbc/safety/__init__.py</code>에 <code>ALWAYS_ON_LATERAL = 128</code> 복원</td></tr>
+    <tr><td>2차 원인</td><td>OBD 하네스 미연결 or 시동 미입력 (하드웨어)</td></tr>
+    <tr><td>진단 도구</td><td>SSH, strings, openpilot LogReader, messaging.SubMaster</td></tr>
+    <tr><td>핵심 명령</td><td>rlog errorLogMessage → exc_info Traceback 추출, SubMaster로 실시간 panda 상태 확인</td></tr>
   </table>
 </div>
 
