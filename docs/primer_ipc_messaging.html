@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>openpilot 기초 — 프로세스, 통신(msgq), Cap’n Proto, 로그</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+        --accent:#58a6ff;--green:#3fb950;--red:#f85149;--orange:#d29922;--purple:#bc8cff;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.8;padding:48px 20px;}
+  .container{max-width:920px;margin:0 auto;}
+  h1{font-size:1.7rem;margin-bottom:6px;
+     background:linear-gradient(90deg,var(--accent),var(--purple));
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .subtitle{color:var(--muted);margin-bottom:36px;font-size:0.88rem;}
+  .subtitle code{background:var(--card);padding:2px 8px;border-radius:4px;
+    font-size:0.8rem;border:1px solid var(--border);}
+  h2{font-size:1.15rem;margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  h3{font-size:0.95rem;color:var(--accent);margin:18px 0 8px;}
+  p{color:var(--muted);font-size:0.87rem;margin-bottom:10px;}
+  ul,ol{margin:8px 0 14px 22px;color:var(--muted);font-size:0.87rem;}
+  li{margin-bottom:6px;}
+  strong{color:var(--text);}
+  code{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.82em;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;
+        padding:18px 22px;margin:14px 0;}
+  pre, .diagram{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.74rem;
+      background:#010409;border:1px solid var(--border);border-radius:6px;
+      padding:14px 16px;overflow-x:auto;color:var(--muted);margin:12px 0;line-height:1.55;
+      white-space:pre;}
+  pre .c{color:#6e7681;font-style:italic;}
+  pre .g{color:var(--green);}
+  pre .a{color:var(--accent);}
+  .note{background:#0d1f0d;border:1px solid #2ea043;border-left:4px solid #3fb950;
+        border-radius:0 8px 8px 0;padding:16px 20px;margin:16px 0;}
+  .note-title{font-size:0.78rem;font-weight:700;color:#3fb950;
+               text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;}
+  .note p,.note li{color:#a5d6a7;font-size:0.83rem;margin-bottom:6px;}
+  .note ul{margin-left:18px;}
+  .note strong{color:#e6edf3;}
+  .note code{background:rgba(63,185,80,0.15);color:#3fb950;padding:1px 5px;
+              border-radius:3px;font-size:0.78rem;}
+  .toc{background:var(--card);border:1px solid var(--border);border-radius:8px;
+       padding:16px 22px;margin:8px 0 28px;}
+  .toc a{color:var(--accent);text-decoration:none;font-size:0.85rem;}
+  .toc a:hover{text-decoration:underline;}
+  .toc ol{margin:6px 0 0 18px;}
+  .toc li{margin-bottom:4px;}
+  table{width:100%;border-collapse:collapse;font-size:0.83rem;margin:12px 0;}
+  td,th{padding:8px 12px;border:1px solid var(--border);vertical-align:top;text-align:left;}
+  th{background:var(--card);color:var(--muted);}
+  tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+  footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--border);
+         color:var(--muted);font-size:0.78rem;text-align:center;}
+  .badge{display:inline-block;font-size:0.68rem;font-weight:700;padding:2px 8px;
+          border-radius:10px;margin-right:4px;
+          background:rgba(88,166,255,0.15);color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>openpilot 기초 — 프로세스 · 통신 · Cap’n Proto · 로그</h1>
+<p class="subtitle">
+  초보자를 위한 런타임 구조 정리 &middot;
+  브랜치 <code>frogpilot_port</code> 기준 개념 문서 &middot;
+  (버그 픽스 일지가 아닌 학습용)
+</p>
+
+<div class="toc">
+  <strong style="color:var(--text);font-size:0.9rem;">목차</strong>
+  <ol>
+    <li><a href="#big-picture">한 줄로 보는 전체 그림</a></li>
+    <li><a href="#processes">여러 프로세스가 동시에 돈다</a></li>
+    <li><a href="#comm-vs-log">통신과 로그는 다르다</a></li>
+    <li><a href="#msgq">msgq = RAM 위의 메시지 큐</a></li>
+    <li><a href="#capnp">Cap’n Proto는 무엇인가</a></li>
+    <li><a href="#stack">바닥까지 레이어 스택</a></li>
+    <li><a href="#example">생성측 / 구독측 예제</a></li>
+    <li><a href="#logging">로그 파일은 어디에, 어떻게 남나</a></li>
+    <li><a href="#checklist">기억할 체크리스트</a></li>
+  </ol>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="big-picture">1. 한 줄로 보는 전체 그림</h2>
+<div class="card">
+  <p>
+    openpilot은 <strong>여러 독립 프로세스</strong>가 동시에 돌고,
+    서로 <strong>msgq(공유 메모리 링큐, RAM)</strong>로 메시지를 주고받습니다.
+    메시지 내용은 <strong>Cap’n Proto</strong>로 직렬화된 바이트입니다.
+    같은 메시지를 <strong>loggerd</strong>가 구독해 디스크 파일(<code>rlog</code>)로도 남깁니다.
+  </p>
+  <p>핵심 구분:</p>
+  <ul>
+    <li><strong>실시간 동작</strong> → msgq (RAM)</li>
+    <li><strong>나중에 분석</strong> → rlog / swaglog (디스크)</li>
+    <li><strong>*.capnp 파일</strong> → 스키마(설계도). 실시간 데이터를 파일로 공유하는 것이 아님</li>
+  </ul>
+</div>
+
+<div class="diagram">
+  card ──publish carState──▶ [msgq RAM] ──subscribe──▶ controlsd
+  controlsd ──publish carControl──▶ [msgq RAM] ──subscribe──▶ card ──CAN──▶ 차량
+                                      │
+                                      └──subscribe──▶ loggerd ──▶ rlog.zst (기록)
+</div>
+
+<!-- ====================================================== -->
+<h2 id="processes">2. 여러 프로세스가 동시에 돈다</h2>
+<p>
+하나의 거대 프로그램이 아닙니다. <code>manager</code>가 여러 <strong>daemon</strong>을 띄웁니다.
+대략 수십 개가 함께 동작합니다.
+</p>
+
+<table>
+  <tr><th>프로세스 (예)</th><th>역할</th></tr>
+  <tr><td><code>manager</code></td><td>나머지 프로세스 시작·감시</td></tr>
+  <tr><td><code>pandad</code></td><td>panda 보드, safety, heartbeat</td></tr>
+  <tr><td><code>card</code></td><td>차량 fingerprint, carState, CAN 송수신</td></tr>
+  <tr><td><code>controlsd</code></td><td>조향·가감속 제어 계산 (carControl 등)</td></tr>
+  <tr><td><code>selfdrived</code></td><td>engage/disengage, 이벤트·알림</td></tr>
+  <tr><td><code>modeld</code></td><td>카메라 → 경로/차선 추론</td></tr>
+  <tr><td><code>camerad</code> / <code>encoderd</code></td><td>촬영 / 영상 인코딩</td></tr>
+  <tr><td><code>loggerd</code> / <code>uploader</code></td><td>로그 기록 / 업로드</td></tr>
+  <tr><td><code>ui</code></td><td>화면</td></tr>
+</table>
+
+<p>프로세스 하나가 죽으면, 그 프로세스가 publish 해야 할 토픽이 통째로 사라집니다.
+예: <code>card</code> crash → <code>carState</code> 없음 → 상위 기능이 unavailable.</p>
+
+<!-- ====================================================== -->
+<h2 id="comm-vs-log">3. 통신과 로그는 다르다</h2>
+
+<div class="note">
+  <div class="note-title">가장 중요한 구분</div>
+  <p><strong>로그 파일은 프로세스끼리 읽고 동작하는 통신 수단이 아닙니다.</strong>
+  사람이 나중에 분석하려고 남기는 기록입니다.</p>
+  <p>실시간 통신은:</p>
+  <ul>
+    <li><strong>msgq</strong> — 공유 메모리 큐 (매우 빠름, 기기 내부)</li>
+    <li><strong>cereal / Cap’n Proto</strong> — 메시지 스키마와 직렬화 포맷</li>
+    <li>패턴: <strong>publish / subscribe</strong> (발행–구독)</li>
+  </ul>
+</div>
+
+<table>
+  <tr><th></th><th>통신 (실시간)</th><th>로그 (기록)</th></tr>
+  <tr>
+    <td>목적</td>
+    <td>지금 차를 제어</td>
+    <td>나중에 원인 분석·업로드</td>
+  </tr>
+  <tr>
+    <td>매체</td>
+    <td>RAM (msgq)</td>
+    <td>디스크 파일</td>
+  </tr>
+  <tr>
+    <td>실패 시</td>
+    <td>제어에 직접 영향</td>
+    <td>분석만 어려워짐 (이상적으로 제어와 분리)</td>
+  </tr>
+  <tr>
+    <td>서로 참조?</td>
+    <td>토픽으로 구독</td>
+    <td>로그끼리 통신하지 않음</td>
+  </tr>
+</table>
+
+<!-- ====================================================== -->
+<h2 id="msgq">4. msgq = RAM 위의 메시지 큐</h2>
+
+<h3>4.1 공유 메모리란?</h3>
+<p>
+<strong>네, RAM입니다.</strong> 디스크(SSD/eMMC에 오래 쓰는 파일)가 아닙니다.
+여러 프로세스가 <strong>같은 물리 메모리 페이지</strong>를 각자의 가상 주소 공간에 매핑(<code>mmap</code>)해서
+한쪽이 쓴 바이트를 다른 쪽이 곧바로 읽을 수 있습니다.
+</p>
+
+<div class="note">
+  <div class="note-title">/dev/shm 은 뭔가?</div>
+  <p>Linux에서 msgq는 대략 이런 경로를 씁니다:</p>
+  <pre>/dev/shm/msgq_carControl
+/dev/shm/msgq_carState
+…</pre>
+  <p><code>/dev/shm</code>은 파일처럼 보이지만 <strong>tmpfs</strong>입니다.
+  이름·권한은 파일 API로 다루고, 내용은 <strong>메모리(RAM)</strong>에 있습니다.
+  전원 끄면 사라집니다. “파일을 통해 디스크에 실시간 데이터를 실어 나른다”가 아닙니다.</p>
+</div>
+
+<h3>4.2 전역 구조체 하나? → 아니다. 토픽별 링큐</h3>
+<p>
+모든 프로세스가 거대한 공유 구조체를 같이 쓰는 방식이 아닙니다.
+<strong>토픽(이름)마다 별도의 링 버퍼</strong>가 있습니다.
+</p>
+
+<div class="diagram">
+[ RAM / msgq ]
+  carState 큐   ← card 가 publish (관례 ~100Hz)
+  carControl 큐 ← controlsd 가 publish
+  modelV2 큐    ← modeld 가 publish (관례 ~20Hz)
+  pandaStates …
+</div>
+
+<ul>
+  <li>발행자(publisher)는 자기 토픽 큐에 메시지를 넣음</li>
+  <li>구독자(subscriber)는 필요한 토픽만 구독</li>
+  <li>토픽당 <strong>writer 1명</strong>, reader는 여러 명 가능 (SPMC)</li>
+</ul>
+
+<h3>4.3 링 버퍼 레이아웃 (구현 관점)</h3>
+<p>토픽 하나당 대략:</p>
+<div class="diagram">
+┌─────────── header (메타) ───────────┐
+│ reader 수, write pointer, write uid  │
+│ reader별 read pointer / valid 플래그 │
+└──────────────────────────────────────┘
+┌─────────── data (링) ───────────────┐
+│ [size 8B][payload…][size][payload…]  │
+│ size == -1 이면 wrap (처음으로)      │
+└──────────────────────────────────────┘
+</div>
+
+<ul>
+  <li>쓰기는 write pointer를 전진</li>
+  <li>읽기는 자기 read pointer에서 size를 보고 payload를 <strong>복사(copy)</strong>한 뒤 전진</li>
+  <li>느린 reader가 너무 뒤처지면 valid가 깨지고, <strong>최신 위치로 reset</strong> (중간 메시지 drop)</li>
+  <li>제어용 구독은 보통 <strong>conflate</strong> (쌓인 것 중 최신 1개만 사용)</li>
+</ul>
+
+<p>
+큐 크기는 서비스 정의에 따라 다릅니다.
+예: 일반 토픽 약 250KB, CAN/큰 메시지 수 MB 단위
+(<code>openpilot/cereal/services.py</code>의 <code>QueueSize</code>).
+</p>
+
+<h3>4.4 “정해진 주소에 필드를 쓰나?”</h3>
+<table>
+  <tr><th>약속</th><th>내용</th></tr>
+  <tr><td>토픽 이름</td><td><code>"carControl"</code> → <code>/dev/shm/msgq_carControl</code></td></tr>
+  <tr><td>페이로드 포맷</td><td>Cap’n Proto <code>log.Event</code> 바이트</td></tr>
+  <tr><td>대략 주기</td><td><code>services.py</code>의 frequency (관례 + alive 검사)</td></tr>
+  <tr><td>고정 필드 오프셋 공유</td><td><strong>없음</strong> — 링 안에서 포인터가 움직임</td></tr>
+</table>
+
+<!-- ====================================================== -->
+<h2 id="capnp">5. Cap’n Proto는 무엇인가</h2>
+
+<p>
+Cap’n Proto(줄여 capnp)는 <strong>데이터를 어떤 바이트 모양으로 표현할지 정하는 스키마 + 직렬화 시스템</strong>입니다.
+</p>
+
+<table>
+  <tr><th>것</th><th>역할</th><th>실시간 데이터?</th></tr>
+  <tr>
+    <td><code>log.capnp</code>, <code>car.capnp</code> 등</td>
+    <td>메시지 설계도 (필드 이름·타입)</td>
+    <td>아니오 — 정의 파일</td>
+  </tr>
+  <tr>
+    <td><code>Event.to_bytes()</code></td>
+    <td>구조체 → 바이트 직렬화</td>
+    <td>그 바이트가 msgq/rlog로 감</td>
+  </tr>
+  <tr>
+    <td><code>Event.from_bytes()</code></td>
+    <td>바이트 → 구조체로 읽기</td>
+    <td>구독 직후 사용</td>
+  </tr>
+</table>
+
+<div class="note">
+  <div class="note-title">오해 금지</div>
+  <p>“capnp 파일로 실시간 데이터를 공유한다”가 <strong>아닙니다</strong>.</p>
+  <p>실시간 경로: <strong>Cap’n Proto 바이트 → msgq(RAM)</strong><br>
+  기록 경로: <strong>같은 종류의 바이트 → rlog 파일</strong></p>
+  <p>“Zero-copy”는 보통 “디스크 없이 <strong>메모리 버퍼 위</strong>에서 필드를 읽는다”는 뜻에 가깝고,
+  프로세스 간 객체를 포인터로 직접 공유한다는 뜻이 아닙니다.
+  msgq 수신 시 링에서 유저 버퍼로 <strong>copy 1회</strong>가 있습니다.</p>
+</div>
+
+<p>openpilot에서 대부분의 토픽은 공통 봉투 <code>log.Event</code> 를 씁니다.
+그 안에 union으로 <code>carState</code>, <code>carControl</code>, <code>modelV2</code> … 가 들어갑니다.
+구독 후 <code>msg.which()</code> 로 “지금 이 메시지가 어떤 서비스인지”를 알 수 있습니다.</p>
+
+<!-- ====================================================== -->
+<h2 id="stack">6. 바닥까지 레이어 스택</h2>
+
+<div class="diagram">
+[앱]        controlsd / card / loggerd …
+    │  cereal API: new_message, PubMaster, SubMaster
+    ▼
+[cereal]    log.Event (Cap’n Proto)
+    │  to_bytes() / from_bytes()
+    ▼
+[msgq API]  PubSocket.send / SubSocket.receive
+    │
+    ▼
+[msgq 구현] open(/dev/shm/msgq_&lt;topic&gt;) + mmap(MAP_SHARED)
+            링 버퍼 write/read pointer (lock-free SPMC)
+    │
+    ▼
+[커널]      tmpfs 페이지 = 물리 RAM
+</div>
+
+<p>관련 코드 위치 (학습용):</p>
+<ul>
+  <li><code>openpilot/cereal/messaging/__init__.py</code> — <code>PubMaster</code>, <code>SubMaster</code>, <code>new_message</code></li>
+  <li><code>openpilot/cereal/services.py</code> — 토픽 목록, 주기, 큐 크기, 로그 여부</li>
+  <li><code>msgq_repo/msgq/msgq.cc</code>, <code>msgq.h</code> — 공유 메모리 링큐 본체</li>
+  <li><code>msgq_repo/README.md</code> — write/read/reset 알고리즘 설명</li>
+</ul>
+
+<p>
+참고: 카메라 프레임 같은 <strong>매우 큰 연속 버퍼</strong>는 일반 msgq와 별도로
+<strong>VisionIPC</strong> 경로를 씁니다. 개념(공유 메모리)은 비슷하고, 용도가 영상 쪽에 특화되어 있습니다.
+</p>
+
+<!-- ====================================================== -->
+<h2 id="example">7. 생성측 / 구독측 예제</h2>
+
+<h3>7.1 생성 (publisher) — controlsd 가 carControl 을 보낼 때</h3>
+<p>실제 코드 흐름과 동일한 패턴:</p>
+<pre>
+<span class="c"># 1) 소켓 준비 (프로세스 시작 시 한 번)</span>
+pm = messaging.PubMaster(['carControl', 'controlsState'])
+
+<span class="c"># 2) 매 주기(예: 100Hz) 메시지 조립</span>
+msg = messaging.new_message('carControl')   <span class="c"># log.Event + carControl 슬롯</span>
+msg.valid = True
+msg.carControl.enabled = True
+msg.carControl.latActive = True
+msg.carControl.actuators.torque = 0.2
+
+<span class="c"># 3) 전송</span>
+pm.send('carControl', msg)
+</pre>
+
+<p><code>PubMaster.send</code> 내부에서 하는 일:</p>
+<ol>
+  <li>이미 bytes가 아니면 <code>dat.to_bytes()</code> — Cap’n Proto 직렬화</li>
+  <li><code>PubSocket.send(bytes)</code> — msgq 링에 size + payload 기록</li>
+</ol>
+
+<div class="diagram">
+controlsd 프로세스 힙
+  Event builder  ──to_bytes()──▶  [바이트 배열]
+                                      │
+                                      ▼ memcpy into ring
+                              /dev/shm/msgq_carControl (RAM)
+</div>
+
+<h3>7.2 구독 (subscriber) — card 가 carControl 을 받을 때</h3>
+<pre>
+<span class="c"># 1) 구독 준비</span>
+sm = messaging.SubMaster(['carControl', 'pandaStates', ...])
+
+<span class="c"># 2) 루프마다 최신 메시지 흡수</span>
+sm.update(timeout_ms)     <span class="c"># poll + receive + from_bytes</span>
+
+<span class="c"># 3) 필드 사용</span>
+if sm.updated['carControl']:
+    cc = sm['carControl']           <span class="c"># 이미 파싱된 구조체</span>
+    lat = cc.latActive
+    torque = cc.actuators.torque
+</pre>
+
+<p><code>SubMaster</code>가 하는 일:</p>
+<ol>
+  <li>토픽마다 <code>sub_sock</code> 연결 (제어용은 보통 <code>conflate=True</code>)</li>
+  <li><code>receive()</code>로 링에서 바이트 복사</li>
+  <li><code>log.Event.from_bytes(...)</code>로 파싱</li>
+  <li><code>self.data['carControl'] = msg.carControl</code> 저장</li>
+  <li>주기·지연을 보고 <code>alive</code> / <code>freq_ok</code> / <code>valid</code> 갱신</li>
+</ol>
+
+<h3>7.3 최소 완전체 (두 프로세스 상상)</h3>
+<pre>
+<span class="c"># === 프로세스 A: publisher ===</span>
+from openpilot.cereal import messaging
+
+pm = messaging.PubMaster(['carControl'])
+msg = messaging.new_message('carControl')
+msg.valid = True
+msg.carControl.latActive = True
+msg.carControl.actuators.torque = 0.2
+pm.send('carControl', msg)
+
+<span class="c"># === 프로세스 B: subscriber ===</span>
+from openpilot.cereal import messaging
+
+sm = messaging.SubMaster(['carControl'])
+sm.update(1000)
+if sm.updated['carControl']:
+    print(sm['carControl'].latActive, sm['carControl'].actuators.torque)
+</pre>
+
+<p>
+같은 기기에서 A와 B가 돌면, B는 A가 넣은 <strong>RAM 링의 복사본</strong>을 읽습니다.
+객체 포인터를 공유하는 것이 아니라 <strong>직렬화된 바이트</strong>를 공유합니다.
+</p>
+
+<!-- ====================================================== -->
+<h2 id="logging">8. 로그 파일은 어디에, 어떻게 남나</h2>
+
+<h3>8.1 종류</h3>
+<table>
+  <tr><th>위치</th><th>파일</th><th>내용</th></tr>
+  <tr>
+    <td><code>/data/media/0/realdata/&lt;route&gt;--&lt;seg&gt;/</code></td>
+    <td><code>rlog.zst</code></td>
+    <td>cereal 메시지 압축 기록 (분석 1순위)</td>
+  </tr>
+  <tr>
+    <td>같은 폴더</td>
+    <td><code>qlog.zst</code></td>
+    <td>rlog 축약본 (업로드용, decimation)</td>
+  </tr>
+  <tr>
+    <td>같은 폴더</td>
+    <td><code>fcamera.hevc</code> 등</td>
+    <td>카메라 영상 (별도 파이프라인)</td>
+  </tr>
+  <tr>
+    <td><code>/data/log/swaglog.*</code></td>
+    <td>swaglog</td>
+    <td>프로세스 디버그 텍스트/JSON (crash traceback 등)</td>
+  </tr>
+</table>
+
+<p>세그먼트 <code>--0</code>, <code>--1</code> … 은 대략 1분 단위 조각입니다.</p>
+
+<h3>8.2 실시간과 같은 속도로 디스크에 쓰나?</h3>
+<p>
+제어 경로와 로그 경로는 <strong>분리</strong>되어 있습니다.
+</p>
+<div class="diagram">
+controlsd ──▶ msgq(RAM) ──▶ card          ← 실시간 (필수)
+                 │
+                 └──▶ loggerd ──버퍼/압축──▶ 디스크   ← 부가 (기록)
+</div>
+<ul>
+  <li>제어는 디스크 fsync를 기다리지 않도록 설계</li>
+  <li>loggerd는 메시지를 받아 <strong>메모리 버퍼에 모은 뒤</strong> 압축·블록 단위로 write</li>
+  <li>토픽마다 주기가 다름 (100Hz, 20Hz, 10Hz …). “전 시스템을 1ms마다 덤프”가 아님</li>
+  <li><code>should_log</code>, qlog <code>decimation</code>으로 파일 쪽만 솎기도 함</li>
+  <li>디스크가 못 따라가면 로그 품질이 깨질 수 있으나, 이상적으로 제어 루프와 분리</li>
+</ul>
+
+<p>
+swaglog는 cereal 토픽 스트림과 별도로, 각 프로세스가 남기는
+<strong>개발자용 텍스트 로그</strong>에 가깝습니다. rlog와 역할이 다릅니다.
+</p>
+
+<!-- ====================================================== -->
+<h2 id="checklist">9. 기억할 체크리스트</h2>
+<div class="card">
+  <ol>
+    <li>openpilot = <strong>다중 프로세스</strong> + 토픽 기반 pub/sub</li>
+    <li><strong>통신 = msgq (RAM)</strong>, <strong>로그 = 디스크 기록</strong> (로그로 통신하지 않음)</li>
+    <li>공유 메모리 = 물리 RAM 매핑. <code>/dev/shm</code>은 tmpfs(파일 API + RAM 내용)</li>
+    <li>토픽마다 <strong>링큐</strong>. 전역 공유 구조체 하나 아님</li>
+    <li>Cap’n Proto = 스키마 + 바이트 포맷. <code>*.capnp</code> 파일 자체가 실시간 통로 아님</li>
+    <li>publish: 구조체 → <code>to_bytes()</code> → 링에 기록 / subscribe: 링에서 복사 → <code>from_bytes()</code></li>
+    <li>느린 구독자는 drop·reset 가능. 제어는 보통 conflate(최신값)</li>
+    <li>loggerd도 같은 바이트를 구독해 파일로 미러링. 버퍼·압축·(qlog) 샘플 축소</li>
+  </ol>
+</div>
+
+<footer>
+  docs/primer_ipc_messaging.html &middot;
+  openpilot 런타임 IPC 기초 (학습용) &middot;
+  frogpilot_port
+</footer>
+
+</div>
+</body>
+</html>
