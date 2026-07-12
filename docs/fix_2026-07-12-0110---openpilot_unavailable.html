@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Fix: openpilot unavailable — 2026-07-12</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+        --accent:#58a6ff;--green:#3fb950;--red:#f85149;--orange:#d29922;--purple:#bc8cff;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.8;padding:48px 20px;}
+  .container{max-width:900px;margin:0 auto;}
+  h1{font-size:1.7rem;margin-bottom:6px;
+     background:linear-gradient(90deg,var(--red),var(--orange));
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .subtitle{color:var(--muted);margin-bottom:48px;font-size:0.88rem;}
+  .subtitle code{background:var(--card);padding:2px 8px;border-radius:4px;
+    font-size:0.8rem;border:1px solid var(--border);}
+
+  h2{font-size:1.15rem;margin:36px 0 12px;padding-bottom:8px;
+     border-bottom:1px solid var(--border);}
+  h3{font-size:0.95rem;color:var(--accent);margin:16px 0 8px;}
+  p{color:var(--muted);font-size:0.87rem;margin-bottom:8px;}
+
+  .card{background:var(--card);border:1px solid var(--border);
+        border-radius:8px;padding:18px 22px;margin:12px 0;}
+  .card p{margin-bottom:6px;}
+
+  pre{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.76rem;
+      background:#010409;border:1px solid var(--border);border-radius:6px;
+      padding:14px;overflow-x:auto;color:var(--muted);margin:10px 0;line-height:1.6;}
+  pre .a{color:var(--accent);} pre .g{color:var(--green);}
+  pre .r{color:var(--red);}   pre .o{color:var(--orange);}
+  pre .c{color:#6e7681;font-style:italic;}
+
+  .badge{display:inline-block;font-size:0.68rem;font-weight:700;padding:2px 8px;
+          border-radius:10px;text-transform:uppercase;margin-right:4px;}
+  .b-symptom{background:rgba(248,81,73,0.12);color:var(--red);}
+  .b-tool  {background:rgba(88,166,255,0.15);color:var(--accent);}
+  .b-cmd   {background:rgba(210,153,34,0.15);color:var(--orange);}
+  .b-fix   {background:rgba(63,185,80,0.15);color:var(--green);}
+  .b-root  {background:rgba(188,140,255,0.15);color:var(--purple);}
+
+  .timeline{border-left:2px solid var(--border);margin:12px 0;padding-left:24px;}
+  .tl-item{position:relative;margin-bottom:16px;}
+  .tl-item::before{content:'';position:absolute;left:-29px;top:7px;
+    width:10px;height:10px;border-radius:50%;background:var(--accent);}
+  .tl-item.ok::before{background:var(--green);}
+  .tl-item.bad::before{background:var(--red);}
+  .tl-title{font-weight:600;font-size:0.88rem;margin-bottom:4px;}
+  .tl-body{color:var(--muted);font-size:0.83rem;}
+
+  .files{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;}
+  .file{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.71rem;
+        background:rgba(88,166,255,0.08);color:var(--accent);padding:2px 8px;border-radius:4px;}
+
+  footer{margin-top:60px;padding-top:16px;border-top:1px solid var(--border);
+         color:var(--muted);font-size:0.78rem;text-align:center;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>openpilot unavailable</h1>
+<p class="subtitle">
+  발생: 2026-07-12 01:00 &middot;
+  기기: comma 3x (tizi) &middot;
+  브랜치: <code>frogpilot_port</code> &middot;
+  커밋: <code>6d18287c</code>
+</p>
+
+<!-- ====================================================== -->
+<!-- 증상 -->
+<!-- ====================================================== -->
+<h2>1. 증상</h2>
+<div class="card">
+  <p><span class="badge b-symptom">증상</span>
+  차량 탑승 후 openpilot GUI 및 카메라 화면은 정상 표시. 그러나 <strong>"openpilot unavailable"</strong> 메시지가 계속 표시되며 engage 불가.</p>
+  <p>upstream merge (commaai/openpilot → frogpilot_port) 이후 첫 실차 테스트에서 발생.</p>
+</div>
+
+<!-- ====================================================== -->
+<!-- 조사 과정 -->
+<!-- ====================================================== -->
+<h2>2. 조사 과정 &amp; 사용 도구</h2>
+
+<div class="timeline">
+
+  <div class="tl-item">
+    <div class="tl-title"><span class="badge b-tool">SSH</span> 기기 원격 접속</div>
+    <div class="tl-body">
+      PC에서 직접 SSH로 기기에 접속해 모든 진단 명령 실행.
+      <pre>ssh -i ~/.ssh/openpilot_ed25519 comma@192.168.35.191</pre>
+    </div>
+  </div>
+
+  <div class="tl-item">
+    <div class="tl-title"><span class="badge b-cmd">ls</span> swaglog 목록 확인</div>
+    <div class="tl-body">
+      가장 최근 운전 세션의 로그를 파악.
+      <pre>ls -lt /data/log/ | head -10
+ls -lt /data/media/0/realdata/ | head -10</pre>
+      <strong>결과:</strong> 최신 드라이브 세그먼트 = <code>000001db--caae7c20d0--0,1</code> (Jul 12 00:55~00:56)
+    </div>
+  </div>
+
+  <div class="tl-item">
+    <div class="tl-title"><span class="badge b-cmd">strings</span> swaglog 텍스트 추출</div>
+    <div class="tl-body">
+      swaglog는 msgpack 바이너리. msgpack 모듈이 없어 <code>strings</code> 명령으로 읽을 수 있는 텍스트 추출.
+      <pre>strings /data/log/swaglog.0000013104 | grep -iE "unavail|error|harness|fingerprint"</pre>
+      panda 상태 확인: <code>harnessStatus: "notConnected"</code>, <code>ignitionLine: false</code>
+      → 이 로그는 오프로드(차 밖) 시점이었음. 별도 확인 필요.
+    </div>
+  </div>
+
+  <div class="tl-item">
+    <div class="tl-title"><span class="badge b-tool">openpilot LogReader</span> rlog 분석</div>
+    <div class="tl-body">
+      openpilot 자체 라이브러리로 압축 rlog를 파싱하여 메시지 타입 확인.
+      <pre>python3 -c "
+from openpilot.tools.lib.logreader import LogReader
+lr = LogReader(\"/data/media/0/realdata/000001db--caae7c20d0--0/rlog.zst\")
+types_seen = set()
+for msg in lr:
+    types_seen.add(msg.which())
+print(sorted(types_seen))
+"</pre>
+      <strong>결과 (주목할 부재):</strong>
+      <code>carParams</code>, <code>carState</code>, <code>controlsState</code>,
+      <code>selfdriveState</code>, <code>modelV2</code> — 모두 없음.<br>
+      → card.py가 carParams를 publish하지 못했음을 확인.
+    </div>
+  </div>
+
+  <div class="tl-item">
+    <div class="tl-title"><span class="badge b-tool">LogReader</span> errorLogMessage 추출</div>
+    <div class="tl-body">
+      rlog 안의 에러 메시지를 daemon 별로 필터링.
+      <pre>python3 -c "
+for msg in LogReader(rlog):
+    if msg.which() == 'errorLogMessage':
+        d = json.loads(msg.errorLogMessage)
+        if 'card' in d.get('ctx',{}).get('daemon',''):
+            print(d.get('msg'), d.get('exc_info','')[:500])
+"</pre>
+      <strong>결과 — fingerprint 성공 후 crash 발견:</strong>
+      <pre class="r">
+[card] {'event': 'fingerprinted', 'car_fingerprint': 'HYUNDAI_AZERA_HEV_6TH_GEN', ...}
+[card] crash
+Traceback (most recent call last):
+  File ".../card.py", line 123, in __init__
+    self.CP.alternativeExperience |= ALTERNATIVE_EXPERIENCE.ALWAYS_ON_LATERAL
+AttributeError: type object 'ALTERNATIVE_EXPERIENCE' has no attribute 'ALWAYS_ON_LATERAL'</pre>
+    </div>
+  </div>
+
+  <div class="tl-item ok">
+    <div class="tl-title"><span class="badge b-root">근본 원인 파악</span></div>
+    <div class="tl-body">
+      upstream opendbc (<code>930eeb14</code>)에서 <code>ALWAYS_ON_LATERAL</code> 상수 제거됨.
+      <pre>python3 -c "
+from opendbc.safety import ALTERNATIVE_EXPERIENCE
+print([x for x in dir(ALTERNATIVE_EXPERIENCE) if not x.startswith('_')])
+"
+<span class="g"># 결과: ['ALLOW_AEB', 'DEFAULT', 'DISABLE_STOCK_AEB', 'RAISE_LONGITUDINAL_LIMITS_TO_ISO_MAX']
+# ALWAYS_ON_LATERAL 없음!</span></pre>
+    </div>
+  </div>
+
+</div>
+
+<!-- ====================================================== -->
+<!-- 근본 원인 -->
+<!-- ====================================================== -->
+<h2>3. 근본 원인</h2>
+<div class="card">
+  <h3>흐름</h3>
+  <pre>
+차 시동 ON
+  ↓
+card.py 시작 → ISO-TP 쿼리 (일부 ECU는 0x7f22 negative response → 정상)
+  ↓
+CAN fingerprint 성공: HYUNDAI_AZERA_HEV_6TH_GEN ✓
+  ↓
+car.py __init__() 에서 CP 설정 시:
+  self.CP.alternativeExperience |= <span class="r">ALTERNATIVE_EXPERIENCE.ALWAYS_ON_LATERAL</span>
+  ↓
+<span class="r">AttributeError: 'ALWAYS_ON_LATERAL' not found → crash</span>
+  ↓
+carParams 메시지 미전송 → selfdrived가 car 인식 못함
+  ↓
+<span class="r">"openpilot unavailable" 표시</span>
+</pre>
+
+  <h3>왜 제거됐나?</h3>
+  <p>
+  upstream commaai/opendbc (<code>930eeb14</code>)에서 panda safety 코드 재구성 시
+  <code>ALWAYS_ON_LATERAL</code> 상수가 더 이상 쓰이지 않는 것으로 판단해 제거.
+  우리 <code>card.py</code>는 FrogPilot 포팅 시 추가한 AOL 코드에서 이 상수를 참조 중이었음.
+  </p>
+  <p>
+  panda 펌웨어(<code>9da8467a</code>)는 이 비트를 실제로 체크하지 않음.
+  실제 AOL 동작은 <code>pandad.cc</code>의 heartbeat 로직으로 제어.
+  상수가 없으면 crash만 발생하고 기능적 영향은 없음.
+  </p>
+</div>
+
+<!-- ====================================================== -->
+<!-- 수정 -->
+<!-- ====================================================== -->
+<h2>4. 수정</h2>
+<div class="card">
+  <h3><span class="badge b-fix">fix</span> abraxas4/opendbc — ALWAYS_ON_LATERAL 상수 복원</h3>
+  <p>panda 펌웨어가 체크하지 않는 비트이므로, 충돌하지 않는 값(128 = 0x80)으로 복원.</p>
+  <pre>
+<span class="c"># opendbc_repo/opendbc/safety/__init__.py</span>
+class ALTERNATIVE_EXPERIENCE:
+  DEFAULT = 0
+  DISABLE_STOCK_AEB = 2
+  RAISE_LONGITUDINAL_LIMITS_TO_ISO_MAX = 8
+  ALLOW_AEB = 16
+<span class="g">+ ALWAYS_ON_LATERAL = 128  # enable AOL in panda safety</span></pre>
+  <div class="files">
+    <span class="file">opendbc_repo/opendbc/safety/__init__.py</span>
+  </div>
+</div>
+
+<div class="card">
+  <h3>기기 적용 방법</h3>
+  <pre>
+cd /data/openpilot/opendbc_repo
+git fetch origin
+git checkout origin/frogpilot_port   <span class="c"># f7639c70</span>
+sudo reboot</pre>
+</div>
+
+<!-- ====================================================== -->
+<!-- 요약 -->
+<!-- ====================================================== -->
+<h2>5. 요약</h2>
+<div class="card">
+  <table style="width:100%;border-collapse:collapse;font-size:0.83rem;">
+    <tr>
+      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted);width:160px">증상</td>
+      <td style="padding:6px 10px;border:1px solid var(--border)">openpilot unavailable (차 인식 안 됨)</td>
+    </tr>
+    <tr style="background:rgba(255,255,255,0.02)">
+      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted)">진단 도구</td>
+      <td style="padding:6px 10px;border:1px solid var(--border)">SSH, strings, openpilot LogReader, python3</td>
+    </tr>
+    <tr>
+      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted)">핵심 명령</td>
+      <td style="padding:6px 10px;border:1px solid var(--border)">rlog errorLogMessage → exc_info Traceback 추출</td>
+    </tr>
+    <tr style="background:rgba(255,255,255,0.02)">
+      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted)">원인</td>
+      <td style="padding:6px 10px;border:1px solid var(--border)">opendbc 930eeb14에서 <code>ALWAYS_ON_LATERAL</code> 상수 제거 → card.py crash</td>
+    </tr>
+    <tr>
+      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted)">수정</td>
+      <td style="padding:6px 10px;border:1px solid var(--border)"><code>opendbc/safety/__init__.py</code>에 <code>ALWAYS_ON_LATERAL = 128</code> 복원</td>
+    </tr>
+    <tr style="background:rgba(255,255,255,0.02)">
+      <td style="padding:6px 10px;border:1px solid var(--border);color:var(--muted)">push</td>
+      <td style="padding:6px 10px;border:1px solid var(--border)"><code>abraxas4/opendbc frogpilot_port</code> → <code>f7639c70</code></td>
+    </tr>
+  </table>
+</div>
+
+<footer>
+  abraxas4/openpilot_mj_develop &middot; frogpilot_port &middot; 2026-07-12
+</footer>
+
+</div>
+</body>
+</html>
