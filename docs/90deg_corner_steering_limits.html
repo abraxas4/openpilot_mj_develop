@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>90도 외길에서 스티어링이 덜 도는 이유</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+        --accent:#58a6ff;--green:#3fb950;--red:#f85149;--orange:#d29922;--purple:#bc8cff;
+        --node:#1c2333;--node-ui:#13233a;--node-lat:#1a2430;--node-warn:#2a1f12;--node-bad:#2a1518;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.8;padding:48px 20px;}
+  .container{max-width:980px;margin:0 auto;}
+  h1{font-size:1.7rem;margin-bottom:6px;
+     background:linear-gradient(90deg,var(--orange),var(--red));
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .subtitle{color:var(--muted);margin-bottom:36px;font-size:0.88rem;}
+  .subtitle code{background:var(--card);padding:2px 8px;border-radius:4px;
+    font-size:0.8rem;border:1px solid var(--border);}
+  h2{font-size:1.15rem;margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  h3{font-size:0.95rem;color:var(--accent);margin:18px 0 8px;}
+  p{color:var(--muted);font-size:0.87rem;margin-bottom:10px;}
+  ul,ol{margin:8px 0 14px 22px;color:var(--muted);font-size:0.87rem;}
+  li{margin-bottom:6px;}
+  strong{color:var(--text);}
+  code{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.82em;
+       background:rgba(88,166,255,0.08);padding:1px 5px;border-radius:3px;}
+  a{color:var(--accent);}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;
+        padding:18px 22px;margin:14px 0;}
+  pre{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.74rem;
+      background:#010409;border:1px solid var(--border);border-radius:6px;
+      padding:14px 16px;overflow-x:auto;color:var(--muted);margin:12px 0;line-height:1.55;
+      white-space:pre;}
+  pre .c{color:#6e7681;font-style:italic;}
+  pre .g{color:var(--green);}
+  pre .a{color:var(--accent);}
+  pre .o{color:var(--orange);}
+  pre .r{color:var(--red);}
+  .note{background:#0d1f0d;border:1px solid #2ea043;border-left:4px solid #3fb950;
+        border-radius:0 8px 8px 0;padding:16px 20px;margin:16px 0;}
+  .note-title{font-size:0.78rem;font-weight:700;color:#3fb950;
+               text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;}
+  .note p,.note li{color:#a5d6a7;font-size:0.83rem;margin-bottom:6px;}
+  .note ul{margin-left:18px;}
+  .note strong{color:#e6edf3;}
+  .note code{background:rgba(63,185,80,0.15);color:#3fb950;}
+  .warn{background:#241c0d;border:1px solid #9e6a03;border-left:4px solid var(--orange);
+        border-radius:0 8px 8px 0;padding:16px 20px;margin:16px 0;}
+  .warn-title{font-size:0.78rem;font-weight:700;color:var(--orange);
+               text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;}
+  .warn p,.warn li{color:#e3c78a;font-size:0.83rem;margin-bottom:6px;}
+  .warn ul{margin-left:18px;color:#e3c78a;}
+  .warn strong{color:var(--text);}
+  .warn code{background:rgba(210,153,34,0.15);color:var(--orange);padding:1px 5px;border-radius:3px;}
+  .toc{background:var(--card);border:1px solid var(--border);border-radius:8px;
+       padding:16px 22px;margin:8px 0 28px;}
+  .toc a{color:var(--accent);text-decoration:none;font-size:0.85rem;}
+  .toc a:hover{text-decoration:underline;}
+  .toc ol{margin:6px 0 0 18px;}
+  .toc li{margin-bottom:4px;}
+  table{width:100%;border-collapse:collapse;font-size:0.83rem;margin:12px 0;}
+  td,th{padding:8px 12px;border:1px solid var(--border);vertical-align:top;text-align:left;}
+  th{background:var(--card);color:var(--muted);}
+  tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+  footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--border);
+         color:var(--muted);font-size:0.78rem;text-align:center;}
+  .badge{display:inline-block;font-size:0.68rem;font-weight:700;padding:2px 8px;
+          border-radius:10px;margin-right:4px;}
+  .b-symptom{background:rgba(248,81,73,0.12);color:var(--red);}
+  .b-root{background:rgba(188,140,255,0.15);color:var(--purple);}
+  .b-ok{background:rgba(63,185,80,0.15);color:var(--green);}
+  .b-warn{background:rgba(210,153,34,0.15);color:var(--orange);}
+  .b-info{background:rgba(88,166,255,0.15);color:var(--accent);}
+  .abbr{white-space:nowrap;}
+  .abbr .full{color:var(--muted);font-weight:400;font-size:0.92em;}
+
+  /* flowcharts */
+  .flow{background:#010409;border:1px solid var(--border);border-radius:8px;
+        padding:22px 16px;margin:16px 0;overflow-x:auto;}
+  .flow-caption{color:var(--muted);font-size:0.78rem;text-align:center;margin-top:4px;margin-bottom:14px;}
+  .flow-col{display:flex;flex-direction:column;align-items:center;gap:0;min-width:280px;}
+  .flow-row{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;align-items:stretch;}
+  .node{background:var(--node);border:1px solid var(--border);border-radius:8px;
+        padding:10px 14px;max-width:340px;min-width:220px;text-align:center;}
+  .node .t{font-size:0.84rem;font-weight:650;color:var(--text);line-height:1.4;}
+  .node .d{font-size:0.74rem;color:var(--muted);margin-top:4px;line-height:1.45;}
+  .node.ui{background:var(--node-ui);border-color:#1f4b7a;}
+  .node.lat{background:var(--node-lat);border-color:#2ea043;}
+  .node.warn{background:var(--node-warn);border-color:#9e6a03;}
+  .node.bad{background:var(--node-bad);border-color:#6e2b2b;}
+  .node.decision{border-radius:18px;border-color:var(--purple);background:#1b1630;}
+  .node.start{border-color:var(--accent);}
+  .node.ok{border-color:var(--green);background:#102216;}
+  .arrow{color:var(--muted);font-size:1.1rem;padding:6px 0;text-align:center;line-height:1.2;}
+  .arrow span{display:block;font-size:0.7rem;color:var(--orange);margin-top:2px;}
+  .split{display:flex;justify-content:center;gap:24px;width:100%;flex-wrap:wrap;margin-top:4px;}
+  .split > .flow-col{flex:1;max-width:420px;}
+  .join-label{font-size:0.72rem;color:var(--orange);text-align:center;margin:8px 0 4px;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:center;
+          margin:8px 0 4px;font-size:0.74rem;color:var(--muted);}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;
+            margin-right:6px;border:1px solid var(--border);vertical-align:middle;}
+  .file{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.71rem;
+        background:rgba(88,166,255,0.08);color:var(--accent);padding:2px 8px;border-radius:4px;}
+  .files{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;}
+  @media (max-width:640px){
+    .node{min-width:0;max-width:100%;width:100%;}
+    .split > .flow-col{max-width:100%;}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>90도 외길에서 스티어링이 덜 도는 이유</h1>
+<p class="subtitle">
+  AOL<span class="full"> (Always On Lateral, 상시 횡제어)</span> +
+  Experimental Mode<span class="full"> (실험 모드, 종방향 종단간 제어)</span> &middot;
+  원인 분석 + 적용된 제어 변경 (저속 경로 조향, 고속 +20%, 중간 선형)
+</p>
+
+<div class="toc">
+  <strong style="color:var(--text);font-size:0.9rem;">목차</strong>
+  <ol>
+    <li><a href="#symptom">증상</a></li>
+    <li><a href="#glossary">약어 풀이</a></li>
+    <li><a href="#answer">사실</a></li>
+    <li><a href="#flow-split">흐름도 — UI와 조향이 갈라지는 지점</a></li>
+    <li><a href="#exp">실험 모드 — 이번 현상과 무관</a></li>
+    <li><a href="#flow-exp">흐름도 — 0.3 m/s 곡률 동결 (거의 정지)</a></li>
+    <li><a href="#limits">있는 제한들 (변경 전)</a></li>
+    <li><a href="#flow-clip">흐름도 — clip_curvature 제한 (변경 전)</a></li>
+    <li><a href="#hyundai">Hyundai EPS 85도 펄스</a></li>
+    <li><a href="#flow-diag">흐름도 — 로그로 원인 가르기</a></li>
+    <li><a href="#patch">코드 변경 — 무엇을 바꿨나</a></li>
+    <li><a href="#schedule">속도 스케줄 (30 / 80 km/h, 중간 선형)</a></li>
+    <li><a href="#path-follow">저속 UI 경로 조향 허가</a></li>
+    <li><a href="#files">관련 코드</a></li>
+    <li><a href="#action">action이란</a></li>
+    <li><a href="#jerk">횡저크(jerk)와 30~80 km/h</a></li>
+    <li><a href="#safety">고속 급변경이 되나</a></li>
+  </ol>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="symptom">1. 증상</h2>
+<div class="card">
+  <p><span class="badge b-symptom">증상</span>
+  90도로 꺾인 외길을 저속으로 진입. 스티어링은
+  <strong>AOL <span class="full">(Always On Lateral, 상시 횡제어)</span></strong> 로 살아 있고,
+  <strong>UI <span class="full">(User Interface, 사용자 화면)</span></strong> 에는 꺾인 길이 잘 그려진다.
+  그런데 스티어링 휠이 90도까지 돌아가지 않는다.</p>
+  <p>당시 설정: <strong>Experimental Mode <span class="full">(실험 모드)</span></strong> 켜짐.</p>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="glossary">2. 약어 풀이</h2>
+<p>본문에서 약자를 쓸 때는 한글을 병기합니다. 한눈에 보기 위한 표입니다.</p>
+<table>
+  <thead>
+    <tr><th>약어</th><th>원문</th><th>한글</th><th>이 문서에서 하는 역할</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>AOL</code></td>
+      <td>Always On Lateral</td>
+      <td>상시 횡제어</td>
+      <td>크루즈가 꺼져 있어도 조향을 유지. 저속에서도 <code>latActive</code>를 살림.</td>
+    </tr>
+    <tr>
+      <td><code>UI</code></td>
+      <td>User Interface</td>
+      <td>사용자 화면</td>
+      <td>모델이 본 경로·차선을 그림. 조향 명령과는 다른 신호.</td>
+    </tr>
+    <tr>
+      <td><code>e2e</code></td>
+      <td>end-to-end</td>
+      <td>종단간 제어</td>
+      <td>실험 모드에서 종방향 가속도를 모델이 직접 냄. 횡조향은 바꾸지 않음.</td>
+    </tr>
+    <tr>
+      <td><code>MPC</code></td>
+      <td>Model Predictive Control</td>
+      <td>모델 예측 제어</td>
+      <td>실험 모드가 꺼져 있을 때 쓰는 종방향 계획기.</td>
+    </tr>
+    <tr>
+      <td><code>EPS</code></td>
+      <td>Electric Power Steering</td>
+      <td>전동식 파워 스티어링</td>
+      <td>현대차에서 조향각 90도 이상을 1초 넘게 토크로 유지하면 고장 판정.</td>
+    </tr>
+    <tr>
+      <td><code>LKAS</code></td>
+      <td>Lane Keeping Assist System</td>
+      <td>차선 유지 보조</td>
+      <td>조향 토크를 보내는 CAN 메시지. <code>steer_req</code> 비트가 활성 요청.</td>
+    </tr>
+    <tr>
+      <td><code>CAN</code></td>
+      <td>Controller Area Network</td>
+      <td>차량 내부 통신 버스</td>
+      <td>토크 명령이 조향 ECU로 나가는 경로.</td>
+    </tr>
+    <tr>
+      <td><code>PID</code></td>
+      <td>Proportional-Integral-Derivative</td>
+      <td>비례-적분-미분 제어</td>
+      <td>토크 횡제어기. 저속에서는 I항(적분)을 멈춤.</td>
+    </tr>
+    <tr>
+      <td><code>FF</code></td>
+      <td>Feedforward</td>
+      <td>피드포워드 / 앞먹임</td>
+      <td>목표 횡가속도를 토크로 바로 환산. <code>FF ≈ κ · v²</code>.</td>
+    </tr>
+    <tr>
+      <td><code>vEgo</code></td>
+      <td>ego vehicle speed</td>
+      <td>자차 속도</td>
+      <td>제어 루프의 현재 차속 (m/s).</td>
+    </tr>
+    <tr>
+      <td>곡률 <code>κ</code></td>
+      <td>curvature</td>
+      <td>곡률 (1/m)</td>
+      <td>회전 반경의 역수. 조향 명령의 실제 단위.</td>
+    </tr>
+    <tr>
+      <td>횡가속도</td>
+      <td>lateral acceleration</td>
+      <td>옆방향 가속도 (m/s²)</td>
+      <td>지금 옆으로 얼마나 세게 도는지. <code>a = κ · v²</code>.</td>
+    </tr>
+    <tr>
+      <td>횡저크</td>
+      <td>lateral jerk</td>
+      <td>횡가속도의 변화 속도 (m/s³)</td>
+      <td>휠을 얼마나 빨리 더 꺾어도 되는지. clip의 레이트 제한.</td>
+    </tr>
+    <tr>
+      <td><code>action</code></td>
+      <td>model action</td>
+      <td>모델의 즉시 조작 명령</td>
+      <td>지금 넣을 곡률·가속도. UI 경로(<code>position</code>)와 다른 출력.</td>
+    </tr>
+    <tr>
+      <td><code>ISO</code></td>
+      <td>International Organization for Standardization</td>
+      <td>국제표준화기구</td>
+      <td>횡가속도 3.0 m/s², 횡저크 5.0 m/s³ 상한의 근거.</td>
+    </tr>
+    <tr>
+      <td><code>latActive</code></td>
+      <td>lateral active</td>
+      <td>횡제어 활성</td>
+      <td>조향 루프가 실제로 토크를 내도 되는지.</td>
+    </tr>
+    <tr>
+      <td><code>steer_req</code></td>
+      <td>steer request</td>
+      <td>조향 요청 비트</td>
+      <td>LKAS 메시지에서 “지금 조향한다”는 플래그.</td>
+    </tr>
+    <tr>
+      <td><code>ECU</code></td>
+      <td>Electronic Control Unit</td>
+      <td>전자 제어 장치</td>
+      <td>여기서는 조향 EPS 쪽 제어기.</td>
+    </tr>
+    <tr>
+      <td><code>PathSteerHelper</code></td>
+      <td>path steer helper</td>
+      <td>경로 조향 보조</td>
+      <td>UI 경로가 안정되면 그 곡률을 저속 조향 목표에 섞음.</td>
+    </tr>
+    <tr>
+      <td><code>speed_blend</code></td>
+      <td>speed blend</td>
+      <td>속도 선형 혼합</td>
+      <td>30 km/h에서 0, 80 km/h에서 1. 경로 비중과 상한에 사용.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ====================================================== -->
+<h2 id="answer">3. 사실</h2>
+<div class="card">
+  <p><span class="badge b-root">사실</span>
+  실험 모드는 이번 현상과 관계없습니다.</p>
+  <p>스티어링 휠이 90도까지 안 돈 이유는
+  <code>clip_curvature</code> 의 max 계수입니다. 변경 전 고정값:</p>
+  <ul>
+    <li>허용 횡가속도 <code>MAX_LATERAL_ACCEL_NO_ROLL = 3.0</code> m/s²</li>
+    <li>허용 횡저크 <code>MAX_LATERAL_JERK = 5.0</code> m/s³</li>
+    <li>절대 곡률 캡 <code>MAX_CURVATURE = 0.2</code> /m</li>
+  </ul>
+  <p>조향 목표는 곡률 κ 이고, 허용 조향은 대략 <code>κ ≤ a_max / v²</code> 로 잘립니다.
+  서행 30 km/h에서 a_max=3.0 이면 κ 상한 약 0.043 (휠 약 90도, 반경 약 23 m).
+  직각 외길에 필요한 조향보다 작습니다.</p>
+  <p>UI는 <code>modelV2.position</code> 을 그리므로 길은 그대로 보입니다.
+  휠 명령은 위 계수로 clip된 곡률입니다.</p>
+  <p><code>vEgo ≤ 0.3 m/s</code> (약 1.1 km/h) 곡률 동결은 서행과 무관합니다.</p>
+  <p><span class="badge b-ok">적용 후</span>
+  그 max 계수를 속도별로 바꿨습니다.</p>
+  <ul>
+    <li>30 km/h 이하: 횡가속도 5.0 m/s², 횡저크 8.0 m/s³.
+      UI 경로가 안정되면 그 경로 곡률을 조향 목표에 사용.</li>
+    <li>80 km/h 이상: 횡가속도 3.6 m/s², 횡저크 6.0 m/s³ (스톡 대비 +20%).</li>
+    <li>30~80 km/h: 위 두 값 사이를 선형.</li>
+    <li><code>MAX_CURVATURE = 0.2</code> 절대 캡은 그대로.</li>
+  </ul>
+  <p>상세는 <a href="#patch">11절</a>.</p>
+</div>
+
+<div class="warn">
+  <div class="warn-title">도로 90도 ≠ 스티어링 휠 90도</div>
+  <p>휠 90도는 현대차 대략 wheelbase 2.7 m, steerRatio 13.7 기준 곡률 약 0.04 (반경 약 24 m) 입니다.
+  골목 직각은 보통 휠 각이 그보다 큽니다. 로그로 확인할 값은
+  <code>action.desiredCurvature</code> 와 <code>controlsState.desiredCurvature</code> 입니다.</p>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="flow-split">4. 흐름도 — UI와 조향이 갈라지는 지점</h2>
+<p>같은 모델 출력이 화면과 조향으로 갈라집니다. 화면이 맞다고 조향 명령이 큰 것은 아닙니다.</p>
+
+<div class="flow">
+  <p class="flow-caption">카메라 → 모델 → (왼쪽: 화면) / (오른쪽: 조향 명령)</p>
+  <div class="legend">
+    <span><i style="background:var(--node-ui);border-color:#1f4b7a;"></i>화면 경로</span>
+    <span><i style="background:var(--node-lat);border-color:#2ea043;"></i>조향 경로</span>
+    <span><i style="background:var(--node-warn);border-color:#9e6a03;"></i>제한이 걸리는 곳</span>
+  </div>
+
+  <div class="flow-col" style="width:100%;">
+    <div class="node start">
+      <div class="t">전방 카메라</div>
+      <div class="d">도로 영상</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="node">
+      <div class="t">modeld · 주행 모델</div>
+      <div class="d">한 프레임에서 경로와 행동을 같이 냄</div>
+    </div>
+    <div class="arrow">↓<span>여기서 신호가 갈라짐</span></div>
+  </div>
+
+  <div class="split">
+    <div class="flow-col">
+      <div class="node ui">
+        <div class="t">modelV2.position / laneLines</div>
+        <div class="d">앞으로 몇 초의 예측 경로·차선<br>UI가 그리는 값</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="node ui">
+        <div class="t">UI 렌더러</div>
+        <div class="d">model_renderer.py<br>꺾인 길을 화면에 표시</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="node ok">
+        <div class="t">화면: 90도 외길이 잘 보임</div>
+        <div class="d">시각 경로만 맞으면 여기까지는 정상</div>
+      </div>
+    </div>
+
+    <div class="flow-col">
+      <div class="node lat">
+        <div class="t">modelV2.action.desiredCurvature</div>
+        <div class="d">짧은 구간의 조향 곡률 명령<br>횡가속도 / max(1, vEgo)²</div>
+      </div>
+      <div class="arrow">↓<span>vEgo ≤ 0.3 m/s (≈1.1 km/h) 에서만 이전 값 유지. 서행에는 해당 없음</span></div>
+      <div class="node warn">
+        <div class="t">clip_curvature()</div>
+        <div class="d">횡저크 · 횡가속도 · MAX_CURVATURE=0.2</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="node lat">
+        <div class="t">LatControlTorque · 토크 횡제어</div>
+        <div class="d">a = κ · v² 로 환산 후 PID+FF<br>vEgo &lt; 5 m/s 에서 적분항 동결</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="node warn">
+        <div class="t">Hyundai carcontroller + panda safety</div>
+        <div class="d">토크 레이트 제한<br>85도 이상이면 steer_req 펄스</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="node bad">
+        <div class="t">스티어링 휠</div>
+        <div class="d">명령이 작으면 90도까지 안 돎</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <div class="note-title">관련 코드 — 변경 전, controlsd가 조향 곡률을 고르던 곳</div>
+<pre>
+<span class="c"># 변경 전. 현재는 path_steer.blend() 를 거친 뒤 clip. 11절.</span>
+<span class="a">new_desired_curvature</span> = model_v2.action.desiredCurvature   <span class="c"># UI path가 아님</span>
+self.desired_curvature, curvature_limited = <span class="o">clip_curvature</span>(
+    CS.vEgo, self.desired_curvature, new_desired_curvature, lp.roll)
+</pre>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="exp">5. 실험 모드 — 이번 현상과 무관</h2>
+<p>
+  Experimental Mode<span class="full"> (실험 모드)</span> 는
+  <code>selfdriveState.experimentalMode</code> 플래그입니다.
+  종방향 계획기만 갈리므로, UI에 길이 보이는데 휠이 덜 도는 현상과는 관계없습니다.
+</p>
+
+<table>
+  <thead>
+    <tr><th>항목</th><th>실험 모드가 하는 일</th><th>이번 현상과</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>종방향 가속도</td>
+      <td><code>min(e2e 가속도, MPC 가속도)</code>. 횡조향 값은 안 바꿈.</td>
+      <td>무관.</td>
+    </tr>
+    <tr>
+      <td>모델 횡곡률 <code>desiredCurvature</code></td>
+      <td>없음. 같은 모델, 같은 action.</td>
+      <td>무관.</td>
+    </tr>
+    <tr>
+      <td><code>clip_curvature</code></td>
+      <td>없음. 실험 모드와 무관.</td>
+      <td>무관.</td>
+    </tr>
+    <tr>
+      <td>AOL 저속 유지</td>
+      <td>없음. AOL이 따로 <code>latActive</code>를 살림.</td>
+      <td>무관.</td>
+    </tr>
+    <tr>
+      <td>Hyundai <code>MAX_ANGLE = 85</code></td>
+      <td>없음</td>
+      <td>무관.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <div class="note-title">관련 코드 — 실험 모드는 종방향만</div>
+<pre>
+<span class="c"># openpilot/selfdrive/controls/lib/longitudinal_planner.py</span>
+if sm['selfdriveState'].<span class="a">experimentalMode</span>:
+    output_a_target = min(output_a_target_e2e, output_a_target_mpc)  <span class="c"># 종방향만</span>
+    self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
+else:
+    output_a_target = output_a_target_mpc
+</pre>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="flow-exp">6. 흐름도 — 0.3 m/s 곡률 동결 (거의 정지)</h2>
+<p>
+  modeld 코드에 <code>MIN_LAT_CONTROL_SPEED = 0.3</code> (약 1.1 km/h) 이 있습니다.
+  그 아래에서만 곡률을 이전 값으로 유지합니다.
+  서행에는 해당하지 않습니다. 실험 모드와 연결된 조건도 아닙니다.
+</p>
+
+<div class="flow">
+  <p class="flow-caption">modeld: 거의 정지에서만 곡률 동결. 서행은 왼쪽.</p>
+  <div class="flow-col" style="width:100%;">
+    <div class="node start">
+      <div class="t">modeld get_action_from_model</div>
+      <div class="d">action 횡가속도 → 곡률</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="node decision">
+      <div class="t">vEgo &gt; 0.3 m/s ?</div>
+      <div class="d">MIN_LAT_CONTROL_SPEED = 0.3<br>약 1.1 km/h. 실험 모드와 무관</div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="flow-col">
+      <div class="join-label">예 — 아직 굴러가는 중</div>
+      <div class="node lat">
+        <div class="t">desiredCurvature 갱신</div>
+        <div class="d">action 횡가속도 / max(1, v)²</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="node warn">
+        <div class="t">그래도 휠이 약할 수 있음</div>
+        <div class="d">토크 FF ≈ κ·v² 가 작음<br>vEgo &lt; 5 m/s 에서 PID 적분항 동결</div>
+      </div>
+    </div>
+    <div class="flow-col">
+      <div class="join-label">아니오 — 거의 정지</div>
+      <div class="node bad">
+        <div class="t">desiredCurvature 동결</div>
+        <div class="d">직전 값 유지. 직진 중이었다면 거의 0.<br>AOL은 latActive를 그대로 유지</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="node ui">
+        <div class="t">UI position은 계속 갱신</div>
+        <div class="d">모델은 길을 보고 경로를 그림<br>조향 action만 멈춤</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="node bad">
+        <div class="t">곡률 명령 동결</div>
+        <div class="d">거의 정지에서만. 서행 원인 아님</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <div class="note-title">관련 코드 — 0.3 m/s 아래에서 곡률 동결</div>
+<pre>
+<span class="c"># openpilot/selfdrive/modeld/modeld.py</span>
+MIN_LAT_CONTROL_SPEED = <span class="o">0.3</span>  <span class="c"># m/s</span>
+
+desired_curvature = model_output['action'][0,0] / (max(<span class="o">1.0</span>, v_ego))**2
+
+if v_ego &gt; MIN_LAT_CONTROL_SPEED:
+    desired_curvature = smooth_value(...)
+else:
+    desired_curvature = <span class="r">prev_action.desiredCurvature</span>  <span class="c"># 동결</span>
+</pre>
+  <p>AOL은 <code>controlsd.py</code>에서 정차 후 5초까지 저속 게이트를 무시하고 <code>latActive</code>를 유지합니다.
+  조향 루프가 켜져 있는 것과, 곡률 명령이 큰 것은 별개입니다.</p>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="limits">7. 있는 제한들 (변경 전)</h2>
+<p>조향각 90도 하드 캡은 없습니다. 곡률·가속도·토크·EPS 보호가 겹칩니다.
+아래 숫자는 <strong>변경 전</strong> 스톡 값입니다. 적용된 스케줄은
+<a href="#patch">11절</a>을 보면 됩니다.</p>
+
+<table>
+  <thead>
+    <tr><th>제한</th><th>값</th><th>어디서</th><th>저속 90도에서 의미</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>곡률 동결</td>
+      <td><code>vEgo ≤ 0.3 m/s</code></td>
+      <td>modeld</td>
+      <td>약 1.1 km/h 이하에서만. 서행에는 해당 없음.</td>
+    </tr>
+    <tr>
+      <td><code>MAX_CURVATURE</code></td>
+      <td>0.2 /m (반경 5 m)</td>
+      <td><code>clip_curvature</code></td>
+      <td>저속에서 바인딩되는 곡률 캡. 휠 90도 캡은 아님. 현대 기준 휠 90도는 대략 κ≈0.04.</td>
+    </tr>
+    <tr>
+      <td><code>MAX_LATERAL_ACCEL_NO_ROLL</code></td>
+      <td>3.0 m/s²</td>
+      <td><code>clip_curvature</code> · ISO</td>
+      <td>계산 속도를 최소 1.0 m/s로 올려서, 저속에선 0.2 곡률 캡보다 헐거움.</td>
+    </tr>
+    <tr>
+      <td><code>MAX_LATERAL_JERK</code></td>
+      <td>5.0 m/s³</td>
+      <td><code>clip_curvature</code> · ISO</td>
+      <td>곡률이 한 제어 주기(10 ms)에 커질 수 있는 양. 급격한 직각 진입을 완만하게 만듦.</td>
+    </tr>
+    <tr>
+      <td>토크 FF</td>
+      <td><code>a = κ · v²</code></td>
+      <td>LatControlTorque</td>
+      <td>저속에선 목표 횡가속도가 작아 앞먹임 토크가 약함.</td>
+    </tr>
+    <tr>
+      <td>PID 적분항 동결</td>
+      <td><code>vEgo &lt; 5 m/s</code></td>
+      <td>LatControlTorque</td>
+      <td>약 18 km/h 아래에서 I항이 휠을 더 밀어주지 못함.</td>
+    </tr>
+    <tr>
+      <td>토크 레이트</td>
+      <td><code>STEER_DELTA_UP</code> 2~3 / 10ms</td>
+      <td>Hyundai carcontroller + panda</td>
+      <td>토크가 한 번에 점프하지 못하게 함.</td>
+    </tr>
+    <tr>
+      <td><code>MAX_ANGLE</code></td>
+      <td>85도, 89프레임</td>
+      <td>Hyundai carcontroller</td>
+      <td>이미 85도 근처까지 간 뒤에 EPS 보호 펄스. 처음부터 안 도는 원인 아님.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="card">
+  <p><strong>대략 환산</strong> (wheelbase 2.7 m, steerRatio 13.7 가정, 저속 기구학)</p>
+  <ul>
+    <li>휠 90도 ≈ 도로륜 약 6.6도 ≈ 곡률 0.04 ≈ 반경 24 m</li>
+    <li><code>MAX_CURVATURE = 0.2</code> ≈ 반경 5 m ≈ 휠 약 400도 부근 (풀락에 가까움)</li>
+  </ul>
+  <p>서행에서 휠이 90도까지도 안 갔다면 0.3 m/s 동결이 아닙니다.
+  <code>action.desiredCurvature</code> 크기와 clip 이후 값을 보면 됩니다.</p>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="flow-clip">8. 흐름도 — clip_curvature 제한 (변경 전 고정값)</h2>
+<p>
+  <code>controlsd</code> 가 모델 곡률을 받은 뒤, 매 10 ms마다 세 겹으로 자릅니다.
+  속도는 최소 1.0 m/s로 올려 계산합니다.
+  변경 뒤에는 횡저크·횡가속도 상한이 속도에 따라 바뀝니다. 절대 곡률 캡 0.2는 그대로입니다.
+</p>
+
+<div class="flow">
+  <p class="flow-caption">clip_curvature(vEgo, prev, new, roll) — drive_helpers.py</p>
+  <div class="flow-col" style="width:100%;">
+    <div class="node start">
+      <div class="t">new_desired_curvature</div>
+      <div class="d">모델 action 또는 동결된 이전 값</div>
+    </div>
+    <div class="arrow">↓<span>v_ego = max(vEgo, 1.0)</span></div>
+    <div class="node warn">
+      <div class="t">1) 횡저크 레이트 제한</div>
+      <div class="d">Δκ ≤ 5.0 / v² · 0.01 s<br>한 주기에 곡률이 너무 빨리 안 변하게</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="node warn">
+      <div class="t">2) 횡가속도 제한</div>
+      <div class="d">|κ| ≤ (3.0 ± roll 보정) / v²<br>ISO 11270 3.0 m/s²</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="node warn">
+      <div class="t">3) 절대 곡률 캡</div>
+      <div class="d">|κ| ≤ 0.2 &nbsp;→ 반경 5 m<br>저속에서 보통 여기가 가장 빡셈</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="node lat">
+      <div class="t">controlsState.desiredCurvature</div>
+      <div class="d">이후 토크 제어기의 목표 곡률</div>
+    </div>
+  </div>
+</div>
+
+<pre>
+<span class="c"># openpilot/selfdrive/controls/lib/drive_helpers.py</span>
+MAX_CURVATURE = <span class="o">0.2</span>                 <span class="c"># 1/m, 반경 5 m</span>
+MAX_LATERAL_JERK = <span class="o">5.0</span>              <span class="c"># m/s³</span>
+MAX_LATERAL_ACCEL_NO_ROLL = <span class="o">3.0</span>     <span class="c"># m/s²</span>
+MIN_SPEED = <span class="o">1.0</span>                     <span class="c"># clip 계산용 하한</span>
+</pre>
+
+<!-- ====================================================== -->
+<h2 id="hyundai">9. Hyundai EPS 85도 펄스</h2>
+<p>
+  현대/기아 EPS<span class="full"> (Electric Power Steering, 전동식 파워 스티어링)</span> 는
+  조향각 90도 이상에서 토크를 1초 넘게 넣으면 고장 납니다.
+  코드는 각도를 85도에서 자르지 않고, 요청 비트를 잠깐 끊어서 타이머를 리셋합니다.
+</p>
+
+<div class="flow">
+  <p class="flow-caption">MAX_ANGLE = 85, MAX_ANGLE_FRAMES = 89 (~0.89 s), 끊는 프레임 = 2</p>
+  <div class="flow-col" style="width:100%;">
+    <div class="node start">
+      <div class="t">측정 조향각 |steeringAngleDeg| ≥ 85 ?</div>
+      <div class="d">명령각이 아니라 실제 휠 각도</div>
+    </div>
+  </div>
+  <div class="split">
+    <div class="flow-col">
+      <div class="join-label">아니오</div>
+      <div class="node ok">
+        <div class="t">steer_req 유지</div>
+        <div class="d">토크 계속 송신. 여기선 90도 캡 없음</div>
+      </div>
+    </div>
+    <div class="flow-col">
+      <div class="join-label">예, 약 0.89초 동안</div>
+      <div class="node warn">
+        <div class="t">steer_req = 0 을 2프레임</div>
+        <div class="d">LKAS 활성 비트만 끊음<br>토크 값은 유지 (torque_fault 트릭)</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="node lat">
+        <div class="t">EPS 1초 타이머 리셋</div>
+        <div class="d">90도 이상으로 계속 조향하려고 만든 우회<br>하드 캡이 아님</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="warn">
+  <div class="warn-title">이 로직을 90도 캡으로 오해하기 쉽습니다</div>
+  <p>휠이 <strong>80도 근처까지 갔다가</strong> 더 못 가면 이 펄스/EPS를 의심합니다.
+  휠이 <strong>거의 안 돌았으면</strong> 6절 곡률 동결 또는 7절 토크 제어입니다.</p>
+</div>
+
+<pre>
+<span class="c"># opendbc_repo/opendbc/car/hyundai/carcontroller.py</span>
+<span class="c"># EPS faults if you apply torque while the steering angle is above 90 degrees for more than 1 second</span>
+MAX_ANGLE = <span class="o">85</span>
+MAX_ANGLE_FRAMES = <span class="o">89</span>
+MAX_ANGLE_CONSECUTIVE_FRAMES = <span class="o">2</span>
+</pre>
+
+<!-- ====================================================== -->
+<h2 id="flow-diag">10. 흐름도 — 로그로 원인 가르기</h2>
+<p>같은 “휠이 안 돈다”라도 로그 네 값으로 원인이 갈립니다.</p>
+
+<div class="flow">
+  <p class="flow-caption">볼 신호: vEgo, modelV2.action.desiredCurvature, controlsState.desiredCurvature, steeringAngleDeg</p>
+  <div class="flow-col" style="width:100%;">
+    <div class="node start">
+      <div class="t">직각 코너 구간 로그</div>
+      <div class="d">AOL on · 실험 모드 on · UI는 길을 그림</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="node decision">
+      <div class="t">vEgo 가 0.3 m/s 근처인데<br>action.desiredCurvature 가 안 커지나?</div>
+    </div>
+  </div>
+  <div class="split">
+    <div class="flow-col">
+      <div class="join-label">예</div>
+      <div class="node bad">
+        <div class="t">거의 정지 곡률 동결</div>
+        <div class="d">modeld MIN_LAT_CONTROL_SPEED=0.3<br>서행이면 여기가 아님</div>
+      </div>
+    </div>
+    <div class="flow-col">
+      <div class="join-label">아니오</div>
+      <div class="node decision">
+        <div class="t">action은 큰데<br>controlsState.desiredCurvature 만 0.2에 붙나?</div>
+      </div>
+      <div class="split" style="margin-top:10px;">
+        <div class="flow-col">
+          <div class="join-label">예</div>
+          <div class="node warn">
+            <div class="t">원인: MAX_CURVATURE 캡</div>
+            <div class="d">clip_curvature 0.2 /m</div>
+          </div>
+        </div>
+        <div class="flow-col">
+          <div class="join-label">아니오</div>
+          <div class="node decision">
+            <div class="t">steeringAngleDeg 가<br>~85에서 멈추나?</div>
+          </div>
+          <div class="split" style="margin-top:10px;">
+            <div class="flow-col">
+              <div class="join-label">예</div>
+              <div class="node warn">
+                <div class="t">원인: EPS 85도 펄스</div>
+                <div class="d">Hyundai MAX_ANGLE</div>
+              </div>
+            </div>
+            <div class="flow-col">
+              <div class="join-label">아니오</div>
+              <div class="node warn">
+                <div class="t">원인: 토크 제어 약함</div>
+                <div class="d">FF = κ·v² 작음<br>v&lt;5에서 적분항 동결<br>saturated 플래그 확인</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <p><strong>로그에서 볼 필드</strong></p>
+  <table>
+    <thead>
+      <tr><th>필드</th><th>의미</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>carState.vEgo</code></td><td>자차 속도. 0.3 / 5.0 경계와 비교.</td></tr>
+      <tr><td><code>modelV2.action.desiredCurvature</code></td><td>모델이 낸 조향 곡률. 화면 경로가 아님.</td></tr>
+      <tr><td><code>controlsState.desiredCurvature</code></td><td>clip 이후 실제 제어 목표.</td></tr>
+      <tr><td><code>carState.steeringAngleDeg</code></td><td>측정 스티어링 휠 각도.</td></tr>
+      <tr><td><code>controlsState.lateralControlState.torqueState.saturated</code></td><td>토크가 한도에 닿았는지.</td></tr>
+      <tr><td><code>selfdriveState.experimentalMode</code></td><td>실험 모드 여부.</td></tr>
+      <tr><td><code>frogpilotCarState.alwaysOnLateralEnabled</code></td><td>AOL 활성.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="patch">11. 코드 변경 — 무엇을 바꿨나</h2>
+<div class="card">
+  <p><span class="badge b-ok">적용됨</span>
+  실험 모드와 UI는 그대로 둡니다. 바꾼 것은 조향 목표를 고르는 곳과
+  <code>clip_curvature</code> 상한뿐입니다.</p>
+  <ul>
+    <li><strong>30 km/h 이하:</strong> UI 경로가 같은 목표를 계속 가리키면 그 경로 곡률로 조향을 연다.</li>
+    <li><strong>80 km/h 이상:</strong> 허용 횡가속도·횡저크를 스톡 대비 <strong>+20%</strong> (3.0 → 3.6 m/s²). 급한 커브 상한을 푸는 것이 아니라, 지금 못 도는 곡선을 조금 더 따라가게 한다.</li>
+    <li><strong>30~80 km/h:</strong> 경로 비중과 상한을 선형으로 잇는다.</li>
+  </ul>
+</div>
+
+<table>
+  <thead>
+    <tr><th>파일</th><th>변경</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>openpilot/selfdrive/controls/lib/drive_helpers.py</code></td>
+      <td>
+        <code>speed_blend</code>, 속도별 횡가속도/횡저크,
+        <code>PathSteerHelper</code>,
+        <code>clip_curvature</code>가 스케줄된 상한을 사용.
+      </td>
+    </tr>
+    <tr>
+      <td><code>openpilot/selfdrive/controls/controlsd.py</code></td>
+      <td>
+        <code>latActive</code>일 때 모델 action 곡률을
+        <code>path_steer.blend()</code>에 통과시킨 뒤 clip.
+        비활성이면 경로 이력을 지움.
+      </td>
+    </tr>
+    <tr>
+      <td><code>openpilot/selfdrive/controls/tests/test_drive_helpers.py</code></td>
+      <td>스케줄 평탄/선형, 고속 +20%, 안정 경로 추종, 흔들림 시 action 유지.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="warn">
+  <div class="warn-title">바꾸지 않은 것</div>
+  <ul>
+    <li>실험 모드 (종방향 e2e만)</li>
+    <li>UI 렌더러</li>
+    <li>modeld <code>MIN_LAT_CONTROL_SPEED = 0.3</code> 동결 (서행이면 해당 없음)</li>
+    <li><code>MAX_CURVATURE = 0.2</code> 절대 캡</li>
+    <li>토크 PID 적분항 <code>vEgo &lt; 5</code> 동결, Hyundai EPS 85도 펄스</li>
+  </ul>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="schedule">12. 속도 스케줄 (30 / 80 km/h, 중간 선형)</h2>
+<p>
+  <code>t = speed_blend(vEgo)</code> 는 30 km/h 이하에서 0, 80 km/h 이상에서 1,
+  그 사이는 선형입니다. 경로 추종 비중은 <code>1 − t</code> 입니다.
+</p>
+
+<table>
+  <thead>
+    <tr><th>속도</th><th>t</th><th>조향 목표</th><th>허용 횡가속도</th><th>허용 횡저크</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>≤ 30 km/h</td>
+      <td>0</td>
+      <td>UI 경로가 안정되면 경로 곡률 100%</td>
+      <td>5.0 m/s²</td>
+      <td>8.0 m/s³</td>
+    </tr>
+    <tr>
+      <td>55 km/h (중간)</td>
+      <td>0.5</td>
+      <td>경로 50% + action 50%</td>
+      <td>4.3 m/s²</td>
+      <td>7.0 m/s³</td>
+    </tr>
+    <tr>
+      <td>≥ 80 km/h</td>
+      <td>1</td>
+      <td>모델 action만</td>
+      <td>3.6 m/s² (3.0 × 1.20)</td>
+      <td>6.0 m/s³ (5.0 × 1.20)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="flow">
+  <p class="flow-caption">저속 평탄 → 30~80 km/h 선형 → 고속 평탄 (+20%)</p>
+  <div class="flow-col" style="width:100%;">
+    <div class="node start">
+      <div class="t">vEgo</div>
+      <div class="d">자차 속도</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="node decision">
+      <div class="t">t = speed_blend(vEgo)</div>
+      <div class="d">0 at 30 km/h, 1 at 80 km/h, 사이는 선형</div>
+    </div>
+  </div>
+  <div class="split">
+    <div class="flow-col">
+      <div class="join-label">경로 비중 = 1 − t</div>
+      <div class="node ui">
+        <div class="t">저속: UI 경로</div>
+        <div class="d">30 km/h 이하에서 안정 시 경로 곡률</div>
+      </div>
+    </div>
+    <div class="flow-col">
+      <div class="join-label">상한 = (1−t)·저속값 + t·고속값</div>
+      <div class="node lat">
+        <div class="t">고속: +20% 허용</div>
+        <div class="d">3.6 m/s² · 급한 커브 상한은 유지</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<pre>
+<span class="c"># openpilot/selfdrive/controls/lib/drive_helpers.py</span>
+V_LIMIT_LOW = 30.0 * CV.KPH_TO_MS      <span class="c"># 8.33 m/s</span>
+V_LIMIT_HIGH = 80.0 * CV.KPH_TO_MS     <span class="c"># 22.22 m/s</span>
+HIGH_SPEED_LIMIT_SCALE = <span class="o">1.20</span>
+LOW_SPEED_MAX_LAT_ACCEL = <span class="o">5.0</span>          <span class="c"># m/s²</span>
+LOW_SPEED_MAX_LAT_JERK = <span class="o">8.0</span>           <span class="c"># m/s³</span>
+MAX_LATERAL_ACCEL_NO_ROLL = <span class="o">3.0</span>        <span class="c"># 고속 평탄은 ×1.20 → 3.6</span>
+MAX_LATERAL_JERK = <span class="o">5.0</span>                 <span class="c"># 고속 평탄은 ×1.20 → 6.0</span>
+MAX_CURVATURE = <span class="o">0.2</span>                    <span class="c"># 절대 캡, 속도 무관</span>
+</pre>
+
+<div class="note">
+  <div class="note-title">고속에서 급한 커브를 더 여는 것이 아닙니다</div>
+  <p>고속 바인딩은 여전히 횡가속도입니다. 80 km/h에서 3.6 / v² ≈ 0.007 /m (반경 약 140 m).
+  +20%는 “지금 못 돌아나가던 곡선”을 조금 더 따라가게 할 뿐, 직각 코너를 고속에서 허가하지 않습니다.</p>
+  <p>저속 5.0 m/s² 는 15 km/h에서 최소 반경 약 3.5 m 까지 허용하지만,
+  <code>MAX_CURVATURE = 0.2</code> (반경 5 m)가 먼저 막습니다.</p>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="path-follow">13. 저속 UI 경로 조향 허가</h2>
+<p>
+  화면이 그리는 값과 같은 <code>modelV2.position</code> 에서 곡률을 계산합니다.
+  전방 15 m 목표점이 약 0.5초(모델 10프레임) 동안 크게 흔들리지 않으면
+  “같은 길을 계속 표시한다”고 보고, 그 경로로 조향을 엽니다.
+</p>
+
+<div class="flow">
+  <p class="flow-caption">controlsd: action → PathSteerHelper.blend → clip_curvature</p>
+  <div class="legend">
+    <span><i style="background:var(--node-ui);border-color:#1f4b7a;"></i>UI 경로</span>
+    <span><i style="background:var(--node-lat);border-color:#2ea043;"></i>조향</span>
+    <span><i style="background:var(--node-warn);border-color:#9e6a03;"></i>안정 아님 / 고속</span>
+  </div>
+  <div class="flow-col" style="width:100%;">
+    <div class="node start">
+      <div class="t">modelV2.action.desiredCurvature</div>
+      <div class="d">모델이 낸 짧은 구간 조향 명령</div>
+    </div>
+    <div class="arrow">↓<span>latActive 일 때만 blend</span></div>
+    <div class="node decision">
+      <div class="t">경로가 안정한가?</div>
+      <div class="d">전방 15 m y의 표준편차 ≤ 0.8 m<br>최근 10 모델 프레임</div>
+    </div>
+  </div>
+  <div class="split">
+    <div class="flow-col">
+      <div class="join-label">아니오 · 또는 80 km/h 이상</div>
+      <div class="node warn">
+        <div class="t">action 곡률 유지</div>
+        <div class="d">흔들리면 UI를 따라가지 않음</div>
+      </div>
+    </div>
+    <div class="flow-col">
+      <div class="join-label">예 · 30 km/h 이하는 경로 100%</div>
+      <div class="node ui">
+        <div class="t">κ = 2y / (x² + y²)</div>
+        <div class="d">lookahead x = clip(v·1.5, 8, 18) m<br>UI가 그린 점과 같은 기하</div>
+      </div>
+      <div class="arrow">↓<span>중간 속도는 선형 혼합</span></div>
+      <div class="node lat">
+        <div class="t">w·κ_path + (1−w)·κ_action</div>
+        <div class="d">w = path_follow_weight(vEgo)</div>
+      </div>
+    </div>
+  </div>
+  <div class="flow-col" style="width:100%;margin-top:12px;">
+    <div class="arrow">↓</div>
+    <div class="node warn">
+      <div class="t">clip_curvature(속도 스케줄)</div>
+      <div class="d">횡저크 · 횡가속도(속도별) · MAX_CURVATURE 0.2</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="node lat">
+      <div class="t">controlsState.desiredCurvature</div>
+      <div class="d">토크 횡제어기의 목표</div>
+    </div>
+  </div>
+</div>
+
+<pre>
+<span class="c"># openpilot/selfdrive/controls/controlsd.py</span>
+action_curvature = model_v2.action.desiredCurvature
+if CC.latActive:
+    new_desired_curvature = self.path_steer.<span class="a">blend</span>(
+        model_v2, CS.vEgo, action_curvature,
+        model_updated=self.sm.updated['modelV2'])
+else:
+    self.path_steer.reset()
+    new_desired_curvature = action_curvature
+self.desired_curvature, curvature_limited = <span class="o">clip_curvature</span>(...)
+</pre>
+
+<pre>
+<span class="c"># PathSteerHelper 상수 — drive_helpers.py</span>
+PATH_STABLE_X = <span class="o">15.0</span>        <span class="c"># m, 흔들림을 보는 UI 목표 거리</span>
+PATH_STABLE_STD = <span class="o">0.8</span>       <span class="c"># m, 이보다 크면 불안정</span>
+PATH_STABLE_SAMPLES = <span class="o">10</span>    <span class="c"># 모델 프레임, 약 0.5 s</span>
+PATH_CURV_X_MIN = <span class="o">8.0</span>       <span class="c"># m</span>
+PATH_CURV_X_MAX = <span class="o">18.0</span>      <span class="c"># m</span>
+</pre>
+
+<div class="note">
+  <div class="note-title">안정 판정이 실패하면 예전과 같습니다</div>
+  <p>경로가 좌우로 크게 뛰거나, 모델 업데이트가 짧거나, 횡제어가 꺼져 있으면 action 곡률만 씁니다.
+  고속(≥80 km/h)에서도 경로를 강제로 따라가지 않습니다.</p>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="files">14. 관련 코드</h2>
+<div class="files">
+  <span class="file">openpilot/selfdrive/modeld/modeld.py</span>
+  <span class="file">openpilot/selfdrive/controls/controlsd.py</span>
+  <span class="file">openpilot/selfdrive/controls/lib/drive_helpers.py</span>
+  <span class="file">openpilot/selfdrive/controls/tests/test_drive_helpers.py</span>
+  <span class="file">openpilot/selfdrive/controls/lib/latcontrol_torque.py</span>
+  <span class="file">openpilot/selfdrive/controls/lib/longitudinal_planner.py</span>
+  <span class="file">openpilot/selfdrive/ui/onroad/model_renderer.py</span>
+  <span class="file">opendbc_repo/opendbc/car/hyundai/carcontroller.py</span>
+  <span class="file">opendbc_repo/opendbc/safety/modes/hyundai.h</span>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="action">15. action이란</h2>
+<p>
+  action은 주행 모델이 <strong>지금 차에 넣으라고 내는 짧은 조작 명령</strong>입니다.
+  화면의 길과 다른 출력입니다.
+</p>
+<table>
+  <thead>
+    <tr><th>출력</th><th>의미</th><th>어디에 쓰이나</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>modelV2.position</code> / 차선</td>
+      <td>앞으로 몇 초의 예측 경로</td>
+      <td>UI가 그리는 길</td>
+    </tr>
+    <tr>
+      <td><code>modelV2.action</code></td>
+      <td>지금 넣을 횡·종 명령</td>
+      <td>조향·가감속 제어</td>
+    </tr>
+  </tbody>
+</table>
+<p>
+  action 안에는 <code>desiredCurvature</code>(조향 곡률)와
+  <code>desiredAcceleration</code>(종방향 가속도)가 있습니다.
+  모델이 낸 횡방향 값을 속도²로 나눠 곡률로 바꿉니다.
+</p>
+<pre>
+<span class="c"># openpilot/selfdrive/modeld/modeld.py</span>
+desired_curvature = model_output['action'][0,0] / (max(<span class="o">1.0</span>, v_ego))**2
+</pre>
+<p>
+  변경 전에는 화면이 90도 길을 그려도 action 곡률이 작으면 휠이 그만큼만 돌아가려 했습니다.
+  이번 변경이 그 점을 푸는 것입니다. 서행·중속에서 UI 경로가 안정되면
+  조향 목표를 action만이 아니라 <strong>그 경로 곡률</strong>로 엽니다.
+</p>
+
+<!-- ====================================================== -->
+<h2 id="jerk">16. 횡저크(jerk)와 30~80 km/h</h2>
+<p>
+  횡가속도는 지금 옆으로 얼마나 세게 도는지입니다.
+  <strong>횡저크</strong>는 그 세기가 <strong>얼마나 빨리 변하는지</strong> (m/s³) 입니다.
+  clip에서 저크는 한 제어 주기(10 ms)에 곡률이 얼마나 변해도 되는지의 레이트 제한입니다.
+  상한(횡가속도)이 “최대 얼마나 꺾을 수 있나”라면, 저크는 “그 각까지 얼마나 빨리 가도 되나”입니다.
+</p>
+<p>30~80 km/h는 고속보다 특별히 위험한 구간이 아닙니다. 기존과 달라진 점이 두 가지입니다.</p>
+<table>
+  <thead>
+    <tr><th></th><th>변경 전</th><th>지금 (예: 55 km/h 중간)</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>조향 목표</td>
+      <td>action만</td>
+      <td>경로가 안정되면 경로 50% + action 50%</td>
+    </tr>
+    <tr>
+      <td>횡가속도 상한</td>
+      <td>3.0 m/s²</td>
+      <td>4.3 m/s²</td>
+    </tr>
+    <tr>
+      <td>횡저크 상한</td>
+      <td>5.0 m/s³</td>
+      <td>7.0 m/s³</td>
+    </tr>
+  </tbody>
+</table>
+<ol>
+  <li>UI 경로를 일부 따라감 (새 동작). 30 km/h에서 안정 시 100%, 80 km/h에서 0%, 사이는 선형.</li>
+  <li>상한이 예전 3.0 / 5.0보다 큼. 30에 가까울수록 5.0 / 8.0, 80에 가까울수록 3.6 / 6.0.</li>
+</ol>
+<p>
+  80 km/h 이상은 경로 혼합이 0이라, 달라진 것은 상한 +20%뿐입니다.
+  30~80에서 경로가 안정 판정을 통과하고 action보다 훨씬 큰 곡률이면
+  예전보다 그쪽으로 가지만, 저크 제한을 타고 올라갑니다.
+</p>
+
+<!-- ====================================================== -->
+<h2 id="safety">17. 고속 급변경이 되나</h2>
+<p>
+  고속에서 바퀴가 한 번에 5도 이상 더 꺾이는 급변경은 이번 코드가 하는 일이 아닙니다.
+  +20%는 지금 각에 5도를 더하는 것이 아니라 <strong>상한을 20% 올리는 것</strong>입니다.
+  모델이 더 꺾으라고 하지 않으면 휠은 그대로입니다.
+</p>
+<table>
+  <thead>
+    <tr><th></th><th>변경 전</th><th>적용 후 (80 km/h)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>허용 횡가속도</td><td>3.0 m/s²</td><td>3.6 m/s²</td></tr>
+    <tr><td>허용 횡저크</td><td>5.0 m/s³</td><td>6.0 m/s³</td></tr>
+    <tr><td>휠 5도만큼 곡률을 키우는 데 (대략)</td><td>~0.23 s</td><td>~0.19 s</td></tr>
+  </tbody>
+</table>
+<p>
+  5도를 한 프레임에 넣는 경로는 없습니다. 현대차 토크 레이트(<code>STEER_DELTA_UP</code>)도 그대로입니다.
+  속도 경계에서 계수가 계단처럼 바뀌지 않고 30~80은 선형입니다.
+</p>
+<p>상한을 넓힌 만큼 예전보다 커브를 조금 더 세게/빠르게 따라갈 수는 있습니다. 형태는 다음과 같습니다.</p>
+<ul>
+  <li>고속에서 모델이 이미 예전 3.0에 붙어 있던 커브 → 이제 3.6까지 허용.</li>
+  <li>30~80 km/h에서 안정된 UI 경로를 일부 믿음. 틀린 길이 안정적으로 보이면 예전보다 그쪽으로 감.</li>
+  <li>30 km/h 이하 직각은 의도적으로 더 꺾게 만든 구간.</li>
+</ul>
+
+<div class="card" style="margin-top:16px;">
+  <p><strong>요약</strong></p>
+  <ol>
+    <li>실험 모드는 이번 현상과 관계없습니다.</li>
+    <li>휠이 90도까지 안 돈 이유는 <code>clip_curvature</code> max 계수 (횡가속도 3.0, 횡저크 5.0, 곡률 0.2).</li>
+    <li>적용 후: 30 km/h 이하 5.0 / 8.0 + 안정 UI 경로 조향. 80 km/h 이상 +20% (3.6 / 6.0). 사이는 선형.</li>
+    <li>action은 즉시 조작 명령, UI 경로와 다름. 이번 변경이 서행에서 경로를 조향에 쓰는 이유.</li>
+    <li>고속 5도 순간 급변경은 없음. 저크·토크 레이트가 남음. 상한만 넓힘.</li>
+  </ol>
+</div>
+
+<footer>
+  openpilot_mj_develop · 90도 외길 조향 제한 정리 · 경로 추종(≤30 km/h) · 고속 +20% · 중간 선형
+</footer>
+
+</div>
+</body>
+</html>

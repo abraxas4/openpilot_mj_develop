@@ -12,7 +12,7 @@ from openpilot.common.swaglog import cloudlog
 
 from opendbc.car.car_helpers import interfaces
 from opendbc.car.vehicle_model import VehicleModel
-from openpilot.selfdrive.controls.lib.drive_helpers import clip_curvature
+from openpilot.selfdrive.controls.lib.drive_helpers import PathSteerHelper, clip_curvature
 from openpilot.selfdrive.controls.lib.latcontrol import LatControl
 from openpilot.selfdrive.controls.lib.latcontrol_pid import LatControlPID
 from openpilot.selfdrive.controls.lib.latcontrol_angle import LatControlAngle, STEER_ANGLE_SATURATION_THRESHOLD
@@ -52,6 +52,7 @@ class Controls:
     self.steer_limited_by_safety = False
     self.curvature = 0.0
     self.desired_curvature = 0.0
+    self.path_steer = PathSteerHelper()
     self.aol_standstill_frames = 0
     self.aol_high_speed_temp_event_active = False
     self.aol_temp_fault_frames = 0
@@ -176,7 +177,13 @@ class Controls:
     if self.sm.valid['lateralManeuverPlan']:
       new_desired_curvature = self.sm['lateralManeuverPlan'].desiredCurvature if CC.latActive else self.curvature
     else:
-      new_desired_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
+      action_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
+      if CC.latActive:
+        new_desired_curvature = self.path_steer.blend(model_v2, CS.vEgo, action_curvature,
+                                                      model_updated=self.sm.updated['modelV2'])
+      else:
+        self.path_steer.reset()
+        new_desired_curvature = action_curvature
     self.desired_curvature, curvature_limited = clip_curvature(CS.vEgo, self.desired_curvature, new_desired_curvature, lp.roll)
     lat_delay = self.sm["liveDelay"].lateralDelay + LAT_SMOOTH_SECONDS
 
