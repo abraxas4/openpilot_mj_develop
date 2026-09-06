@@ -209,13 +209,17 @@ class TogglesLayout(Widget):
 
     # TODO: make a param control list item so we don't need to manage internal state as much here
     # refresh toggles from params to mirror external changes
-    for param in self._toggle_defs:
-      self._toggles[param].action_item.set_state(self._params.get_bool(param))
+    for param, toggle in self._toggles.items():
+      if param not in self._toggle_defs:
+        continue
+      toggle.action_item.set_state(self._params.get_bool(param))
 
     # these toggles need restart, block while engaged
-    for toggle_def in self._toggle_defs:
-      if self._toggle_defs[toggle_def][3] and toggle_def not in self._locked_toggles:
-        self._toggles[toggle_def].action_item.set_enabled(not ui_state.engaged)
+    for param, toggle in self._toggles.items():
+      if param not in self._toggle_defs:
+        continue
+      if self._toggle_defs[param][3] and param not in self._locked_toggles:
+        toggle.action_item.set_enabled(not ui_state.engaged)
 
   def _render(self, rect):
     self._scroller.render(rect)

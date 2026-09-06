@@ -100,12 +100,15 @@ class SoftwareLayout(Widget):
     self._branch_btn.action_item.set_value(ui_state.params.get("UpdaterTargetBranch") or "")
     self._branch_dialog: MultiOptionDialog | None = None
 
+    self._fork_item = text_item(lambda: tr("Fork Version"), "")
+
     self._scroller = Scroller([
       self._onroad_label,
       self._version_item,
       self._download_btn,
       self._install_btn,
       self._branch_btn,
+      self._fork_item,
       button_item(lambda: tr("Uninstall"), lambda: tr("UNINSTALL"), callback=self._on_uninstall),
     ], line_separator=True, spacing=0)
 
@@ -170,6 +173,15 @@ class SoftwareLayout(Widget):
     # Update target branch button value
     current_branch = ui_state.params.get("UpdaterTargetBranch") or ""
     self._branch_btn.action_item.set_value(current_branch)
+
+    remote = (ui_state.params.get("GitRemote") or "").replace("https://", "").replace("http://", "")
+    if remote.endswith(".git"):
+      remote = remote[:-4]
+    commit = (ui_state.params.get("GitCommit") or "")[:12]
+    date = _parse_commit_date(ui_state.params.get("GitCommitDate"))
+    fork_bits = [x for x in (commit, ui_state.params.get("GitBranch") or "", date) if x]
+    self._fork_item.action_item.set_text("  ".join(fork_bits) or "N/A")
+    self._fork_item.set_description(remote)
 
     # Update install button
     self._install_btn.set_visible(ui_state.is_offroad() and update_available)
