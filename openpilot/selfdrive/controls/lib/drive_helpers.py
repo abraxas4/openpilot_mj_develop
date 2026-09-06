@@ -23,8 +23,10 @@ HIGH_SPEED_LIMIT_SCALE = 1.20
 LOW_SPEED_MAX_LAT_ACCEL = 5.0  # m/s^2, urban 90-deg corners
 LOW_SPEED_MAX_LAT_JERK = 8.0   # m/s^3, wind into tight corners faster
 PATH_STABLE_X = 15.0           # m, UI target point used for shake check
-PATH_STABLE_STD = 0.8          # m
+PATH_STABLE_STD = 0.8          # m, mid-speed only; low speed allows growing 90deg paths
 PATH_STABLE_SAMPLES = 10       # model frames (~0.5 s at 20 Hz)
+PATH_OSCILLATION_DY = 0.3      # m, ignore smaller y steps when counting L/R flips
+PATH_OSCILLATION_FLIPS = 3     # significant sign changes => shaking, keep action
 PATH_CURV_X_MIN = 8.0          # m
 PATH_CURV_X_MAX = 18.0         # m
 
@@ -74,7 +76,11 @@ def curvature_from_path_xy(xs, ys, lookahead_x: float) -> float | None:
 
 
 class PathSteerHelper:
-  """If the onroad path stays on the same target, blend steering toward that path at low speed."""
+  """Blend steering toward the UI path at low speed.
+
+  A 90deg corner growing in the camera is not 'shake': y at 15 m increases
+  smoothly. Reject only left/right oscillation. The std cap is for mid-speed.
+  """
 
   def __init__(self):
     self._y_hist: deque[float] = deque(maxlen=PATH_STABLE_SAMPLES)
@@ -82,8 +88,26 @@ class PathSteerHelper:
   def reset(self):
     self._y_hist.clear()
 
-  def _stable(self) -> bool:
-    if len(self._y_hist) < PATH_STABLE_SAMPLES:
+  def _ready(self) -> bool:
+    return len(self._y_hist) >= PATH_STABLE_SAMPLES
+
+  def _oscillating(self) -> bool:
+    if not self._ready():
+      return True
+    dys = np.diff(np.asarray(self._y_hist, dtype=float))
+    prev = 0
+    flips = 0
+    for d in dys:
+      if abs(d) <= PATH_OSCILLATION_DY:
+        continue
+      si = 1 if d > 0 else -1
+      if prev != 0 and si != prev:
+        flips += 1
+      prev = si
+    return flips >= PATH_OSCILLATION_FLIPS
+
+  def _tight_stable(self) -> bool:
+    if not self._ready():
       return False
     return float(np.std(self._y_hist)) <= PATH_STABLE_STD
 
@@ -102,7 +126,10 @@ class PathSteerHelper:
   def blend(self, model_v2, v_ego: float, action_curvature: float, model_updated: bool) -> float:
     self.update(model_v2, model_updated)
     weight = path_follow_weight(v_ego)
-    if weight <= 0.0 or not self._stable():
+    if weight <= 0.0 or not self._ready() or self._oscillating():
+      return float(action_curvature)
+    # Below 30 km/h, a growing corner is allowed. Mid-speed still needs small std.
+    if weight < 1.0 and not self._tight_stable():
       return float(action_curvature)
     lookahead_x = float(np.clip(v_ego * 1.5, PATH_CURV_X_MIN, PATH_CURV_X_MAX))
     path_curv = curvature_from_path_xy(model_v2.position.x, model_v2.position.y, lookahead_x)

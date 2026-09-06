@@ -926,8 +926,8 @@ MAX_CURVATURE = <span class="o">0.2</span>                    <span class="c"># 
 <h2 id="path-follow">13. 저속 UI 경로 조향 허가</h2>
 <p>
   화면이 그리는 값과 같은 <code>modelV2.position</code> 에서 곡률을 계산합니다.
-  전방 15 m 목표점이 약 0.5초(모델 10프레임) 동안 크게 흔들리지 않으면
-  “같은 길을 계속 표시한다”고 보고, 그 경로로 조향을 엽니다.
+  저속(≤30 km/h)에서는 코너가 다가오며 15 m 앞 y가 커져도 허가합니다.
+  좌우로 진동할 때만 끊습니다. 중간 속도는 예전처럼 표준편차 0.8 m도 봅니다.
 </p>
 
 <div class="flow">
@@ -944,8 +944,8 @@ MAX_CURVATURE = <span class="o">0.2</span>                    <span class="c"># 
     </div>
     <div class="arrow">↓<span>latActive 일 때만 blend</span></div>
     <div class="node decision">
-      <div class="t">경로가 안정한가?</div>
-      <div class="d">전방 15 m y의 표준편차 ≤ 0.8 m<br>최근 10 모델 프레임</div>
+      <div class="t">경로를 따라가나?</div>
+      <div class="d">저속: 좌우 진동만 거부 (90도 접근 허용)<br>중간: 추가로 표준편차 ≤ 0.8 m</div>
     </div>
   </div>
   <div class="split">
@@ -998,17 +998,20 @@ self.desired_curvature, curvature_limited = <span class="o">clip_curvature</span
 
 <pre>
 <span class="c"># PathSteerHelper 상수 — drive_helpers.py</span>
-PATH_STABLE_X = <span class="o">15.0</span>        <span class="c"># m, 흔들림을 보는 UI 목표 거리</span>
-PATH_STABLE_STD = <span class="o">0.8</span>       <span class="c"># m, 이보다 크면 불안정</span>
-PATH_STABLE_SAMPLES = <span class="o">10</span>    <span class="c"># 모델 프레임, 약 0.5 s</span>
-PATH_CURV_X_MIN = <span class="o">8.0</span>       <span class="c"># m</span>
-PATH_CURV_X_MAX = <span class="o">18.0</span>      <span class="c"># m</span>
+PATH_STABLE_X = <span class="o">15.0</span>             <span class="c"># m</span>
+PATH_STABLE_STD = <span class="o">0.8</span>            <span class="c"># m, 중간 속도만</span>
+PATH_STABLE_SAMPLES = <span class="o">10</span>         <span class="c"># 약 0.5 s</span>
+PATH_OSCILLATION_DY = <span class="o">0.3</span>         <span class="c"># m</span>
+PATH_OSCILLATION_FLIPS = <span class="o">3</span>        <span class="c"># 좌우 진동이면 action 유지</span>
+PATH_CURV_X_MIN = <span class="o">8.0</span>
+PATH_CURV_X_MAX = <span class="o">18.0</span>
 </pre>
 
 <div class="note">
-  <div class="note-title">안정 판정이 실패하면 예전과 같습니다</div>
-  <p>경로가 좌우로 크게 뛰거나, 모델 업데이트가 짧거나, 횡제어가 꺼져 있으면 action 곡률만 씁니다.
-  고속(≥80 km/h)에서도 경로를 강제로 따라가지 않습니다.</p>
+  <div class="note-title">route 00000286 — 10도에서 돌아온 이유</div>
+  <p>t≈244~247 s, 9~14 km/h. UI 15 m y가 3→25 m로 커지는 동안 action은 0.005~0.008.
+  경로 곡률이 0.04~0.06까지 한두 프레임 섞였다가, y 표준편차가 0.8 m를 넘어 다시 action으로 떨어짐.
+  저속에선 그 기하 변화를 흔들림으로 보지 않고 경로 조향을 유지하도록 바꿈.</p>
 </div>
 
 <!-- ====================================================== -->

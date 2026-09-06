@@ -115,6 +115,29 @@ class TestPathSteer:
       out = helper.blend(_Model(xs, ys), v, action, model_updated=True)
     assert abs(out - action) < 1e-9
 
+  def test_approaching_corner_low_speed_follows_path(self):
+    # y at 15 m grows as a 90deg corner approaches — not L/R shake.
+    helper = PathSteerHelper()
+    action = 0.005
+    v = 12.0 * CV.KPH_TO_MS
+    out = action
+    for i in range(PATH_STABLE_SAMPLES):
+      xs, ys = _circle_path(8.0)
+      ys = ys + 2.0 * i  # same side, growing offset
+      out = helper.blend(_Model(xs, ys), v, action, model_updated=True)
+    assert abs(out) > abs(action) * 3
+
+  def test_growing_corner_mid_speed_keeps_action(self):
+    helper = PathSteerHelper()
+    action = 0.01
+    v = 55.0 * CV.KPH_TO_MS
+    out = action
+    for i in range(PATH_STABLE_SAMPLES):
+      xs, ys = _circle_path(8.0)
+      ys = ys + 2.0 * i
+      out = helper.blend(_Model(xs, ys), v, action, model_updated=True)
+    assert abs(out - action) < 1e-9
+
   def test_high_speed_ignores_path(self):
     xs, ys = _circle_path(8.0)
     helper = PathSteerHelper()
