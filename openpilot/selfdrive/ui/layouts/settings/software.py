@@ -1,6 +1,8 @@
+import os
 import subprocess
 import time
 import datetime
+from openpilot.common.basedir import BASEDIR
 from openpilot.common.time_helpers import system_time_valid
 from openpilot.selfdrive.ui.ui_state import ui_state
 from openpilot.system.ui.lib.application import gui_app
@@ -62,17 +64,32 @@ def _parse_commit_date(raw: str | None) -> str:
   return ""
 
 
+def _live_git() -> tuple[str, str, str, str]:
+  """Read HEAD from the checkout so git pull is visible without a manager restart."""
+  def _git(*args: str) -> str:
+    return subprocess.check_output(["git", "-C", BASEDIR, *args], timeout=2).decode().strip()
+
+  try:
+    commit = _git("rev-parse", "HEAD")[:12]
+    date = _git("show", "-s", "--format=%cs", "HEAD")
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+    remote = _git("config", "--get", "remote.origin.url")
+    remote = remote.replace("https://", "").replace("http://", "").removesuffix(".git")
+    return commit, date, branch, remote
+  except Exception:
+    commit = (ui_state.params.get("GitCommit") or "")[:12]
+    date = _parse_commit_date(ui_state.params.get("GitCommitDate"))
+    branch = ui_state.params.get("GitBranch") or ""
+    remote = (ui_state.params.get("GitRemote") or "").replace("https://", "").replace("http://", "")
+    if remote.endswith(".git"):
+      remote = remote[:-4]
+    return commit, date, branch, remote
+
+
 def _running_software_text() -> str:
   """GitHub-comparable running build. Do not use LastUpdateTime (stale after git pull)."""
-  desc = ui_state.params.get("UpdaterCurrentDescription") or ""
-  parts = [p.strip() for p in desc.split(" / ")] if desc else []
-  if len(parts) == 4:
-    version, branch, commit, date = parts
-    return f"{commit}  {version} / {branch}  {date}"
-  commit = (ui_state.params.get("GitCommit") or "")[:12]
+  commit, date, branch, _remote = _live_git()
   version = ui_state.params.get("Version") or ""
-  branch = ui_state.params.get("GitBranch") or ""
-  date = _parse_commit_date(ui_state.params.get("GitCommitDate"))
   left = "  ".join(x for x in (commit, version) if x)
   right = "  ".join(x for x in (branch, date) if x)
   return " / ".join(x for x in (left, right) if x)
@@ -151,7 +168,7 @@ class SoftwareLayout(Widget):
         self._download_btn.action_item.set_value(tr("update available"))
         self._download_btn.action_item.set_text(tr("DOWNLOAD"))
       else:
-        commit = (ui_state.params.get("GitCommit") or "")[:12]
+        commit, _date, _branch, _remote = _live_git()
         if commit:
           self._download_btn.action_item.set_value(tr("up to date, {}").format(commit))
         else:
@@ -174,14 +191,9 @@ class SoftwareLayout(Widget):
     current_branch = ui_state.params.get("UpdaterTargetBranch") or ""
     self._branch_btn.action_item.set_value(current_branch)
 
-    remote = (ui_state.params.get("GitRemote") or "").replace("https://", "").replace("http://", "")
-    if remote.endswith(".git"):
-      remote = remote[:-4]
-    commit = (ui_state.params.get("GitCommit") or "")[:12]
-    date = _parse_commit_date(ui_state.params.get("GitCommitDate"))
-    fork_bits = [x for x in (commit, ui_state.params.get("GitBranch") or "", date) if x]
-    self._fork_item.action_item.set_text("  ".join(fork_bits) or "N/A")
-    self._fork_item.set_description(remote)
+    commit, date, branch, remote = _live_git()
+    self._fork_item.action_item.set_text("  ".join(x for x in (commit, date) if x) or "N/A")
+    self._fork_item.set_description(f"{remote} ({branch})" if remote else branch)
 
     # Update install button
     self._install_btn.set_visible(ui_state.is_offroad() and update_available)
