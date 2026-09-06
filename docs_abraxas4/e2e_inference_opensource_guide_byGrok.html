@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>e2e learning + inference 입문 byGrok</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --border: #d5dbe3;
+    --text: #1b2430;
+    --muted: #4b5563;
+    --accent: #1d4ed8;
+    --green: #047857;
+    --red: #b91c1c;
+    --orange: #c2410c;
+    --purple: #6d28d9;
+    --code-bg: #eef2f7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 28px 3%;
+  }
+  .page { width: 100%; max-width: none; }
+  h1 { font-size: 1.75rem; line-height: 1.35; margin-bottom: 8px; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 24px; }
+  .subtitle code {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+  h2 {
+    font-size: 1.2rem;
+    margin: 44px 0 12px;
+    padding: 10px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--accent);
+  }
+  h3 { font-size: 1.05rem; color: var(--accent); margin: 22px 0 10px; }
+  p { color: var(--muted); font-size: 0.95rem; margin-bottom: 12px; }
+  strong { color: var(--text); }
+  ul, ol { margin: 8px 0 14px 22px; color: var(--muted); font-size: 0.95rem; }
+  li { margin-bottom: 8px; }
+  a { color: var(--accent); }
+  code {
+    font-family: "SFMono-Regular", Consolas, "Cascadia Code", monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  pre {
+    width: 100%;
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 0.8rem;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    overflow-x: auto;
+    color: var(--muted);
+    margin: 12px 0;
+    line-height: 1.55;
+    white-space: pre;
+  }
+  .card {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 14px 0;
+  }
+  .toc {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+  }
+  .toc a { text-decoration: none; font-size: 0.92rem; }
+  .toc a:hover { text-decoration: underline; }
+  .toc ol { margin: 6px 0 0 18px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 12px 0 18px;
+    background: var(--card);
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #eef2f7; color: var(--text); }
+  tr:nth-child(even) td { background: #fafbfc; }
+  .term {
+    width: 100%;
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    border-left: 5px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin: 8px 0 16px;
+  }
+  .term-word {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+  .term p { color: #1e3a8a; margin-bottom: 0; font-size: 0.9rem; }
+  .note {
+    width: 100%;
+    background: #ecfdf5;
+    border: 1px solid #6ee7b7;
+    border-left: 5px solid var(--green);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 14px 0;
+  }
+  .note-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+  }
+  .note p, .note li { color: #065f46; }
+  .warn {
+    width: 100%;
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+    border-left: 5px solid var(--orange);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 14px 0;
+  }
+  .warn-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--orange);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+  }
+  .warn p, .warn li { color: #9a3412; }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .b-open { background: #dcfce7; color: var(--green); }
+  .b-box { background: #fee2e2; color: var(--red); }
+  .b-info { background: #dbeafe; color: var(--accent); }
+  .b-tool { background: #ede9fe; color: var(--purple); }
+  .b-pc { background: #ffedd5; color: var(--orange); }
+  .diagram {
+    width: 100%;
+    overflow-x: auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 12px;
+    margin: 14px 0;
+  }
+  /* Cap growth on maximize; keep diagram text near body size (~70rem). */
+  .diagram svg {
+    display: block;
+    width: 100%;
+    max-width: min(100%, 70rem);
+    height: auto;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .diagram-caption {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 10px;
+    max-width: min(100%, 70rem);
+    margin-left: auto;
+    margin-right: auto;
+  }
+  footer {
+    width: 100%;
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+  .step-num {
+    display: inline-block;
+    min-width: 1.6rem;
+    height: 1.6rem;
+    line-height: 1.6rem;
+    text-align: center;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>e2e learning + interface-compatible replace 입문 <span class="badge b-tool">byGrok</span></h1>
+<p class="subtitle">
+  처음 보는 엔지니어용 ·
+  <strong>목적: 꼴(입출력 인터페이스)만 맞춰 openpilot model 자리에 replace → 파이프라인이 돌아가게</strong> ·
+  운전 실력은 “어른 vs 아기” (기능 추종 아님) ·
+  3X = openpilot_mj_develop 그대로 · 학습 = PC lab · 데이터 = scp ·
+  문서: <code>docs/e2e_inference_opensource_guide_byGrok.html</code>
+</p>
+
+<div class="toc">
+  <strong style="color:var(--text);">목차</strong>
+  <ol>
+    <li><a href="#mission">공식 목표 (꼭 읽을 것)</a></li>
+    <li><a href="#workflow-roles">역할 분담: 3X / PC / scp</a></li>
+    <li><a href="#words">꼭 필요한 단어</a></li>
+    <li><a href="#learning-types">learning · label · 사람 수정</a></li>
+    <li><a href="#dataset">dataset 이란? “dataset 만들기”</a></li>
+    <li><a href="#comma-train">comma 학습 vs 우리 학습</a></li>
+    <li><a href="#pins">입출력 “핀” — 개수·내용 아나?</a></li>
+    <li><a href="#replace-shape">꼴 맞추기 replace (아기 model)</a></li>
+    <li><a href="#hardware">comma 3X vs PC</a></li>
+    <li><a href="#realvideo">실차 자료 + 매일 10 km</a></li>
+    <li><a href="#five">시스템 5조각</a></li>
+    <li><a href="#blackbox">black box</a></li>
+    <li><a href="#lab">e2e_learning_lab 사용법</a></li>
+    <li><a href="#roadmap">단계별 roadmap</a></li>
+    <li><a href="#safety">안전 · 하지 말 것</a></li>
+    <li><a href="#glossary">용어 모음</a></li>
+  </ol>
+</div>
+
+<!-- MISSION -->
+<h2 id="mission">1. 공식 목표 (꼭 읽을 것)</h2>
+
+<div class="note">
+  <div class="note-title">한 문장 목표</div>
+  <p>
+    openpilot driving model 과 <strong>같은 입·출력 꼴(interface / shape)</strong> 을 가진
+    <strong>우리 아기 model</strong> 을 PC 에서 학습·export 하고,
+    나중에는 3X openpilot 의 model 자리에 <strong>replace</strong> 했을 때
+    <strong>프로세스가 에러 없이 돌아가는 것</strong>을 목표로 한다.
+    comma 수준의 <strong>운전 기능을 따라가는 것은 목표가 아니다.</strong>
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">interface / shape (인터페이스 · 꼴)</div>
+  <p>
+    “플러그에 핀이 몇 개이고, 각 핀이 어떤 이름·크기(tensor shape)의 숫자를 받거나 내는지”를 말합니다.
+    기능이 어른 수준인지는 별개입니다. USB-C 모양만 같으면 꽂히지만, 안쪽 칩 성능은 천차만별인 것과 비슷합니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">replace (교체)</div>
+  <p>
+    openpilot 이 기본으로 쓰는 driving model 파일(또는 그에 해당하는 산출물) 대신
+    우리가 만든 model 을 넣어 modeld 등이 그대로 읽게 하는 것입니다.
+    이 문서의 성공 기준은 “도로를 사람처럼 달린다”가 아니라
+    “<strong>꼴이 맞아 파이프라인이 기동·추론 루프를 돈다</strong>” 입니다.
+  </p>
+</div>
+
+<h3>1.1 어른 model vs 아기 model</h3>
+<table>
+  <thead>
+    <tr>
+      <th></th>
+      <th>comma / openpilot (어른)</th>
+      <th>우리 lab 목표 (아기)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>입·출력 핀 배치</td>
+      <td>공식 supercombo 스펙</td>
+      <td><strong>동일하게 맞춤</strong></td>
+    </tr>
+    <tr>
+      <td>weights 의미·운전 품질</td>
+      <td>대규모 데이터로 학습됨</td>
+      <td>약함·단순함 OK (“아기”)</td>
+    </tr>
+    <tr>
+      <td>성공 기준</td>
+      <td>실제 주행 성능</td>
+      <td><strong>replace 후 파이프가 돈다</strong></td>
+    </tr>
+    <tr>
+      <td>comma 공식 weights 를 이어서 update</td>
+      <td>comma 인프라</td>
+      <td><span class="badge b-box">목표 아님</span> — 우리 weights 를 새로 만듦</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 200" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="420" height="120" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="250" y="75" text-anchor="middle" font-size="15" fill="#1b2430" font-family="sans-serif" font-weight="700">같은 커넥터 (interface)</text>
+    <text x="250" y="105" text-anchor="middle" font-size="13" fill="#4b5563" font-family="sans-serif">input names / shapes / output slices</text>
+    <text x="250" y="130" text-anchor="middle" font-size="13" fill="#4b5563" font-family="sans-serif">modelV2 로 나가는 필드 구조</text>
+
+    <rect x="520" y="30" width="200" height="60" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="620" y="65" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">어른 weights</text>
+
+    <rect x="520" y="110" width="200" height="60" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="620" y="145" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">아기 weights (우리)</text>
+
+    <line x1="460" y1="70" x2="520" y2="60" stroke="#64748b" stroke-width="2"/>
+    <line x1="460" y1="130" x2="520" y2="140" stroke="#64748b" stroke-width="2"/>
+
+    <rect x="760" y="60" width="200" height="80" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <text x="860" y="95" text-anchor="middle" font-size="13" fill="#1b2430" font-family="sans-serif">modeld 소켓</text>
+    <text x="860" y="118" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">둘 다 꽂히게</text>
+  </svg>
+  <div class="diagram-caption">그림 M1. 목표는 기능 복제가 아니라 같은 소켓에 아기 model 을 꽂는 것</div>
+</div>
+
+<h3>1.2 목표에 포함 / 미포함</h3>
+<table>
+  <thead>
+    <tr>
+      <th>포함 (한다)</th>
+      <th>미포함 (지금은 안 함 · 성공 조건 아님)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>입·출력 shape · 이름 · slice 를 openpilot 과 맞춤</td>
+      <td>comma 급 차선·신호·추종 성능</td>
+    </tr>
+    <tr>
+      <td>PC 에서 dataset · train · export (ONNX 등)</td>
+      <td>comma 공식 weights 파일을 “이어서” fine-tune 하는 비법 재현</td>
+    </tr>
+    <tr>
+      <td>자동 label (사람 검수 생략 가능) · 전체 batch 학습</td>
+      <td>도로에서 아기로 안전 완전자율 주행</td>
+    </tr>
+    <tr>
+      <td>replace 후 modeld / 메시지 루프가 깨지지 않음 (우선 replay·안전한 환경)</td>
+      <td>“잘 달린다”는 체감 품질</td>
+    </tr>
+    <tr>
+      <td>3X 는 openpilot_mj_develop git 그대로 유지</td>
+      <td>3X 위에서 training</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="warn">
+  <div class="warn-title">안전 한 줄</div>
+  <p>
+    아기 model 은 숫자를 내더라도 운전 의미는 거의 없을 수 있습니다.
+    replace 실험은 가능하면 <strong>PC replay</strong> 또는 바퀴가 뜨거나 통제된 환경에서 먼저 하고,
+    일반 도로에서 “아기”로 engage 하는 것은 이 문서의 목표가 아닙니다.
+  </p>
+</div>
+
+<!-- WORKFLOW ROLES -->
+<h2 id="workflow-roles">2. 역할 분담: 3X / PC / scp</h2>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 180" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="30" y="30" width="300" height="120" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="180" y="65" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif" font-weight="700">comma 3X</text>
+    <text x="180" y="95" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">openpilot_mj_develop</text>
+    <text x="180" y="118" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">git pull 버전 그대로 주행·기록</text>
+
+    <rect x="380" y="55" width="120" height="70" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <text x="440" y="95" text-anchor="middle" font-size="13" fill="#1b2430" font-family="sans-serif">scp 매일</text>
+
+    <rect x="550" y="30" width="420" height="120" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="760" y="65" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif" font-weight="700">이 PC</text>
+    <text x="760" y="95" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">e2e_learning_lab · train</text>
+    <text x="760" y="118" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">꼴 맞춘 아기 model export</text>
+  </svg>
+  <div class="diagram-caption">그림 M2. 이 구성이 팀 합의 워크플로 (맞음)</div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>역할</th>
+      <th>어디</th>
+      <th>무엇</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>실차 openpilot</td>
+      <td>3X</td>
+      <td><code>S:\github\openpilot_mj_develop</code> 을 올린 <strong>현재 git 그대로</strong></td>
+    </tr>
+    <tr>
+      <td>learning</td>
+      <td>PC</td>
+      <td><code>S:\github\e2e_learning_lab</code> (별도 폴더)</td>
+    </tr>
+    <tr>
+      <td>학습 입력 자료</td>
+      <td>3X → PC</td>
+      <td>매일 연결 후 <strong>scp</strong> (예: 이미 <code>data/from_3x/realdata</code> 로 1회 전체 복사함)</td>
+    </tr>
+    <tr>
+      <td>replace 후보 산출물</td>
+      <td>PC 에서 생성 → (나중) 3X 에 배포</td>
+      <td>interface 호환 ONNX 등</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="card">
+  <strong style="color:var(--text);">폴더</strong>
+  <ul style="margin-top:8px;margin-bottom:0;">
+    <li>openpilot: <code>S:\github\openpilot_mj_develop</code></li>
+    <li>lab: <code>S:\github\e2e_learning_lab</code></li>
+    <li>복사해 둔 실차 자료 예: <code>S:\github\e2e_learning_lab\data\from_3x\realdata\</code></li>
+  </ul>
+</div>
+
+<!-- 2 -->
+<h2 id="words">2. 꼭 필요한 단어</h2>
+<p>아래에서 나오는 영어 단어는 처음 나올 때 뜻을 붙입니다. computer science 단어는 영어 그대로 둡니다.</p>
+
+<div class="term">
+  <div class="term-word">open source</div>
+  <p>
+    소스 코드를 공개하고, 라이선스 조건 아래 읽고 수정할 수 있는 소프트웨어입니다.
+    이 lab 의 Python 코드와 openpilot 의 host code 가 여기에 해당합니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">e2e (end-to-end)</div>
+  <p>
+    중간 단계를 사람이 많이 나누지 않고, 모델이 input 에서 control 에 가까운 output 을
+    바로 내도록 한 방식입니다. 예: 이미지 → 가속 숫자.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">training (learning)</div>
+  <p>
+    데이터를 보고 model 안의 weights 를 업데이트하는 과정입니다. “학습”이라고 부릅니다.
+    초보 lab 은 보통 입력과 목표 값(label) 짝으로 합니다. label 은 사람 손일 수도, 차 로그 자동일 수도 있습니다.
+    GPU 가 있으면 더 빠르지만, 이 lab 은 CPU 만으로도 돌아갑니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">inference</div>
+  <p>
+    이미 정해진 weights 로 새 input 을 넣어 output 을 계산하는 실행입니다.
+    training 과 달리 weights 를 바꾸지 않습니다. 차가 달릴 때 modeld 가 하는 일이 inference 입니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">weights</div>
+  <p>
+    model 내부의 숫자 파라미터입니다. training 이 이 숫자를 바꾸고,
+    inference 는 이 숫자를 고정한 채 계산합니다. 파일로는 <code>.pt</code>, <code>.onnx</code> 등에 저장됩니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">black box</div>
+  <p>
+    input 과 output 은 보이지만, 내부에서 “왜 그 값이 나왔는지”를 사람이 쉽게 설명하기 어려운 부분을 말합니다.
+    neural network 의 weights forward 가 대표적입니다. open source 여도 이 구간은 해석이 어렵습니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">pipeline</div>
+  <p>
+    데이터가 여러 단계를 순서대로 지나는 처리 사슬입니다.
+    예: image → preprocess → model → postprocess → log.
+  </p>
+</div>
+
+<!-- LEARNING TYPES -->
+<h2 id="learning-types">3. learning · label · 사람 수정</h2>
+
+<p>
+  초보 때 많이 듣는 말이 “label 이 있는 학습 / 없는 학습” 입니다.
+  여기서 <strong>label = 사람이 매번 손으로 개입한다</strong> 와 같다고 생각하면 오해가 생깁니다.
+</p>
+
+<div class="term">
+  <div class="term-word">label (다시, 아주 쉽게)</div>
+  <p>
+    model 이 “이 입력에 대해 맞춰야 할 목표 값”입니다.
+    사진 옆의 정답 숫자, 정답 클래스 이름, “다음 1초 뒤 차 위치” 같은 것이 모두 label 이 될 수 있습니다.
+    <strong>누가 만들었는지</strong>와는 별개입니다.
+  </p>
+</div>
+
+<h3>3.1 초보용 큰 그림 2가지 (+ 한 가지 더)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>방식</th>
+      <th>한 줄</th>
+      <th>label?</th>
+      <th>사람이 매번 클릭?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>supervised learning</strong><br>(지도 학습)</td>
+      <td>입력 X 와 목표 Y 를 짝으로 주고, Y 를 맞추게 한다</td>
+      <td><span class="badge b-info">있음 (Y)</span></td>
+      <td><strong>꼭 아님</strong>. Y 는 센서·로그가 자동 생성 가능</td>
+    </tr>
+    <tr>
+      <td><strong>unsupervised learning</strong><br>(비지도 학습)</td>
+      <td>정답 Y 없이 데이터 패턴만 본다 (군집, 압축 등)</td>
+      <td><span class="badge b-box">없음</span></td>
+      <td>보통 없음. 대신 “가속 몇 m/s²” 같은 운전 숫자는 바로 안 나옴</td>
+    </tr>
+    <tr>
+      <td><strong>self-supervised</strong><br>(자기 지도, 초보 메모)</td>
+      <td>데이터 안에서 가짜 문제를 만들어 스스로 정답을 만듦<br>(예: 다음 frame 맞히기)</td>
+      <td>겉보기엔 없음, 안에서는 자동 생성</td>
+      <td>사람 클릭 거의 없음. 구현·해석이 더 어려움</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="term">
+  <div class="term-word">supervised learning</div>
+  <p>
+    “이 그림 → 이 숫자(또는 이 클래스)”처럼 <strong>짝</strong>을 주고 오차(loss)를 줄이는 학습입니다.
+    이 lab 의 <code>train.py</code> 가 supervised 입니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">unsupervised learning</div>
+  <p>
+    정답 짝 없이 데이터 구조만 찾는 학습입니다.
+    예: 비슷한 장면끼리 묶기. 초보 lab 의 “desired_accel 맞추기” 목표와는 잘 안 맞습니다.
+  </p>
+</div>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 260" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <text x="500" y="28" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif" font-weight="700">label 이 어디서 오나? (supervised)</text>
+
+    <rect x="40" y="50" width="280" height="170" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="180" y="85" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">A. 사람 손 label</text>
+    <text x="180" y="115" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">클릭, 박스 그리기,</text>
+    <text x="180" y="138" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">“여기는 빨간불” 적기</text>
+    <text x="180" y="170" text-anchor="middle" font-size="12" fill="#c2410c" font-family="sans-serif">비쌈 / 느림 / 정확할 수 있음</text>
+    <text x="180" y="195" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">예: comma10k 일부 주석</text>
+
+    <rect x="360" y="50" width="280" height="170" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="500" y="85" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">B. 자동 label (센서·로그)</text>
+    <text x="500" y="115" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">차 속도, 실제로 난 가속,</text>
+    <text x="500" y="138" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">운전자가 한 조작</text>
+    <text x="500" y="170" text-anchor="middle" font-size="12" fill="#047857" font-family="sans-serif">사람이 frame 마다 안 그림</text>
+    <text x="500" y="195" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">실차 10 km/일 에 잘 맞음</text>
+
+    <rect x="680" y="50" width="280" height="170" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="820" y="85" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">C. synthetic label</text>
+    <text x="820" y="115" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">프로그램이 가짜 그림과</text>
+    <text x="820" y="138" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">가짜 정답을 같이 생성</text>
+    <text x="820" y="170" text-anchor="middle" font-size="12" fill="#1d4ed8" font-family="sans-serif">lab 기본 make_dataset</text>
+    <text x="820" y="195" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">pipeline 연습용</text>
+  </svg>
+  <div class="diagram-caption">그림 L1. supervised 라도 label 출처는 A/B/C 세 갈래. “사람 개입만”이 아님</div>
+</div>
+
+<div class="warn">
+  <div class="warn-title">질문: “label 은 사람이 개입하는 방식이죠?”</div>
+  <p>
+    <strong>반만 맞습니다.</strong>
+    label 이 있다는 것 = supervised 쪽이라는 뜻에 가깝습니다.
+    그런데 그 label 을 <strong>사람이 마우스로 다는 경우</strong>도 있고,
+    <strong>차가 이미 기록한 숫자</strong>(속도, 가속도, 조향)를 label 로 쓰는 경우도 있습니다.
+    후자는 매일 운전만 해도 데이터가 쌓입니다. frame 마다 클릭할 필요가 없습니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">imitation learning / behavioral cloning (흉내 학습)</div>
+  <p>
+    사람이(또는 다른 정책이) 실제로 한 행동을 label 로 두고, 같은 상황에서 비슷하게 행동하도록 배우는 방식입니다.
+    supervised 의 한 형태입니다. “그때 운전자가 감속했으니, 그 장면 → 음수 accel” 이 전형적인 예입니다.
+  </p>
+</div>
+
+<h3>3.2 “label 없이” 우리는 할 수 없나?</h3>
+<table>
+  <thead>
+    <tr>
+      <th>하고 싶은 것</th>
+      <th>label 없이?</th>
+      <th>초보 추천</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>pipeline 연습 (지금 lab)</td>
+      <td>synthetic 이 자동 label 제공</td>
+      <td><span class="badge b-open">지금 바로</span></td>
+    </tr>
+    <tr>
+      <td>실차 영상으로 “가속 비슷한 숫자” 맞추기</td>
+      <td>순수 영상만으로는 매우 어려움</td>
+      <td>영상 + <strong>로그에서 자동 label</strong></td>
+    </tr>
+    <tr>
+      <td>순수 unsupervised 만</td>
+      <td>가능은 함 (패턴 묶기 등)</td>
+      <td>운전 control 숫자와 연결이 약함. 나중 숙제</td>
+    </tr>
+    <tr>
+      <td>self-supervised (다음 frame 예측 등)</td>
+      <td>사람 label 거의 없이 가능</td>
+      <td>코드·이론 부담 큼. 1단계는 아님</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  정리: <strong>“사람 손 label 없이”</strong> 는 가능하고 권장에 가깝습니다.
+  <strong>“아무 목표 값도 없이”</strong> 운전용 숫자를 배우기는 초보 단계에서 비추천입니다.
+  차 로그가 있으면 그게 곧 자동 label 입니다.
+</p>
+
+<h3>3.3 합의된 작업 방식 (현재)</h3>
+<div class="note">
+  <div class="note-title">사람 검수 없이 전 자동</div>
+  <ol>
+    <li>로그로 <strong>자동 label</strong> 생성 (vEgo 미분 등)</li>
+    <li>정지 frame 만 보고 가속/감속 고치기는 <strong>하지 않음</strong> (비현실적)</li>
+    <li>있는 qcamera+qlog segment 를 <strong>batch 전체</strong> 처리 후 train</li>
+    <li>(선택) 나중에 이상치·그래프 검수가 필요하면 그때 추가</li>
+  </ol>
+</div>
+<p>
+  2026-08-10 기준: <code>batch_process_all</code> 444 segs · 52k samples ·
+  <code>train_real</code> → <code>artifacts/real_auto_accel.pt</code> 완료.
+  상세 수치는 <code>e2e_learning_progress_log_byGrok.html</code> 참고.
+</p>
+
+<!-- DATASET -->
+<h2 id="dataset">4. dataset 이란? “dataset 만들기”는 뭔가?</h2>
+
+<p>
+  초보자가 가장 자주 하는 질문입니다.
+  <strong>“dataset 만들기”가 대체 뭐 하는 단계인가요?</strong>
+  (위 3절의 label 개념을 먼저 읽으면 더 쉽습니다.)
+</p>
+
+<div class="term">
+  <div class="term-word">dataset</div>
+  <p>
+    model 을 가르치거나 시험할 때 쓰는 <strong>예제 모음</strong>입니다.
+    학교 시험 문제집과 비슷합니다. 각 문제는 “입력(문제)”과 “정답(label)”이 짝으로 있습니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">sample (샘플 / 한 줄 예제)</div>
+  <p>
+    dataset 안의 한 개 예제입니다.
+    이 lab 에서는 보통 <strong>이미지 1장 + 숫자 정답 1개</strong> 가 한 sample 입니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">label (정답 / 목표 값)</div>
+  <p>
+    그 sample 에 대해 “모델이 맞춰야 할 답”입니다.
+    이 lab 에서는 <code>desired_accel</code> 같은 숫자입니다.
+    <strong>사람만 만드는 것이 아닙니다.</strong> 프로그램·차 센서 로그가 만들 수 있습니다.
+    사진만 있고 목표 값이 전혀 없으면, supervised 로 “accel 숫자”를 가르치기 어렵습니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">supervised learning</div>
+  <p>
+    “문제 + 정답” 쌍으로 weights 를 업데이트하는 학습 방식입니다.
+    이 lab 의 <code>train.py</code> 가 여기에 해당합니다.
+    (정답 없이 패턴만 찾는 방식은 unsupervised 등으로 부릅니다. 지금은 몰라도 됩니다.)
+  </p>
+</div>
+
+<h3>4.1 비유로 한 번 더</h3>
+<table>
+  <thead>
+    <tr>
+      <th>학교</th>
+      <th>이 lab</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>문제집 전체</td>
+      <td><strong>dataset</strong></td>
+    </tr>
+    <tr>
+      <td>문제 한 문항</td>
+      <td>한 <strong>sample</strong> (이미지 파일 하나)</td>
+    </tr>
+    <tr>
+      <td>문제 지문</td>
+      <td><strong>input</strong> (카메라 프레임 / png)</td>
+    </tr>
+    <tr>
+      <td>정답지</td>
+      <td><strong>label</strong> (<code>labels.csv</code> 의 숫자)</td>
+    </tr>
+    <tr>
+      <td>문제집 인쇄·제본</td>
+      <td><strong>dataset 만들기</strong> (<code>make_dataset</code>)</td>
+    </tr>
+    <tr>
+      <td>학생이 문제 풀며 공부</td>
+      <td><strong>training</strong></td>
+    </tr>
+    <tr>
+      <td>새 문제로 실력 확인</td>
+      <td><strong>inference</strong> / validation</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  그래서 <code>python -m src.make_dataset</code> 은
+  “신경망을 돌린다”가 아니라,
+  <strong>공부용 문제집 파일을 디스크에 만들어 두는 준비 단계</strong>입니다.
+  training 전에 한 번(또는 데이터가 바뀔 때마다) 실행합니다.
+</p>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 220" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="200" height="90" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="140" y="80" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">1 dataset 만들기</text>
+    <text x="140" y="105" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">이미지 + label 파일</text>
+
+    <rect x="300" y="40" width="200" height="90" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="400" y="80" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">2 training</text>
+    <text x="400" y="105" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">weights 업데이트</text>
+
+    <rect x="560" y="40" width="200" height="90" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="660" y="80" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">3 inference</text>
+    <text x="660" y="105" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">새 이미지 → 숫자</text>
+
+    <rect x="800" y="40" width="160" height="90" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <text x="880" y="80" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">4 log</text>
+    <text x="880" y="105" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">CSV / print</text>
+
+    <line x1="240" y1="85" x2="300" y2="85" stroke="#64748b" stroke-width="2"/>
+    <polygon points="300,85 288,79 288,91" fill="#64748b"/>
+    <line x1="500" y1="85" x2="560" y2="85" stroke="#64748b" stroke-width="2"/>
+    <polygon points="560,85 548,79 548,91" fill="#64748b"/>
+    <line x1="760" y1="85" x2="800" y2="85" stroke="#64748b" stroke-width="2"/>
+    <polygon points="800,85 788,79 788,91" fill="#64748b"/>
+
+    <text x="140" y="170" text-anchor="middle" font-size="12" fill="#1d4ed8" font-family="sans-serif">make_dataset</text>
+    <text x="400" y="170" text-anchor="middle" font-size="12" fill="#c2410c" font-family="sans-serif">train</text>
+    <text x="660" y="170" text-anchor="middle" font-size="12" fill="#047857" font-family="sans-serif">infer</text>
+    <text x="500" y="200" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">순서를 바꾸면 안 됨: 문제집이 있어야 공부할 수 있음</text>
+  </svg>
+  <div class="diagram-caption">그림 A. dataset 만들기 → training → inference 순서</div>
+</div>
+
+<h3>4.2 lab 이 실제로 만드는 파일</h3>
+<p><code>python -m src.make_dataset</code> 실행 후 대략 이런 구조가 생깁니다.</p>
+<pre>data/
+  train/
+    img_0000.png
+    img_0001.png
+    ...
+    labels.csv          &lt;-- filename, desired_accel
+  val/
+    img_0000.png
+    ...
+    labels.csv
+</pre>
+
+<table>
+  <thead>
+    <tr>
+      <th>파일</th>
+      <th>역할</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>img_XXXX.png</code></td>
+      <td>input. model 이 “보는” 그림</td>
+    </tr>
+    <tr>
+      <td><code>labels.csv</code></td>
+      <td>각 그림의 정답 숫자 표</td>
+    </tr>
+    <tr>
+      <td><code>train/</code></td>
+      <td>공부용 (weights 를 바꿀 때 사용)</td>
+    </tr>
+    <tr>
+      <td><code>val/</code> (validation)</td>
+      <td>시험용. training 중에 “외우기만 하는지” 확인</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="term">
+  <div class="term-word">train split / val split</div>
+  <p>
+    dataset 을 나누는 묶음입니다.
+    train 으로 배우고, val 로 “처음 보는 것 비슷한 그림”에서 점수를 봅니다.
+    같은 그림으로만 공부하고 같은 그림으로 시험하면, 외웠는지 실력이 있는지 구분이 안 됩니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">synthetic dataset</div>
+  <p>
+    실제 도로를 찍지 않고, 프로그램이 규칙을 정해 가짜로 만든 dataset 입니다.
+    lab 기본 <code>make_dataset</code> 은 synthetic 입니다.
+    장점: 인터넷·장치 없이 바로 training 연습.
+    단점: 진짜 도로 운전 실력과는 거리가 큼.
+  </p>
+</div>
+
+<h3>4.3 지금 lab 의 synthetic 규칙은 뭔가?</h3>
+<p>
+  진짜 신호등을 읽는 것이 <strong>아닙니다</strong>. 오직 pipeline 연습용입니다.
+</p>
+<ul>
+  <li>그림 안에 빨간 덩어리가 많으면 → label 을 음수 쪽에 (감속 느낌)</li>
+  <li>초록 덩어리가 많으면 → label 을 양수 쪽에 (가속 느낌)</li>
+</ul>
+<p>
+  model 은 “이 규칙”을 숫자 weights 로 비슷하게 맞추는 법을 배웁니다.
+  나중에 실차 영상으로 바꾸면, 같은 training 코드에 <strong>다른 문제집</strong>을 넣는 것입니다.
+</p>
+
+<div class="warn">
+  <div class="warn-title">초보가 자주 하는 오해</div>
+  <ul>
+    <li>“dataset 만들기 = AI 학습” → <strong>아니오.</strong> 문제집 준비일 뿐입니다.</li>
+    <li>“이미지만 있으면 학습된다” → supervised 에서는 <strong>label 도 필요</strong>합니다.</li>
+    <li>“한 번 make_dataset 하면 끝” → 규칙을 바꾸거나 실차 영상으로 바꾸면 <strong>다시</strong> 만듭니다.</li>
+  </ul>
+</div>
+
+<!-- COMMA TRAIN -->
+<h2 id="comma-train">5. comma 학습 vs 우리 학습</h2>
+
+<p>
+  공개 자료와 커뮤니티 설명 기준으로, 초보에게 필요한 수준만 말합니다.
+  (comma 내부 학습 스택 전체가 이 monorepo 에 다 있는 것은 아닙니다.)
+</p>
+
+<div class="note">
+  <div class="note-title">한 줄</div>
+  <p>
+    comma 의 driving model 학습은 “완전 랜덤 무정답 방치”가 아닙니다.
+    대규모 <strong>실차 주행 로그</strong>를 쓰며, 그 안에 이미 들어 있는
+    미래 궤적·실제 움직임·(과제에 따라) 사람 주석 등을
+    <strong>목표(supervision)</strong> 로 삼는 쪽에 가깝습니다.
+    즉 “label 이 전혀 없다”기보다, <strong>사람이 frame 마다 빨간불을 클릭하지 않아도
+    로그가 supervision 을 제공한다</strong>에 가깝습니다.
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>종류</th>
+      <th>comma 쪽에서 보이는 예</th>
+      <th>사람 손?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>실차 로그 supervision</td>
+      <td>
+        주행 중 카메라 + 차 상태 + 시간이 같이 기록됨.
+        “그 다음 순간 차가 어떻게 움직였는지”를 목표로 쓸 수 있음.
+        Wi‑Fi 로 데이터가 모이면 더 나은 model 학습에 쓰인다고 안내함.
+      </td>
+      <td>운전은 하지만, frame 주석 클릭은 아님</td>
+    </tr>
+    <tr>
+      <td>별도 주석 dataset</td>
+      <td>
+        예: <a href="https://github.com/commaai/comma10k" target="_blank" rel="noopener">comma10k</a>
+        — 이미지에 사람이 영역 등을 달아 개선에 기여할 수 있음
+      </td>
+      <td><span class="badge b-info">있는 경우</span> (특정 과제)</td>
+    </tr>
+    <tr>
+      <td>이 lab 기본</td>
+      <td>synthetic 그림 + 프로그램이 만든 숫자</td>
+      <td>없음 (자동)</td>
+    </tr>
+    <tr>
+      <td>이 lab + 매일 10 km</td>
+      <td>영상 + (권장) qlog/rlog 에서 속도·가속 추정</td>
+      <td>운전만, 클릭 label 불필요</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="term">
+  <div class="term-word">supervision (지도 신호)</div>
+  <p>
+    training 때 “이 방향이 맞다”고 알려 주는 정보입니다.
+    supervised learning 의 label 이 곧 supervision 입니다.
+    출처는 사람·센서·합성 데이터 모두 가능합니다.
+  </p>
+</div>
+
+<div class="card">
+  <strong style="color:var(--text);">우리와 comma 의 스케일 차이</strong>
+  <ul style="margin-top:8px;margin-bottom:0;">
+    <li>comma: 매우 많은 차량·시간·엔지니어링. 공식 supercombo 를 집에서 똑같이 재학습하기는 비현실적.</li>
+    <li>우리: <strong>같은 입출력 꼴</strong>의 아기 model 을 PC 에서 만들고, 로그 supervision 으로 연습.</li>
+    <li>comma 공식 weights 를 “이어서 update”하는 것이 목표가 아니라, <strong>우리 weights 를 새로 만들어 소켓에 꽂는 것</strong>.</li>
+  </ul>
+</div>
+
+<!-- PINS -->
+<h2 id="pins">7. 입출력 “핀” — 개수만 알고 내용은 모르나?</h2>
+
+<div class="note">
+  <div class="note-title">답</div>
+  <p>
+    <strong>아니오.</strong> open source 기준으로 <strong>어느 핀에 어떤 종류의 내용인지</strong>는 상당 부분 알 수 있습니다.
+    모르는 쪽은 그 숫자를 <strong>weights 가 어떻게 계산했는지</strong>(black box) 입니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">핀 배치표 vs 칩 내부</div>
+  <p>
+    커넥터 실크스크린(이름·핀 번호)은 회로도(open source)에 있고,
+    플라스틱 안의 ASIC 이 왜 그 전압을 내는지는 데이터시트에 없을 수 있습니다.
+    openpilot model I/O 가 전자, weights forward 가 후자입니다.
+  </p>
+</div>
+
+<h3>7.1 입력 핀 (modeld 가 넣는 것, 개념)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>핀(이름·개념)</th>
+      <th>내용</th>
+      <th>코드 힌트</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>road image / wide image</td>
+      <td>전방·광각 카메라 (warp 후 model 해상도)</td>
+      <td><code>modeld.py</code> VisionIPC</td>
+    </tr>
+    <tr>
+      <td><code>desire</code> / desire_pulse</td>
+      <td>차로 변경 등 의도 (길이 8 근처)</td>
+      <td><code>DESIRE_LEN</code>, DesireHelper</td>
+    </tr>
+    <tr>
+      <td><code>traffic_convention</code></td>
+      <td>좌·우핸 (길이 2)</td>
+      <td>LHD/RHD</td>
+    </tr>
+    <tr>
+      <td><code>action_t</code></td>
+      <td>횡·종 delay 시간 2개</td>
+      <td>actuator delay + frame delay</td>
+    </tr>
+    <tr>
+      <td><code>features_buffer</code> / prev_feat</td>
+      <td>과거 feature (예: 24×512 계열)</td>
+      <td>이전 hidden 을 다시 넣음 — <strong>칸 의미는 black box</strong></td>
+    </tr>
+    <tr>
+      <td>warp matrix</td>
+      <td>캘리브 반영 변환</td>
+      <td><code>liveCalibration</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="term">
+  <div class="term-word">tensor shape</div>
+  <p>
+    각 핀의 숫자 배열 크기입니다. 예: <code>(1, 12, 128, 256)</code>, <code>(1, 2)</code>.
+    장치 위 실제 ONNX metadata 의 <code>input_shapes</code> 가 정본에 가깝고,
+    로컬 브랜치 <code>compile_modeld.py</code> 주석·constants 와 맞춰 확인합니다.
+  </p>
+</div>
+
+<h3>7.2 출력 핀 (파서가 자르는 것, 개념)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>핀(이름)</th>
+      <th>내용</th>
+      <th>참고</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>plan</code></td>
+      <td>미래 위치·속도·가속도·자세 등 (33 시점 × PLAN_WIDTH 등)</td>
+      <td><code>constants.Plan</code> slice: POSITION, VELOCITY, ACCELERATION…</td>
+    </tr>
+    <tr>
+      <td><code>lane_lines</code> / <code>road_edges</code></td>
+      <td>차선·도로 가장자리</td>
+      <td>파서 MDN</td>
+    </tr>
+    <tr>
+      <td><code>lead</code></td>
+      <td>앞차 가설</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>action</code></td>
+      <td>desired curvature / acceleration 쪽 (있으면)</td>
+      <td>e2e 종방향과 연결</td>
+    </tr>
+    <tr>
+      <td><code>meta</code></td>
+      <td>disengage, hard brake 확률 등</td>
+      <td><code>Meta</code> slice</td>
+    </tr>
+    <tr>
+      <td><code>desire_state</code></td>
+      <td>desire 확률</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>hidden_state</code></td>
+      <td>다음 step feature</td>
+      <td>의미 해석 어려움</td>
+    </tr>
+  </tbody>
+</table>
+<p>
+  이 출력들이 <code>fill_model_msg</code> 를 거쳐 <strong>modelV2</strong> 메시지 필드가 됩니다.
+  “핀 번호표”의 정본에 가까운 곳:
+  <code>parse_model_outputs.py</code>, <code>constants.py</code>, <code>log.capnp</code> 의 ModelDataV2,
+  ONNX 의 <code>output_slices</code> metadata.
+</p>
+
+<div class="card">
+  <strong style="color:var(--text);">정리</strong>
+  <ul style="margin-top:8px;margin-bottom:0;">
+    <li>핀 <strong>개수·이름·종류</strong> → open source 로 <strong>알 수 있음</strong> (버전별 확인 필요)</li>
+    <li>핀 값의 <strong>왜</strong> → weights black box</li>
+    <li>아기 model 목표는 그 <strong>번호표를 그대로 지키는 출력을 내는 네트워크</strong>를 우리 손으로 학습·export</li>
+  </ul>
+</div>
+
+<!-- REPLACE SHAPE -->
+<h2 id="replace-shape">8. 꼴 맞추기 replace (아기 model) — 목표의 핵심</h2>
+
+<p>
+  “입출력 개수를 맞춰 러닝할 수 있나?” → <strong>예, 그것이 이 프로젝트의 중심 목표</strong>입니다.
+  단, 개수만 맞추는 것이 아니라 <strong>이름·shape·slice·후처리가 기대하는 형식</strong>까지 맞춰야
+  replace 시 파이프가 돌아갑니다.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>단계</th>
+      <th>의미</th>
+      <th>성공 느낌</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>A. 스펙 고정</td>
+      <td>현재 쓰는 openpilot model 의 input_shapes, output_slices 를 문서화</td>
+      <td>핀 번호표 완성</td>
+    </tr>
+    <tr>
+      <td>B. 아기 네트워크</td>
+      <td>같은 I/O 의 작은/단순 net (성능 무관)</td>
+      <td>forward 가 shape 에러 없이 끝남</td>
+    </tr>
+    <tr>
+      <td>C. 학습</td>
+      <td>로그 자동 label (검수 생략 가능); 일부 head 는 dummy/teacher</td>
+      <td>loss 가 돌아가기만 해도 1차 OK</td>
+    </tr>
+    <tr>
+      <td>D. export</td>
+      <td>openpilot 이 읽는 형식(ONNX 등) + metadata</td>
+      <td>modeld 로드 성공</td>
+    </tr>
+    <tr>
+      <td>E. replace 검증</td>
+      <td>우선 PC replay / 장치에서 modeld 기동</td>
+      <td>크래시 없이 modelV2 발행</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="term">
+  <div class="term-word">dummy / teacher head</div>
+  <p>
+    출력 핀은 모두 채워야 하는데, 초보가 모든 핀에 좋은 label 을 못 만들 수 있습니다.
+    일부 출력은 0·평균·기존 openpilot 출력(teacher)을 따라 가게 두고,
+    우리가 집중하는 핀(예: action 가속)만 실차 로그로 학습해도 “꼴 유지” 실험에는 도움이 됩니다.
+  </p>
+</div>
+
+<div class="warn">
+  <div class="warn-title">replace ≠ 잘 달린다</div>
+  <p>
+    아기 model 이 소켓에 꽂혀 modeld 가 돌아도, plan/차선/가속이 엉망일 수 있습니다.
+    그 상태에서의 도로 engage 는 위험합니다. 목표 달성은 “<strong>돌아간다</strong>”이지 “<strong>잘 간다</strong>”가 아닙니다.
+  </p>
+</div>
+
+<div class="card">
+  <strong style="color:var(--text);">지금 lab (TinyAccelNet) 과의 관계</strong>
+  <p style="margin-top:8px;">
+    TinyAccelNet 은 입력 1장·출력 1숫자.
+    synthetic 연습 후, 실차 qcamera 전체 batch 로 <code>real_auto_accel.pt</code> 까지 학습 완료.
+    여전히 openpilot replace 꼴은 아님.
+  </p>
+  <p>
+    <strong>model 틀 vs weights:</strong> 틀(I/O·architecture)은 한 번 맞추고,
+    그 뒤 학습 사이클마다 weights 만 업데이트한다.
+    “데이터 학습을 다 한 뒤 마지막에만 I/O 를 맞춘다”가 아니다.
+  </p>
+  <p style="margin-bottom:0;">
+    lab venv 는 CUDA 빌드(<code>torch 2.6+cu124</code>, RTX 4050) 설치됨.
+    같은 dataset 으로 GPU train 가능. 다음 마일스톤: openpilot 동일 I/O 아기 net.
+  </p>
+</div>
+
+<!-- hardware -->
+<h2 id="hardware">9. comma 3X vs PC — 어디서 train 하나</h2>
+
+<div class="note">
+  <div class="note-title">권장</div>
+  <p>
+    <strong>training 은 PC 에서 하세요.</strong>
+    comma 3X 는 차 안에서 실시간 inference 를 돌리도록 만든 장치입니다.
+    이 lab 의 learning loop 는 PC 가 맞습니다.
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th></th>
+      <th>comma 3X (deviceType tizi)</th>
+      <th>일반 개발 PC</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>주 목적</td>
+      <td>주행 중 real-time inference, logging, control</td>
+      <td>개발, training, 실험, 문서</td>
+    </tr>
+    <tr>
+      <td>SoC / 환경</td>
+      <td>Qualcomm 계열 (AGNOS). training framework 설치·실험에 비우호적</td>
+      <td>Windows/Linux + Python + (선택) NVIDIA GPU</td>
+    </tr>
+    <tr>
+      <td>이 lab training</td>
+      <td><span class="badge b-box">비권장</span> 느리고 불편, 목적에도 안 맞음</td>
+      <td><span class="badge b-pc">권장</span> CPU 로도 toy 학습 가능, GPU 면 더 빠름</td>
+    </tr>
+    <tr>
+      <td>이 lab inference</td>
+      <td>굳이 옮길 필요 없음 (실차 연결 안 함)</td>
+      <td><span class="badge b-pc">권장</span> train 직후 같은 PC 에서 확인</td>
+    </tr>
+    <tr>
+      <td>openpilot 실차 inference</td>
+      <td><span class="badge b-info">여기</span> 가 본진</td>
+      <td>replay / 분석용</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="term">
+  <div class="term-word">SoC (System on Chip)</div>
+  <p>
+    CPU, GPU, 메모리 컨트롤러 등을 한 칩에 모은 부품입니다.
+    phone / 자동차 컴퓨터에 많이 씁니다. comma 장치는 SoC 위에서 AGNOS Linux 가 돕니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">real-time</div>
+  <p>
+    “정해진 짧은 시간 안에 꼭 끝나야 하는” 처리입니다.
+    초당 여러 번 camera frame 을 처리해야 차가 부드럽습니다.
+    training 은 real-time 이 아닙니다. 몇 분~몇 시간이 걸려도 됩니다.
+  </p>
+</div>
+
+<p>
+  <strong>3X 가 PC 보다 “항상 더 강력하다”고 보면 안 됩니다.</strong>
+  3X 는 전력·발열·지연시간·차량 연동에 맞춘 장치입니다.
+  데스크톱에 NVIDIA GPU 가 있으면 training 은 거의 항상 PC 가 유리합니다.
+  GPU 가 없어도 이 lab 규모(작은 CNN, 이미지 수백 장)는 노트북 CPU 로 충분합니다.
+</p>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 200" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="400" height="120" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="240" y="75" text-anchor="middle" font-size="15" fill="#1b2430" font-family="sans-serif" font-weight="700">Your PC</text>
+    <text x="240" y="105" text-anchor="middle" font-size="13" fill="#4b5563" font-family="sans-serif">make_dataset → train → infer</text>
+    <text x="240" y="130" text-anchor="middle" font-size="13" fill="#4b5563" font-family="sans-serif">e2e_learning_lab</text>
+
+    <rect x="560" y="40" width="400" height="120" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="760" y="75" text-anchor="middle" font-size="15" fill="#1b2430" font-family="sans-serif" font-weight="700">comma 3X</text>
+    <text x="760" y="105" text-anchor="middle" font-size="13" fill="#4b5563" font-family="sans-serif">openpilot real-time inference</text>
+    <text x="760" y="130" text-anchor="middle" font-size="13" fill="#4b5563" font-family="sans-serif">이 lab training 에 사용 안 함</text>
+
+    <line x1="440" y1="100" x2="560" y2="100" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="500" y="90" text-anchor="middle" font-size="11" fill="#64748b" font-family="sans-serif">개념만 대응</text>
+  </svg>
+  <div class="diagram-caption">그림 1. learning lab 은 PC, 실차 openpilot 은 3X</div>
+</div>
+
+<!-- REAL VIDEO -->
+<h2 id="realvideo">10. 3X 실차 동영상 + 매일 10 km</h2>
+
+<div class="note">
+  <div class="note-title">짧은 답</div>
+  <p>
+    <strong>예, 쓸 수 있고, 매일 10 km 를 쌓는 것도 좋은 계획입니다.</strong>
+    (1) 영상·로그는 PC 로 가져오고,
+    (2) training 은 PC 에서 하며,
+    (3) 가능하면 <strong>로그에서 자동 label</strong> 을 만듭니다 (사람 클릭 불필요).
+    영상만 있고 로그가 전혀 없으면 supervised 로 “accel 숫자”를 가르치기 어렵습니다.
+  </p>
+</div>
+
+<div class="card">
+  <strong style="color:var(--text);">매일 10 km 를 어떻게 쓰면 좋은가</strong>
+  <ol style="margin-top:8px;">
+    <li>그날 route 를 장치에 남긴다 (평소 openpilot 기록).</li>
+    <li>집에 와서 Wi‑Fi/SSH 로 <strong>qcamera + qlog</strong> 정도만 PC 로 복사 (처음엔 segment 일부만).</li>
+    <li>PC 에서 frame 추출 + 로그 시각 맞춰 <code>labels.csv</code> 자동 생성 (스크립트는 단계적으로 추가).</li>
+    <li><code>train/</code> 에 날짜별로 쌓고, 가끔 val 은 다른 날로 둔다.</li>
+    <li>PC 에서 짧게 train → loss 가 내려가는지만 본다. 실차 제어 연결은 하지 않는다.</li>
+  </ol>
+  <p style="margin-bottom:0;">
+    사람 label 작업(마우스로 신호등 표시)은 <strong>필수가 아닙니다.</strong>
+    운전자가 달린 것 자체가 imitation 용 supervision 이 됩니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">route / segment</div>
+  <p>
+    openpilot 은 시동 ON~OFF 한 번을 route 로 묶고, 약 1분 단위 segment 폴더로 저장합니다.
+    장치 경로 예: <code>/data/media/0/realdata/0000022d--75541d0fce--5/</code>
+  </p>
+</div>
+
+<h3>10.1 장치에 있는 동영상 종류</h3>
+<p>
+  SSH 예:
+  <code>ssh -i ~/.ssh/openpilot_ed25519 comma@192.168.35.191</code>
+  (사용자 환경 기준).
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>파일</th>
+      <th>내용</th>
+      <th>learning 에</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>fcamera.hevc</code></td>
+      <td>전방 카메라, H.265, 고해상·용량 큼 (세그먼트당 수십 MB)</td>
+      <td>품질 좋음. PC 로 복사 후 frame 추출</td>
+    </tr>
+    <tr>
+      <td><code>ecamera.hevc</code></td>
+      <td>wide 전방</td>
+      <td>광각이 필요할 때</td>
+    </tr>
+    <tr>
+      <td><code>qcamera.ts</code></td>
+      <td>전방 저해상 H.264, connect 미리보기용, 용량 작음</td>
+      <td><span class="badge b-pc">초보 연습에 추천</span> 먼저 이것</td>
+    </tr>
+    <tr>
+      <td><code>dcamera.hevc</code></td>
+      <td>운전자 얼굴 쪽 (있을 때)</td>
+      <td>도로 e2e 에는 보통 안 씀</td>
+    </tr>
+    <tr>
+      <td><code>rlog.zst</code> / <code>qlog.zst</code></td>
+      <td>속도, 메시지 로그 (동영상이 아님)</td>
+      <td><strong>label 후보</strong> (예: 속도 변화 → 대략적 accel)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="term">
+  <div class="term-word">frame</div>
+  <p>
+    동영상을 구성하는 한 장의 정지 이미지입니다.
+    training 에서는 보통 동영상 파일을 그대로 넣지 않고, frame 을 png/jpg 로 뽑거나
+    decoder 로 한 장씩 읽어 sample 로 씁니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">H.265 / H.264</div>
+  <p>
+    동영상 압축 방식입니다. <code>.hevc</code> 는 H.265 로 많이 저장되고,
+    <code>qcamera.ts</code> 는 H.264 쪽입니다. PC 에서 ffmpeg 등으로 풀 수 있습니다.
+  </p>
+</div>
+
+<h3>10.2 왜 “영상만”으로는 부족한가</h3>
+<div class="diagram">
+  <svg viewBox="0 0 1000 200" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="50" width="280" height="100" fill="#fef2f2" stroke="#b91c1c" stroke-width="2"/>
+    <text x="180" y="95" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">fcamera / qcamera only</text>
+    <text x="180" y="120" text-anchor="middle" font-size="12" fill="#b91c1c" font-family="sans-serif">input 만 있음, label 없음</text>
+
+    <rect x="360" y="50" width="280" height="100" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="500" y="95" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">video frames + labels</text>
+    <text x="500" y="120" text-anchor="middle" font-size="12" fill="#047857" font-family="sans-serif">supervised training 가능</text>
+
+    <rect x="680" y="50" width="280" height="100" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="820" y="95" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">labels from rlog/qlog</text>
+    <text x="820" y="120" text-anchor="middle" font-size="12" fill="#1d4ed8" font-family="sans-serif">예: vEgo 로 accel 추정</text>
+
+    <line x1="320" y1="100" x2="360" y2="100" stroke="#64748b" stroke-width="2"/>
+    <polygon points="360,100 348,94 348,106" fill="#64748b"/>
+    <line x1="820" y1="150" x2="820" y2="170" stroke="#64748b" stroke-width="2"/>
+    <line x1="500" y1="170" x2="820" y2="170" stroke="#64748b" stroke-width="2"/>
+    <line x1="500" y1="150" x2="500" y2="170" stroke="#64748b" stroke-width="2"/>
+  </svg>
+  <div class="diagram-caption">그림 B. 실차 learning 에는 영상 + label 이 한 세트</div>
+</div>
+
+<p>label 을 만드는 현실적인 방법 (초보 추천 순):</p>
+<ol>
+  <li>
+    <strong>로그에서 자동 (추천)</strong> —
+    같은 시각의 <code>carState.vEgo</code> 변화를 보고 대략 accel 을 계산해 label 로 씀.
+    매일 10 km 운전 = 자동으로 문제집 원재료가 늘어남. <strong>사람 클릭 불필요.</strong>
+  </li>
+  <li>
+    <strong>이미 있는 openpilot model 출력</strong> —
+    rlog 의 desiredAcceleration 등을 teacher label 로 쓰는 연습.
+  </li>
+  <li>
+    <strong>사람이 달기</strong> —
+    “이 프레임은 정지” 등. 느리므로 필수 아님. 특수 연구용.
+  </li>
+</ol>
+
+<div class="term">
+  <div class="term-word">teacher / student (초보 메모)</div>
+  <p>
+    이미 잘 하는 model(teacher) 의 출력을 정답처럼 두고, 작은 model(student) 이 따라 배우게 할 수 있습니다.
+    이것도 supervised 이고, 사람 손 label 이 아닙니다.
+  </p>
+</div>
+
+<p>
+  이 PC 에는 이미 3X <code>realdata</code> 전체 복사본이 있을 수 있습니다
+  (예: <code>e2e_learning_lab\data\from_3x\realdata</code>, 약 66 GB).
+  이후에는 매일 증가분만 scp 하면 됩니다.
+</p>
+
+<h3>10.3 권장 작업 흐름 (실차 영상 → PC training)</h3>
+<ol>
+  <li>
+    <strong>3X 에서는 training 하지 않는다.</strong>
+    복사와 확인만 한다. (저장 공간도 빠듯할 수 있음 — 예: /data 사용률 높음)
+  </li>
+  <li>
+    PC 에서 SSH/SCP 로 파일 가져오기. 처음엔 <strong>qcamera.ts 몇 segment</strong> 만.
+  </li>
+</ol>
+<pre># PC (PowerShell / 또는 WSL) 예시 — 경로·키는 본인 환경에 맞게
+scp -i $env:USERPROFILE\.ssh\openpilot_ed25519 `
+  comma@192.168.35.191:/data/media/0/realdata/0000022d--75541d0fce--5/qcamera.ts `
+  S:\github\e2e_learning_lab\data\raw\
+
+scp -i $env:USERPROFILE\.ssh\openpilot_ed25519 `
+  comma@192.168.35.191:/data/media/0/realdata/0000022d--75541d0fce--5/qlog.zst `
+  S:\github\e2e_learning_lab\data\raw\
+</pre>
+<ol start="3">
+  <li>
+    PC 에서 frame 추출 (ffmpeg 설치 필요).
+  </li>
+</ol>
+<pre># 예: 1초에 2장 정도만 (전부 뽑으면 장수가 너무 많아짐)
+ffmpeg -i qcamera.ts -vf fps=2 data/from_car/frame_%05d.png
+</pre>
+<ol start="4">
+  <li>
+    qlog/rlog 과 시각을 맞춰 <code>labels.csv</code> 를 만든다
+    (다음 단계 스크립트로 lab 에 추가 가능).
+  </li>
+  <li>
+    기존과 같이 <code>python -m src.train</code> — <strong>PC 에서</strong>.
+  </li>
+</ol>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 160" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="30" y="40" width="160" height="70" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="110" y="80" text-anchor="middle" font-size="13" fill="#1b2430" font-family="sans-serif">3X realdata</text>
+
+    <rect x="230" y="40" width="160" height="70" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <text x="310" y="80" text-anchor="middle" font-size="13" fill="#1b2430" font-family="sans-serif">scp to PC</text>
+
+    <rect x="430" y="40" width="160" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="510" y="70" text-anchor="middle" font-size="13" fill="#1b2430" font-family="sans-serif">frames + labels</text>
+    <text x="510" y="95" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">dataset 만들기</text>
+
+    <rect x="630" y="40" width="150" height="70" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="705" y="80" text-anchor="middle" font-size="13" fill="#1b2430" font-family="sans-serif">train on PC</text>
+
+    <rect x="820" y="40" width="150" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="895" y="80" text-anchor="middle" font-size="13" fill="#1b2430" font-family="sans-serif">infer on PC</text>
+
+    <line x1="190" y1="75" x2="230" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="230,75 218,69 218,81" fill="#64748b"/>
+    <line x1="390" y1="75" x2="430" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="430,75 418,69 418,81" fill="#64748b"/>
+    <line x1="590" y1="75" x2="630" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="630,75 618,69 618,81" fill="#64748b"/>
+    <line x1="780" y1="75" x2="820" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="820,75 808,69 808,81" fill="#64748b"/>
+  </svg>
+  <div class="diagram-caption">그림 C. 실차 영상은 3X 에 두고, dataset·학습은 PC</div>
+</div>
+
+<div class="warn">
+  <div class="warn-title">실무 주의</div>
+  <ul>
+    <li>전체 route 의 fcamera 를 한꺼번에 복사하면 용량·시간이 큽니다. 처음엔 segment 1~2개 + qcamera.</li>
+    <li>장치 디스크가 거의 가득 찰 수 있습니다. 장치 위에서 대량 frame 추출은 피하세요.</li>
+    <li>아기 model replace 는 “파이프 기동” 검증용. <strong>도로 engage 로 운전 품질을 기대하지 마세요.</strong></li>
+    <li>시간 정렬(동영상 frame ↔ log 시각)이 가장 어려운 부분입니다. 여기가 “dataset 만들기”의 핵심 엔지니어링입니다.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <strong style="color:var(--text);">지금 당장 추천</strong>
+  <ol style="margin-top:8px;margin-bottom:0;">
+    <li>먼저 synthetic <code>make_dataset</code> 으로 “dataset = 문제집” 감각을 익힌다.</li>
+    <li>그다음 qcamera 1 segment 만 PC 로 가져와 frame 을 뽑고 눈으로 본다.</li>
+    <li>준비가 되면 qlog 와 맞춰 label CSV 를 만드는 스크립트를 lab 에 추가한다.</li>
+  </ol>
+</div>
+
+<!-- five -->
+<h2 id="five">11. 시스템 5조각</h2>
+<p>lab 과 openpilot 모두 같은 논리 구조입니다.</p>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 200" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="50" width="150" height="70" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="95" y="80" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">1 Sensor</text>
+    <text x="95" y="100" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">image / video</text>
+
+    <rect x="210" y="50" width="150" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="285" y="80" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">2 Preprocess</text>
+    <text x="285" y="100" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">resize / normalize</text>
+
+    <rect x="400" y="50" width="170" height="70" fill="#fef2f2" stroke="#b91c1c" stroke-width="2"/>
+    <text x="485" y="80" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">3 Model</text>
+    <text x="485" y="100" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">weights</text>
+
+    <rect x="610" y="50" width="150" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="685" y="80" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">4 Postprocess</text>
+    <text x="685" y="100" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">smooth / rules</text>
+
+    <rect x="800" y="50" width="170" height="70" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="885" y="80" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">5 Log</text>
+    <text x="885" y="100" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">print / CSV</text>
+
+    <line x1="170" y1="85" x2="210" y2="85" stroke="#64748b" stroke-width="2"/>
+    <polygon points="210,85 198,79 198,91" fill="#64748b"/>
+    <line x1="360" y1="85" x2="400" y2="85" stroke="#64748b" stroke-width="2"/>
+    <polygon points="400,85 388,79 388,91" fill="#64748b"/>
+    <line x1="570" y1="85" x2="610" y2="85" stroke="#64748b" stroke-width="2"/>
+    <polygon points="610,85 598,79 598,91" fill="#64748b"/>
+    <line x1="760" y1="85" x2="800" y2="85" stroke="#64748b" stroke-width="2"/>
+    <polygon points="800,85 788,79 788,91" fill="#64748b"/>
+
+    <text x="285" y="160" text-anchor="middle" font-size="12" fill="#047857" font-family="sans-serif">open source code</text>
+    <text x="485" y="160" text-anchor="middle" font-size="12" fill="#b91c1c" font-family="sans-serif">black box core</text>
+    <text x="685" y="160" text-anchor="middle" font-size="12" fill="#047857" font-family="sans-serif">open source code</text>
+  </svg>
+  <div class="diagram-caption">그림 2. 초록 = 읽고 고치기 쉬운 코드, 빨강 = weights 계산 (해석 어려움)</div>
+</div>
+
+<div class="term">
+  <div class="term-word">preprocess</div>
+  <p>model 에 넣기 좋게 이미지를 바꾸는 단계입니다. resize, 0~1 스케일, 채널 순서(CHW) 등.</p>
+</div>
+
+<div class="term">
+  <div class="term-word">postprocess</div>
+  <p>
+    model 이 낸 raw 숫자를 쓰기 좋게 다듬는 단계입니다.
+    smoothing, threshold 로 should_stop 만들기 등. weights 밖 open source 코드입니다.
+  </p>
+</div>
+
+<!-- 5 -->
+<h2 id="blackbox">12. black box 는 어디인가</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>구간</th>
+      <th>lab 파일</th>
+      <th>성격</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>dataset 만들기</td>
+      <td><code>src/make_dataset.py</code></td>
+      <td><span class="badge b-open">open source</span></td>
+    </tr>
+    <tr>
+      <td>preprocess</td>
+      <td><code>src/preprocess.py</code></td>
+      <td><span class="badge b-open">open source</span></td>
+    </tr>
+    <tr>
+      <td>model 구조 정의</td>
+      <td><code>src/model.py</code> (레이어 목록)</td>
+      <td><span class="badge b-open">구조는 읽힘</span></td>
+    </tr>
+    <tr>
+      <td>training loop</td>
+      <td><code>src/train.py</code></td>
+      <td><span class="badge b-open">open source</span></td>
+    </tr>
+    <tr>
+      <td>forward 로 “왜 이 가속?”</td>
+      <td>학습된 <code>artifacts/toy_accel.pt</code></td>
+      <td><span class="badge b-box">black box</span></td>
+    </tr>
+    <tr>
+      <td>postprocess + log</td>
+      <td><code>src/infer.py</code></td>
+      <td><span class="badge b-open">open source</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 160" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="260" height="80" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="170" y="75" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">tensor 준비까지</text>
+    <text x="170" y="98" text-anchor="middle" font-size="12" fill="#047857" font-family="sans-serif">읽을 수 있음</text>
+
+    <rect x="370" y="40" width="260" height="80" fill="#fef2f2" stroke="#b91c1c" stroke-width="2"/>
+    <text x="500" y="75" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">weights forward</text>
+    <text x="500" y="98" text-anchor="middle" font-size="12" fill="#b91c1c" font-family="sans-serif">black box core</text>
+
+    <rect x="700" y="40" width="260" height="80" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="830" y="75" text-anchor="middle" font-size="14" fill="#1b2430" font-family="sans-serif">숫자 → rule → CSV</text>
+    <text x="830" y="98" text-anchor="middle" font-size="12" fill="#047857" font-family="sans-serif">읽을 수 있음</text>
+
+    <line x1="300" y1="80" x2="370" y2="80" stroke="#64748b" stroke-width="2"/>
+    <polygon points="370,80 358,74 358,86" fill="#64748b"/>
+    <line x1="630" y1="80" x2="700" y2="80" stroke="#64748b" stroke-width="2"/>
+    <polygon points="700,80 688,74 688,86" fill="#64748b"/>
+  </svg>
+  <div class="diagram-caption">그림 3. black box 시작 = network 에 tensor 가 들어간 뒤, 끝 = raw output 숫자</div>
+</div>
+
+<div class="term">
+  <div class="term-word">forward (forward pass)</div>
+  <p>
+    고정 weights 로 input tensor 를 레이어 순서대로 통과시켜 output 을 얻는 계산 한 번입니다.
+    training 때는 여기에 더해 backward 로 weights 를 업데이트합니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">tensor</div>
+  <p>다차원 숫자 배열입니다. 이미지는 보통 (batch, channel, height, width) 형태입니다.</p>
+</div>
+
+<!-- 6 -->
+<h2 id="lab">13. e2e_learning_lab 사용법 (PC)</h2>
+
+<div class="term">
+  <div class="term-word">synthetic dataset</div>
+  <p>
+    실제 도로 영상 대신, 프로그램이 만든 가짜 이미지와 정답 숫자 쌍입니다.
+    이 lab 은 “빨간 쪽이 많으면 음수 accel, 초록 쪽이 많으면 양수 accel” 같은
+    toy 규칙으로 dataset 을 만듭니다. 진짜 신호등 AI 가 아닙니다.
+  </p>
+</div>
+
+<p><span class="step-num">1</span> 환경</p>
+<pre>cd S:\github\e2e_learning_lab
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+</pre>
+
+<p><span class="step-num">2</span> dataset 만들기 (synthetic 문제집 준비)</p>
+<pre>python -m src.make_dataset
+</pre>
+<p>
+  이 단계는 AI 를 “학습”하는 것이 아닙니다.
+  <strong>이미지 + 정답 표</strong> 를 디스크에 만들어 두는 것입니다.
+  자세한 설명은 위 <a href="#dataset">3. dataset 이란?</a> 을 보세요.
+  결과: <code>data/train/</code>, <code>data/val/</code> 에 png + <code>labels.csv</code>.
+  이 단계는 아직 “openpilot 꼴 맞추기” 전, <strong>개념 연습</strong>입니다.
+</p>
+
+<p><span class="step-num">3</span> training (learning) — <strong>PC</strong></p>
+<pre>python -m src.train
+</pre>
+<p>
+  결과: <code>artifacts/toy_accel.pt</code> (PyTorch weights),
+  <code>artifacts/toy_accel.onnx</code> (다른 runtime 으로 옮기기 쉬운 형식).
+</p>
+
+<div class="term">
+  <div class="term-word">ONNX</div>
+  <p>
+    Open Neural Network Exchange. model 을 여러 도구에서 돌리기 위한 공통 파일 형식입니다.
+    Netron(<a href="https://netron.app/" target="_blank" rel="noopener">netron.app</a>) 으로
+    input/output 이름을 볼 수 있습니다.
+  </p>
+</div>
+
+<p><span class="step-num">4</span> inference</p>
+<pre>python -m src.infer --dir data/val
+</pre>
+<p>
+  각 이미지에 대해 raw accel, smooth accel, should_stop 을 출력하고
+  <code>artifacts/infer_log.csv</code> 에 저장합니다.
+</p>
+
+<div class="card">
+  <strong style="color:var(--text);">lab 파일 지도</strong>
+  <table style="margin-bottom:0;">
+    <thead>
+      <tr><th>파일</th><th>역할</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>src/make_dataset.py</code></td><td>synthetic 이미지 + label</td></tr>
+      <tr><td><code>src/preprocess.py</code></td><td>resize, float, CHW</td></tr>
+      <tr><td><code>src/model.py</code></td><td>TinyAccelNet (작은 CNN)</td></tr>
+      <tr><td><code>src/dataset.py</code></td><td>PyTorch Dataset (synthetic)</td></tr>
+      <tr><td><code>src/train.py</code></td><td>synthetic learning + ONNX</td></tr>
+      <tr><td><code>src/infer.py</code></td><td>inference + smooth + should_stop</td></tr>
+      <tr><td><code>src/batch_process_all.py</code></td><td>전체 segment frame + auto label</td></tr>
+      <tr><td><code>src/train_real.py</code></td><td>manifest 기반 실차 train</td></tr>
+      <tr><td><code>src/make_labels_from_qlog.py</code></td><td>단건 segment 자동 label</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="term">
+  <div class="term-word">CNN (Convolutional Neural Network)</div>
+  <p>
+    이미지에 잘 쓰는 neural network 종류입니다. 작은 필터로 주변 픽셀 패턴을 봅니다.
+    lab 의 TinyAccelNet 이 아주 작은 CNN 입니다.
+  </p>
+</div>
+
+<!-- 7 -->
+<h2 id="train-vs-infer">14. training 과 inference 의 차이</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th></th>
+      <th>training</th>
+      <th>inference</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>명령</td>
+      <td><code>python -m src.train</code></td>
+      <td><code>python -m src.infer ...</code></td>
+    </tr>
+    <tr>
+      <td>weights</td>
+      <td>업데이트됨 (학습됨)</td>
+      <td>고정, 읽기만</td>
+    </tr>
+    <tr>
+      <td>정답 label</td>
+      <td>필요 (labels.csv)</td>
+      <td>없어도 됨 (예측만)</td>
+    </tr>
+    <tr>
+      <td>시간</td>
+      <td>epoch 여러 번, 분 단위 가능</td>
+      <td>이미지당 매우 짧음</td>
+    </tr>
+    <tr>
+      <td>어디서</td>
+      <td><span class="badge b-pc">PC</span></td>
+      <td><span class="badge b-pc">PC</span> (이 lab)</td>
+    </tr>
+    <tr>
+      <td>openpilot 실차</td>
+      <td>장치에서 하지 않음 (공장/서버/연구)</td>
+      <td>3X 의 modeld 가 매 프레임</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="term">
+  <div class="term-word">epoch</div>
+  <p>
+    training 에서 전체 training dataset 을 한 번 다 보는 단위입니다.
+    lab 기본값은 여러 epoch 을 돕니다. 한 epoch 마다 train/val loss 를 출력합니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">label</div>
+  <p>
+    정답 이름표입니다. lab 에서는 <code>desired_accel</code> 숫자입니다.
+    openpilot 실차 inference 로그에는 “빨간불” label 이 보통 없습니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">loss</div>
+  <p>
+    예측과 정답이 얼마나 다른지 나타내는 숫자입니다.
+    lab 은 MSE (평균 제곱 오차) 를 씁니다. 작을수록 training 이 정답에 가깝게 맞추고 있다는 뜻입니다.
+  </p>
+</div>
+
+<!-- 8 -->
+<h2 id="openpilot">15. openpilot 과 어떻게 대응되나</h2>
+<p>
+  개념 연습 lab 과, 나중 아기 replace model 을 구분해 읽습니다.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>조각</th>
+      <th>e2e_learning_lab</th>
+      <th>openpilot</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Sensor</td>
+      <td>png 파일</td>
+      <td>camerad camera frames</td>
+    </tr>
+    <tr>
+      <td>Preprocess</td>
+      <td><code>preprocess.py</code></td>
+      <td>warp + input queues in modeld</td>
+    </tr>
+    <tr>
+      <td>Model + weights</td>
+      <td>TinyAccelNet + <code>toy_accel.pt</code></td>
+      <td>driving supercombo + ONNX/JIT</td>
+    </tr>
+    <tr>
+      <td>Postprocess</td>
+      <td>smooth, should_stop rule</td>
+      <td>parse outputs, get_action_from_model</td>
+    </tr>
+    <tr>
+      <td>Use output</td>
+      <td>CSV only</td>
+      <td>longitudinal planner → control (실차)</td>
+    </tr>
+    <tr>
+      <td>Training</td>
+      <td><code>src/train.py</code> on PC</td>
+      <td>comma 규모 학습 스택 (이 monorepo 밖에서 큼)</td>
+    </tr>
+    <tr>
+      <td>장기 목표: 같은 소켓</td>
+      <td>현재 TinyAccelNet 은 아직 미달</td>
+      <td>modeld 가 기대하는 I/O · modelV2</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="term">
+  <div class="term-word">modeld</div>
+  <p>
+    openpilot 에서 driving model inference 를 담당하는 process 입니다.
+    코드: <code>openpilot/selfdrive/modeld/modeld.py</code>.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">Experimental Mode</div>
+  <p>
+    openpilot 에서 model 의 e2e 가속 출력을 종방향 제어에 더 쓰는 모드입니다.
+    lab 의 “accel 숫자를 믿는다”와 개념적으로 비슷하지만, 실차는 MPC 등과 섞고 safety 가 있습니다.
+  </p>
+</div>
+
+<h3>openpilot inference input (개념)</h3>
+<ul>
+  <li>전방 (및 wide) camera image</li>
+  <li>desire (차로 변경 의도 등)</li>
+  <li>traffic convention (좌/우핸)</li>
+  <li>action delay 시간</li>
+  <li>이전 feature buffer</li>
+</ul>
+<p>여기에 “traffic_light=red” 나 “speed_limit=50” 같은 label 은 기본 input 이 아닙니다.</p>
+
+<h3>openpilot inference output (개념)</h3>
+<ul>
+  <li>plan 궤적, lane, lead, meta 확률 등</li>
+  <li>action: desired acceleration / curvature 쪽</li>
+  <li>shouldStop 일부는 open source 규칙으로 계산</li>
+</ul>
+
+<!-- ROADMAP -->
+<h2 id="roadmap">16. 단계별 roadmap (목표: 꼴 replace)</h2>
+<table>
+  <thead>
+    <tr>
+      <th>단계</th>
+      <th>내용</th>
+      <th>완료 기준</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>단어 · pipeline · synthetic train/infer</td>
+      <td><span class="badge b-ok">DONE</span></td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>실차 realdata scp</td>
+      <td><span class="badge b-ok">DONE</span> ~66GB</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>전체 batch auto label + real train (검수 생략)</td>
+      <td><span class="badge b-ok">DONE</span> 444 segs · real_auto_accel.* (CPU)</td>
+    </tr>
+    <tr>
+      <td>2b</td>
+      <td>CUDA PyTorch + 같은 dataset GPU 재학습</td>
+      <td><span class="badge b-ok">CUDA DONE</span> · GPU train 실행</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>openpilot model I/O 스펙 표 고정 = <strong>틀 1회</strong></td>
+      <td><span class="badge b-next">NEXT</span> 이후 weights 반복</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>같은 I/O 의 아기 net · dummy/teacher head</td>
+      <td>PC forward shape OK</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>학습 · ONNX(+metadata) export</td>
+      <td>modeld 로드 형식</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>replay / 안전 환경 replace</td>
+      <td>크래시 없이 modelV2 루프</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>comma 급 운전 성능</td>
+      <td><span class="badge b-box">성공 조건 아님</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="safety">17. 안전 · 하지 말 것</h2>
+<div class="warn">
+  <div class="warn-title">안전</div>
+  <ul>
+    <li>아기 model 로 일반 도로에서 “잘 달리겠지” 하고 engage 하지 마세요.</li>
+    <li>replace 1차 검증은 PC replay / 통제 환경을 우선하세요.</li>
+    <li>synthetic “빨간 blob” 을 진짜 신호등 detector 로 착각하지 마세요.</li>
+    <li>openpilot 에 panda safety 가 있어도, 잘못된 model 출력을 모두 막아주지는 않습니다.</li>
+  </ul>
+</div>
+
+<h2 id="glossary">18. 용어 모음</h2>
+<table>
+  <thead>
+    <tr>
+      <th>English</th>
+      <th>짧은 설명</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>open source</td><td>소스 공개, 라이선스 아래 수정 가능</td></tr>
+    <tr><td>e2e</td><td>input → control 쪽 output 을 모델이 직접</td></tr>
+    <tr><td>dataset</td><td>학습/평가용 예제 모음 (문제집)</td></tr>
+    <tr><td>sample</td><td>dataset 한 줄 (이미지+label 등)</td></tr>
+    <tr><td>label</td><td>맞춰야 할 목표 값 (출처: 사람/센서/합성)</td></tr>
+    <tr><td>supervision</td><td>학습 때 “이 방향이 맞다”는 신호</td></tr>
+    <tr><td>supervised learning</td><td>입력+목표 짝으로 배우는 방식</td></tr>
+    <tr><td>unsupervised learning</td><td>목표 짝 없이 패턴만</td></tr>
+    <tr><td>self-supervised</td><td>데이터 스스로 가짜 문제·정답 생성</td></tr>
+    <tr><td>imitation learning</td><td>실제 운전 행동을 따라 배우기</td></tr>
+    <tr><td>train / val split</td><td>공부용 / 시험용 데이터 나누기</td></tr>
+    <tr><td>synthetic dataset</td><td>프로그램이 만든 가짜 데이터</td></tr>
+    <tr><td>frame</td><td>동영상의 한 장 이미지</td></tr>
+    <tr><td>route / segment</td><td>openpilot 주행 묶음 / 약 1분 조각</td></tr>
+    <tr><td>training / learning</td><td>weights 업데이트</td></tr>
+    <tr><td>inference</td><td>고정 weights 로 예측</td></tr>
+    <tr><td>weights</td><td>모델 내부 파라미터</td></tr>
+    <tr><td>black box</td><td>I/O 는 보여도 내부 해석이 어려운 부분</td></tr>
+    <tr><td>pipeline</td><td>단계적 처리 사슬</td></tr>
+    <tr><td>preprocess / postprocess</td><td>모델 앞/뒤 변환</td></tr>
+    <tr><td>tensor</td><td>다차원 배열</td></tr>
+    <tr><td>CNN</td><td>이미지용 neural network 종류</td></tr>
+    <tr><td>loss / MSE</td><td>오차 지표</td></tr>
+    <tr><td>epoch</td><td>데이터 전체 1회 학습 단위</td></tr>
+    <tr><td>ONNX</td><td>모델 교환 포맷</td></tr>
+    <tr><td>SoC</td><td>한 칩에 모은 컴퓨터</td></tr>
+    <tr><td>real-time</td><td>짧은 시간 안에 끝나야 하는 처리</td></tr>
+    <tr><td>modeld</td><td>openpilot model process</td></tr>
+    <tr><td>Experimental Mode</td><td>e2e longitudinal 을 더 쓰는 모드</td></tr>
+    <tr><td>smoothing</td><td>출력을 시간에 따라 부드럽게</td></tr>
+    <tr><td>threshold</td><td>경계값</td></tr>
+    <tr><td>interface / shape</td><td>입출력 이름·크기 꼴</td></tr>
+    <tr><td>replace</td><td>model 파일 교체</td></tr>
+    <tr><td>아기 model</td><td>같은 꼴, 약한 weights</td></tr>
+    <tr><td>output_slices</td><td>큰 출력 벡터를 이름으로 자르는 표</td></tr>
+  </tbody>
+</table>
+
+<h2>다음 할 일 (권장 순서)</h2>
+<ol>
+  <li>진행 로그 HTML 로 현재 위치 확인 (batch·real train DONE)</li>
+  <li>roadmap 3: openpilot I/O 스펙 표 고정</li>
+  <li>roadmap 4~6: 아기 net → export → replace smoke</li>
+</ol>
+
+<footer>
+  byGrok · goal: interface-compatible baby model replace (not driving skill) ·
+  lab: <code>S:\github\e2e_learning_lab</code> ·
+  openpilot: <code>docs/e2e_inference_opensource_guide_byGrok.html</code>
+</footer>
+
+</div>
+</body>
+</html>

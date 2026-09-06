@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>docs_abraxas4 — personal notes</title>
+<style>
+  :root { --bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+          --accent:#58a6ff;--green:#3fb950;--purple:#bc8cff;--orange:#d29922; }
+  * { margin:0;padding:0;box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+         background:var(--bg);color:var(--text);line-height:1.7;padding:48px 20px; }
+  .container { max-width:760px;margin:0 auto; }
+  h1 { font-size:1.8rem;margin-bottom:8px;
+       background:linear-gradient(90deg,var(--accent),var(--purple));
+       -webkit-background-clip:text;-webkit-text-fill-color:transparent; }
+  .sub { color:var(--muted);margin-bottom:40px;font-size:0.9rem; }
+  h2 { font-size:0.78rem;letter-spacing:0.08em;text-transform:uppercase;
+       color:var(--muted);margin:28px 0 12px; }
+  .grid { display:grid;grid-template-columns:1fr;gap:10px; }
+  .card { background:var(--card);border:1px solid var(--border);border-radius:8px;
+          padding:16px 20px;text-decoration:none;display:block;transition:border-color .2s; }
+  .card:hover { border-color:var(--accent); }
+  .title { font-size:0.98rem;font-weight:600;margin-bottom:4px;color:var(--text); }
+  .desc { color:var(--muted);font-size:0.82rem; }
+  footer { color:var(--muted);font-size:0.78rem;text-align:center;
+           border-top:1px solid var(--border);padding-top:16px;margin-top:40px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>docs_abraxas4</h1>
+<p class="sub">MJ Kim 개인 문서. comma 공식 문서(<code>docs/</code>)와 분리.</p>
+
+<h2>학습</h2>
+<div class="grid">
+  <a class="card" href="primer_index.html">
+    <div class="title">기초 용어 가이드</div>
+    <div class="desc">3D 공간, AI, 딥러닝, GPU/시스템</div>
+  </a>
+  <a class="card" href="primer_ipc_messaging.html">
+    <div class="title">프로세스 · msgq · Cap'n Proto · 로그</div>
+    <div class="desc">openpilot 런타임 IPC 기초</div>
+  </a>
+  <a class="card" href="tinygrad.html">
+    <div class="title">tinygrad 추론 엔진</div>
+    <div class="desc">modeld / tinygrad 기술 참고</div>
+  </a>
+  <a class="card" href="training.html">
+    <div class="title">학습 및 트레이닝 가이드</div>
+    <div class="desc">로컬·클라우드 학습이 어디에 해당하는지</div>
+  </a>
+  <a class="card" href="e2e_inference_opensource_guide_byGrok.html">
+    <div class="title">e2e learning + inference 입문</div>
+    <div class="desc">byGrok</div>
+  </a>
+  <a class="card" href="e2e_learning_progress_log_byGrok.html">
+    <div class="title">e2e learning 진행 로그</div>
+    <div class="desc">전체 자동 학습까지</div>
+  </a>
+</div>
+
+<h2>주행 / 차량</h2>
+<div class="grid">
+  <a class="card" href="changelog.html">
+    <div class="title">Feature summary</div>
+    <div class="desc">openpilot_mj_develop 변경 요약</div>
+  </a>
+  <a class="card" href="90deg_corner_steering_limits.html">
+    <div class="title">90도 외길에서 스티어링이 덜 도는 이유</div>
+    <div class="desc">저속 UI path / 고속 steer limit</div>
+  </a>
+  <a class="card" href="traffic_light_speed_limit_check_byGrok.html">
+    <div class="title">신호등·제한속도 인식 점검</div>
+    <div class="desc">Experimental Mode 로그 분석</div>
+  </a>
+  <a class="card" href="PANDA_HYUNDAI_ENGAGE_UML.md">
+    <div class="title">Hyundai engage / always-on lateral 흐름</div>
+    <div class="desc">UML</div>
+  </a>
+  <a class="card" href="PANDA_HYUNDAI_INTERFACE_CLASS_UML.md">
+    <div class="title">Hyundai engage 인터페이스 클래스</div>
+    <div class="desc">UML</div>
+  </a>
+</div>
+
+<h2>장애 / 머지 로그</h2>
+<div class="grid">
+  <a class="card" href="fix_2026-07-12-0110---openpilot_unavailable.html">
+    <div class="title">AOL unavailable 수정 로그</div>
+    <div class="desc">upstream merge 후 ALWAYS_ON_LATERAL — 초보용 해설</div>
+  </a>
+  <a class="card" href="upstream_merge_log.html">
+    <div class="title">Upstream merge &amp; build fix log</div>
+    <div class="desc">2026-07-11</div>
+  </a>
+</div>
+
+<footer>abraxas4/openpilot_mj_develop &middot; docs_abraxas4</footer>
+</div>
+</body>
+</html>

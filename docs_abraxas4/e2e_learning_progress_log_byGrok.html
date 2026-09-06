@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>e2e learning 진행 로그 byGrok — 전체 자동 학습까지</title>
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --border: #d5dbe3;
+    --text: #1a2332;
+    --muted: #4b5563;
+    --accent: #1d4ed8;
+    --green: #047857;
+    --red: #b91c1c;
+    --orange: #c2410c;
+    --purple: #6d28d9;
+    --code-bg: #eef2f7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 28px 3%;
+  }
+  .page { width: 100%; max-width: none; }
+  h1 { font-size: 1.7rem; line-height: 1.35; margin-bottom: 8px; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 22px; }
+  .subtitle code {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+  h2 {
+    font-size: 1.15rem;
+    margin: 40px 0 12px;
+    padding: 10px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--accent);
+  }
+  h3 { font-size: 1.02rem; color: var(--accent); margin: 20px 0 10px; }
+  p { color: var(--muted); font-size: 0.95rem; margin-bottom: 12px; }
+  strong { color: var(--text); }
+  ul, ol { margin: 8px 0 14px 22px; color: var(--muted); font-size: 0.95rem; }
+  li { margin-bottom: 7px; }
+  a { color: var(--accent); }
+  code {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  pre {
+    width: 100%;
+    font-family: Consolas, monospace;
+    font-size: 0.8rem;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    overflow-x: auto;
+    color: var(--muted);
+    margin: 12px 0;
+    line-height: 1.55;
+  }
+  .card {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 14px 0;
+  }
+  .toc {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+  }
+  .toc a { text-decoration: none; font-size: 0.92rem; }
+  .toc a:hover { text-decoration: underline; }
+  .toc ol { margin: 6px 0 0 18px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 12px 0 16px;
+    background: var(--card);
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #eef2f7; color: var(--text); }
+  tr:nth-child(even) td { background: #fafbfc; }
+  .term {
+    width: 100%;
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    border-left: 5px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin: 8px 0 14px;
+  }
+  .term-word {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+  .term p { color: #1e3a8a; margin-bottom: 0; font-size: 0.9rem; }
+  .note {
+    width: 100%;
+    background: #ecfdf5;
+    border: 1px solid #6ee7b7;
+    border-left: 5px solid var(--green);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 14px 0;
+  }
+  .note-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+  }
+  .note p, .note li { color: #065f46; }
+  .warn {
+    width: 100%;
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+    border-left: 5px solid var(--orange);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 14px 0;
+  }
+  .warn-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--orange);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+  }
+  .warn p, .warn li { color: #9a3412; }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .b-ok { background: #dcfce7; color: var(--green); }
+  .b-no { background: #fee2e2; color: var(--red); }
+  .b-info { background: #dbeafe; color: var(--accent); }
+  .b-tool { background: #ede9fe; color: var(--purple); }
+  .b-next { background: #ffedd5; color: var(--orange); }
+  .diagram {
+    width: 100%;
+    overflow-x: auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 12px;
+    margin: 14px 0;
+  }
+  /* Cap growth on maximize, but keep diagram text near body size.
+     viewBox ~1000 wide + font-size 12–14 → ~70rem display ≈ body ~0.95rem. */
+  .diagram svg {
+    display: block;
+    width: 100%;
+    max-width: min(100%, 70rem);
+    height: auto;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .diagram-caption {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 10px;
+    max-width: min(100%, 70rem);
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .kpi {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 14px 0;
+  }
+  @media (max-width: 900px) {
+    .kpi { grid-template-columns: repeat(2, 1fr); }
+  }
+  .kpi-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .kpi-val { font-size: 1.25rem; font-weight: 700; color: var(--accent); }
+  .kpi-label { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 70px;
+    gap: 10px;
+    align-items: center;
+    margin: 6px 0;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+  .bar-track {
+    height: 18px;
+    background: #e5e7eb;
+    border: 1px solid var(--border);
+  }
+  .bar-fill { height: 100%; background: var(--accent); }
+  .bar-fill.green { background: var(--green); }
+  .bar-fill.orange { background: var(--orange); }
+  footer {
+    width: 100%;
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+  .status-done { color: var(--green); font-weight: 700; }
+  .status-todo { color: var(--orange); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>e2e learning 진행 로그 <span class="badge b-tool">byGrok</span></h1>
+<p class="subtitle">
+  초보 엔지니어용 정리 · batch · GPU ·
+  <strong>다음 단계 C: openpilot I/O 꼴 아기 model (BabySupercombo)</strong> ·
+  2026-08-09 ~ 2026-08-11 ·
+  <code>docs/e2e_learning_progress_log_byGrok.html</code>
+</p>
+
+<div class="toc">
+  <strong style="color:var(--text);">목차</strong>
+  <ol>
+    <li><a href="#now">지금 어디쯤인가</a></li>
+    <li><a href="#goal">공식 목표</a></li>
+    <li><a href="#cycle">model 한 번 vs weights 반복</a></li>
+    <li><a href="#dataset-term">dataset 이라는 말</a></li>
+    <li><a href="#step-c">지금 하는 일: 단계 C (꼴 맞추기)</a></li>
+    <li><a href="#shape-meta">shape · metadata 란? (초보 필수)</a></li>
+    <li><a href="#io-spec">openpilot I/O 스펙 표</a></li>
+    <li><a href="#baby">BabySupercombo 구조</a></li>
+    <li><a href="#train-baby">아기 model 학습 · export · smoke</a></li>
+    <li><a href="#roles">역할 분담</a></li>
+    <li><a href="#done">체크리스트</a></li>
+    <li><a href="#batch">batch + TinyAccelNet train 요약</a></li>
+    <li><a href="#cuda">CUDA</a></li>
+    <li><a href="#next">다음에 할 일</a></li>
+    <li><a href="#glossary">용어 모음</a></li>
+  </ol>
+</div>
+
+<!-- 1 -->
+<h2 id="now">1. 지금 어디쯤인가</h2>
+
+<div class="kpi">
+  <div class="kpi-item">
+    <div class="kpi-val"><span class="badge b-ok">DONE</span></div>
+    <div class="kpi-label">synthetic train</div>
+  </div>
+  <div class="kpi-item">
+    <div class="kpi-val"><span class="badge b-ok">DONE</span></div>
+    <div class="kpi-label">realdata scp ~66GB</div>
+  </div>
+  <div class="kpi-item">
+    <div class="kpi-val"><span class="badge b-ok">DONE</span></div>
+    <div class="kpi-label">batch 444 segs / 52k samples</div>
+  </div>
+  <div class="kpi-item">
+    <div class="kpi-val"><span class="badge b-ok">DONE</span></div>
+    <div class="kpi-label">CPU real train · CUDA 설치</div>
+  </div>
+</div>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 140" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="50" width="100" height="40" fill="#047857" stroke="#047857" stroke-width="2"/>
+    <text x="70" y="75" text-anchor="middle" font-size="11" fill="#fff" font-family="sans-serif">목표</text>
+    <rect x="130" y="50" width="100" height="40" fill="#047857" stroke="#047857" stroke-width="2"/>
+    <text x="180" y="75" text-anchor="middle" font-size="11" fill="#fff" font-family="sans-serif">lab</text>
+    <rect x="240" y="50" width="100" height="40" fill="#047857" stroke="#047857" stroke-width="2"/>
+    <text x="290" y="75" text-anchor="middle" font-size="11" fill="#fff" font-family="sans-serif">synth</text>
+    <rect x="350" y="50" width="100" height="40" fill="#047857" stroke="#047857" stroke-width="2"/>
+    <text x="400" y="75" text-anchor="middle" font-size="11" fill="#fff" font-family="sans-serif">scp</text>
+    <rect x="460" y="50" width="100" height="40" fill="#047857" stroke="#047857" stroke-width="2"/>
+    <text x="510" y="75" text-anchor="middle" font-size="11" fill="#fff" font-family="sans-serif">batch</text>
+    <rect x="570" y="50" width="100" height="40" fill="#047857" stroke="#047857" stroke-width="2"/>
+    <text x="620" y="75" text-anchor="middle" font-size="11" fill="#fff" font-family="sans-serif">CPU train</text>
+    <rect x="680" y="50" width="100" height="40" fill="#047857" stroke="#047857" stroke-width="2"/>
+    <text x="730" y="75" text-anchor="middle" font-size="11" fill="#fff" font-family="sans-serif">CUDA</text>
+    <rect x="790" y="50" width="90" height="40" fill="#047857" stroke="#047857" stroke-width="2"/>
+    <text x="835" y="75" text-anchor="middle" font-size="11" fill="#fff" font-family="sans-serif">GPU train</text>
+    <rect x="900" y="50" width="80" height="40" fill="#047857" stroke="#047857" stroke-width="2"/>
+    <text x="940" y="75" text-anchor="middle" font-size="11" fill="#fff" font-family="sans-serif">I/O 꼴</text>
+
+    <line x1="120" y1="70" x2="130" y2="70" stroke="#64748b" stroke-width="2"/>
+    <line x1="230" y1="70" x2="240" y2="70" stroke="#64748b" stroke-width="2"/>
+    <line x1="340" y1="70" x2="350" y2="70" stroke="#64748b" stroke-width="2"/>
+    <line x1="450" y1="70" x2="460" y2="70" stroke="#64748b" stroke-width="2"/>
+    <line x1="560" y1="70" x2="570" y2="70" stroke="#64748b" stroke-width="2"/>
+    <line x1="670" y1="70" x2="680" y2="70" stroke="#64748b" stroke-width="2"/>
+    <line x1="780" y1="70" x2="790" y2="70" stroke="#64748b" stroke-width="2"/>
+    <line x1="880" y1="70" x2="900" y2="70" stroke="#64748b" stroke-width="2"/>
+
+    <text x="500" y="120" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">초록 = 완료 (I/O 아기 model smoke PASS) · 다음은 3X/replace 실험 또는 weights 개선</text>
+  </svg>
+  <div class="diagram-caption">그림 1. roadmap (2026-08-11) — 단계 C smoke 완료</div>
+</div>
+
+<!-- CYCLE -->
+<h2 id="cycle">2. model 한 번 vs weights 반복 학습</h2>
+
+<div class="note">
+  <div class="note-title">합의된 이해</div>
+  <p>
+    <strong>model (architecture + I/O 꼴)</strong> 은 한 번(또는 드물게) 정한다.
+    그다음 학습 사이클마다 <strong>weights</strong> 를 업데이트한다.
+    “학습을 다 한 뒤 마지막에만 꼴을 맞춘다”가 아니다 — 틀이 바뀌면 예전 weights 를 replace 에 못 쓴다.
+  </p>
+</div>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 200" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="280" height="100" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="180" y="80" text-anchor="middle" font-size="14" fill="#1a2332" font-family="sans-serif">1) model 틀 만들기</text>
+    <text x="180" y="110" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">architecture + I/O shape</text>
+
+    <rect x="380" y="40" width="280" height="100" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="520" y="75" text-anchor="middle" font-size="14" fill="#1a2332" font-family="sans-serif">2) train 사이클 (반복)</text>
+    <text x="520" y="105" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">dataset → train → weights 갱신</text>
+
+    <rect x="720" y="40" width="240" height="100" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="840" y="80" text-anchor="middle" font-size="14" fill="#1a2332" font-family="sans-serif">3) 가끔 replace 확인</text>
+    <text x="840" y="110" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">파이프 기동 여부</text>
+
+    <line x1="320" y1="90" x2="380" y2="90" stroke="#64748b" stroke-width="2"/>
+    <polygon points="380,90 368,84 368,96" fill="#64748b"/>
+    <line x1="660" y1="90" x2="720" y2="90" stroke="#64748b" stroke-width="2"/>
+    <polygon points="720,90 708,84 708,96" fill="#64748b"/>
+
+    <text x="500" y="175" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">지금 TinyAccelNet = 연습용 틀 · 다음 “꼴 replace” 틀은 별도 아기 model</text>
+  </svg>
+  <div class="diagram-caption">그림 1b. 틀 한 번 + weights 반복</div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>말</th><th>의미</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>model 만들기</td>
+      <td>네트워크 구조·입출력 정의 (코드 <code>model.py</code> 등). 자주 안 바꿈</td>
+    </tr>
+    <tr>
+      <td>weights 업데이트 / 한 사이클 train</td>
+      <td>dataset 으로 여러 epoch 돌려 <code>.pt</code> 갱신. 데이터 늘면 다시 돌림</td>
+    </tr>
+    <tr>
+      <td>이어서 학습</td>
+      <td>이전 checkpoint 로드 후 더 train (선택)</td>
+    </tr>
+    <tr>
+      <td>처음부터 재학습</td>
+      <td>같은 틀로 새 초기화 후 dataset 전체로 train (현재 train_real 방식)</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- DATASET TERM -->
+<h2 id="dataset-term">3. dataset 이라는 말</h2>
+
+<div class="term">
+  <div class="term-word">dataset</div>
+  <p>
+    학습·평가에 쓰는 <strong>예제 모음 전체</strong>를 부르는 말이 맞습니다.
+    예: “실차 자동 label 로 만든 52,495 sample 모음”.
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr><th>말</th><th>이 프로젝트에서</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>dataset</strong></td>
+      <td>이미지 + label 이 짝 지어진 전체 자료 (batch_auto 등)</td>
+    </tr>
+    <tr>
+      <td><strong>train set / train split</strong></td>
+      <td>그중 공부용 부분 (manifest_train, ~47k)</td>
+    </tr>
+    <tr>
+      <td><strong>val set / validation split</strong></td>
+      <td>시험용 부분 (manifest_val, ~5k)</td>
+    </tr>
+    <tr>
+      <td><strong>sample</strong></td>
+      <td>한 줄: 이미지 1장 + desired_accel 1개</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  말해도 되는 예: “같은 dataset 으로 GPU 에서 한 사이클 더 train 한다.”  
+  더 정확히는: “같은 train/val split 으로 다시 training 한다.”
+</p>
+
+<h2 id="goal">4. 공식 목표</h2>
+
+<div class="note">
+  <div class="note-title">한 문장</div>
+  <p>
+    openpilot driving model 과 <strong>같은 입·출력 꼴(interface / shape)</strong> 을 가진
+    <strong>아기 model</strong> 을 PC 에서 학습·export 하고,
+    나중에 3X 에서 <strong>replace</strong> 했을 때 pipeline 이 돌아가게 한다.
+    comma 수준의 운전 실력 추종은 목표가 아니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">interface / shape</div>
+  <p>
+    model 이 받고 내는 데이터의 이름·개수·배열 크기입니다.
+    “플러그에 핀이 몇 개이고 각 핀이 무엇인지”에 해당합니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">replace</div>
+  <p>
+    openpilot 이 쓰는 model 파일 자리에 우리 model 을 넣는 것입니다.
+    성공 기준(현재): 소켓에 맞아 프로세스가 돈다. 잘 달린다가 아님.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">아기 model vs 어른 model</div>
+  <p>
+    같은 커넥터(I/O). weights 품질·운전 능력은 어른(comma)과 아기(우리)로 비유.
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr><th>포함</th><th>미포함</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>I/O 꼴 맞춤, PC training, scp, <strong>전체 자동 label (사람 검수 없음)</strong></td>
+      <td>comma 공식 weights 이어 fine-tune, 도로에서 아기 model 로 안전 완전자율</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- STEP C -->
+<h2 id="step-c">5. 지금 하는 일: 단계 C (꼴 맞추기)</h2>
+
+<div class="note">
+  <div class="note-title">한 줄로</div>
+  <p>
+    지금까지의 TinyAccelNet 은 “이미지 → 숫자 1개” 연습용이었습니다.
+    단계 C 는 openpilot 이 기대하는 <strong>입·출력 핀 배치와 똑같은 아기 model</strong> 을
+    코드로 정의하고, 같은 실차 dataset 으로 한 번 학습·export 하는 것입니다.
+    운전이 잘 되게 만드는 단계가 아닙니다.
+  </p>
+</div>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 220" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="30" width="280" height="70" fill="#fef2f2" stroke="#b91c1c" stroke-width="2"/>
+    <text x="180" y="60" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">TinyAccelNet (이전)</text>
+    <text x="180" y="85" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">img → 1 float · replace 불가</text>
+
+    <rect x="360" y="30" width="120" height="70" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <text x="420" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">단계 C</text>
+
+    <rect x="520" y="30" width="440" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="740" y="60" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">BabySupercombo (지금)</text>
+    <text x="740" y="85" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">openpilot 과 같은 input 이름/shape · output 2576</text>
+
+    <line x1="320" y1="65" x2="360" y2="65" stroke="#64748b" stroke-width="2"/>
+    <polygon points="360,65 348,59 348,71" fill="#64748b"/>
+    <line x1="480" y1="65" x2="520" y2="65" stroke="#64748b" stroke-width="2"/>
+    <polygon points="520,65 508,59 508,71" fill="#64748b"/>
+
+    <text x="500" y="140" text-anchor="middle" font-size="13" fill="#4b5563" font-family="sans-serif">1) 스펙 문서화  2) 아기 net 코드  3) 같은 dataset 으로 train  4) ONNX export + smoke</text>
+    <text x="500" y="175" text-anchor="middle" font-size="12" fill="#c2410c" font-family="sans-serif">성공 = shape 맞고 forward 됨 · 실패 아님 = 운전을 못함</text>
+  </svg>
+  <div class="diagram-caption">그림 C1. 왜 C 를 하는가</div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>단계</th><th>파일</th><th>하는 일</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>C1 스펙</td>
+      <td><code>src/op_io_spec.py</code> · <code>artifacts/op_io_spec.json</code></td>
+      <td>공식 supercombo ONNX 에서 읽은 입·출력 표 고정</td>
+    </tr>
+    <tr>
+      <td>C2 아기 net</td>
+      <td><code>src/baby_supercombo.py</code></td>
+      <td>같은 입력을 받아 (1,2576) 출력하는 작은 CNN+MLP</td>
+    </tr>
+    <tr>
+      <td>C3 학습</td>
+      <td><code>src/train_baby_io.py</code></td>
+      <td>batch_auto dataset 으로 GPU train · plan 가속 채널만 강하게 supervision</td>
+    </tr>
+    <tr>
+      <td>C4 export</td>
+      <td><code>artifacts/baby_supercombo_io.onnx</code></td>
+      <td>입력 이름 6개 + outputs + output_slices metadata</td>
+    </tr>
+    <tr>
+      <td>C5 smoke</td>
+      <td><code>src/smoke_baby_io.py</code></td>
+      <td>shape · metadata · ONNX Runtime forward 확인</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- SHAPE META -->
+<h2 id="shape-meta">6. shape · metadata 란? (초보 필수)</h2>
+
+<div class="term">
+  <div class="term-word">tensor</div>
+  <p>
+    다차원 숫자 상자입니다. 1차원은 숫자 나열, 2차원은 표, 4차원은 이미지 batch 등에 씁니다.
+    model 은 tensor 를 받아서 tensor 를 냅니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">shape</div>
+  <p>
+    그 상자의 <strong>칸 배치 크기</strong>입니다. 예: <code>(1, 12, 128, 256)</code> 은
+    “batch 1개, 채널 12, 높이 128, 너비 256” 짜리 숫자 블록이라는 뜻입니다.
+    칸 개수가 안 맞으면 model 은 보통 바로 에러로 죽습니다.
+  </p>
+</div>
+
+<h3>6.1 “입력 shape 을 넣는다”는 말</h3>
+<p>
+  smoke / inference 때 model 에 <strong>실제 카메라 대신</strong> (또는 실제 전처리 결과로)
+  <strong>정해진 크기의 숫자 배열</strong>을 만들어 넣는 것을 말합니다.
+</p>
+<ul>
+  <li>예: <code>img</code> 자리에 <code>numpy.zeros((1,12,128,256))</code> 를 넣음</li>
+  <li>내용은 전부 0이어도 됨 — smoke 목적은 “크기가 맞아 forward 가 되나?”</li>
+  <li>진짜 학습·주행 때는 0 대신 카메라·로그에서 만든 값이 들어감</li>
+</ul>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 180" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="220" height="90" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="150" y="75" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">input tensor</text>
+    <text x="150" y="105" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">shape (1,12,128,256)</text>
+
+    <rect x="340" y="40" width="200" height="90" fill="#fef3c7" stroke="#c2410c" stroke-width="2"/>
+    <text x="440" y="90" text-anchor="middle" font-size="14" fill="#1a2332" font-family="sans-serif">model</text>
+
+    <rect x="620" y="40" width="320" height="90" fill="#dcfce7" stroke="#047857" stroke-width="2"/>
+    <text x="780" y="75" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">output tensor</text>
+    <text x="780" y="105" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">shape (1, 2576)</text>
+
+    <line x1="260" y1="85" x2="340" y2="85" stroke="#64748b" stroke-width="2"/>
+    <polygon points="340,85 328,79 328,91" fill="#64748b"/>
+    <line x1="540" y1="85" x2="620" y2="85" stroke="#64748b" stroke-width="2"/>
+    <polygon points="620,85 608,79 608,91" fill="#64748b"/>
+  </svg>
+  <div class="diagram-caption">그림 S1. 입력 shape → model → 출력 shape</div>
+</div>
+
+<h3>6.2 출력 shape</h3>
+<p>
+  model 이 내놓는 tensor 의 크기입니다.
+  openpilot driving supercombo 는 출력이 하나이고 shape 이 <code>(1, 2576)</code> 입니다.
+  즉 “한 번에 숫자 2576개”를 한 줄로 뱉습니다.
+</p>
+<p>
+  그 2576개를 사람이 읽을 이름으로 나누는 표가 <code>output_slices</code> 입니다.
+  예: plan 은 1576~2566 구간, hidden_state 는 1064~1576 구간.
+</p>
+
+<div class="term">
+  <div class="term-word">metadata (메타데이터)</div>
+  <p>
+    “데이터에 대한 설명 데이터”입니다.
+    사진 파일의 촬영 시각, MP3 의 곡 제목처럼, model 파일 안에 붙는
+    <strong>부가 정보</strong>를 말합니다.
+    openpilot ONNX 에는 특히 <code>output_slices</code> 가 metadata 로 들어 있어
+    modeld 가 2576칸을 어떻게 자를지 압니다.
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr><th>구분</th><th>내용</th><th>예</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>model weights</td>
+      <td>계산에 쓰는 숫자 (본체)</td>
+      <td>CNN 의 필터 값</td>
+    </tr>
+    <tr>
+      <td>metadata</td>
+      <td>해석·버전 안내용 부가 정보</td>
+      <td>output_slices, model_checkpoint 이름</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <div class="note-title">HTML / JSON 어디에 적혀 있나?</div>
+  <ul>
+    <li>이 절 (shape · metadata 설명)</li>
+    <li>아래 “I/O 스펙 표” 절 (이름·shape 목록)</li>
+    <li>기계가 읽는 정본: <code>e2e_learning_lab/artifacts/op_io_spec.json</code></li>
+    <li>코드: <code>e2e_learning_lab/src/op_io_spec.py</code></li>
+    <li>openpilot 쪽 사용: <code>modeld.py</code> 가 metadata 의 slices 로 출력 분해</li>
+  </ul>
+</div>
+
+<div class="card">
+  <strong style="color:var(--text);">openpilot driving model in/out 요약</strong>
+  <ul style="margin-top:8px;margin-bottom:0;">
+    <li><strong>In:</strong> img, big_img, features_buffer, desire_pulse, traffic_convention, action_t (각각 표의 shape)</li>
+    <li><strong>Out:</strong> outputs (1, 2576) → slices 로 plan/차선/lead/hidden…</li>
+    <li><strong>이 버전 ONNX:</strong> 별도 action head 없음 → 가속은 plan 쪽에서 유도</li>
+  </ul>
+</div>
+
+<!-- IO SPEC -->
+<h2 id="io-spec">7. openpilot I/O 스펙 표 (우리가 맞추는 핀)</h2>
+
+<div class="term">
+  <div class="term-word">supercombo</div>
+  <p>
+    openpilot driving model 의 통칭입니다. 카메라 등으로 운전 관련 여러 출력을 한 번에 냅니다.
+    참조 파일: commaai master 의 <code>driving_supercombo.onnx</code> (lab 에 복사본 사용).
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">output_slices</div>
+  <p>
+    길이 2576 짜리 한 줄 출력을 meta, plan, hidden_state 등 이름으로 자르는 구간 표입니다.
+    modeld 가 이 표로 출력을 해석합니다.
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Input 이름</th><th>shape</th><th>쉬운 설명</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>img</code></td><td>(1, 12, 128, 256)</td><td>전방 비전 (여러 frame 채널 팩)</td></tr>
+    <tr><td><code>big_img</code></td><td>(1, 12, 128, 256)</td><td>wide 비전</td></tr>
+    <tr><td><code>features_buffer</code></td><td>(1, 24, 512)</td><td>과거 feature 기억</td></tr>
+    <tr><td><code>desire_pulse</code></td><td>(1, 25, 8)</td><td>차로 변경 등 의도</td></tr>
+    <tr><td><code>traffic_convention</code></td><td>(1, 2)</td><td>좌/우핸</td></tr>
+    <tr><td><code>action_t</code></td><td>(1, 2)</td><td>제어 delay 시간</td></tr>
+  </tbody>
+</table>
+
+<table>
+  <thead>
+    <tr><th>Output</th><th>shape</th><th>slice 예</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>outputs</code></td><td>(1, 2576)</td><td>한 벡터</td></tr>
+    <tr><td>meta … desire_state</td><td>구간별</td><td>meta 0:55, plan 1576:2566, hidden 1064:1576 …</td></tr>
+    <tr><td>action head</td><td>—</td><td>이 ONNX 버전에는 없음 → plan 에서 가속 유도</td></tr>
+  </tbody>
+</table>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 160" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="50" width="140" height="50" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="110" y="80" text-anchor="middle" font-size="12" fill="#1a2332" font-family="sans-serif">img</text>
+    <rect x="190" y="50" width="140" height="50" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="260" y="80" text-anchor="middle" font-size="12" fill="#1a2332" font-family="sans-serif">big_img</text>
+    <rect x="340" y="50" width="160" height="50" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="420" y="80" text-anchor="middle" font-size="12" fill="#1a2332" font-family="sans-serif">features…</text>
+    <rect x="510" y="50" width="200" height="50" fill="#fef3c7" stroke="#c2410c" stroke-width="2"/>
+    <text x="610" y="80" text-anchor="middle" font-size="12" fill="#1a2332" font-family="sans-serif">BabySupercombo</text>
+    <rect x="720" y="50" width="240" height="50" fill="#dcfce7" stroke="#047857" stroke-width="2"/>
+    <text x="840" y="80" text-anchor="middle" font-size="12" fill="#1a2332" font-family="sans-serif">outputs[2576]</text>
+    <line x1="330" y1="75" x2="340" y2="75" stroke="#64748b" stroke-width="2"/>
+    <line x1="500" y1="75" x2="510" y2="75" stroke="#64748b" stroke-width="2"/>
+    <line x1="710" y1="75" x2="720" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="720,75 708,69 708,81" fill="#64748b"/>
+    <text x="500" y="140" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">desire_pulse · traffic_convention · action_t 도 함께 입력</text>
+  </svg>
+  <div class="diagram-caption">그림 C2. 맞추는 입출력 꼴</div>
+</div>
+
+<!-- BABY -->
+<h2 id="baby">7. BabySupercombo 구조 (초보용)</h2>
+
+<ol>
+  <li>전방 <code>img</code> (와 약간 <code>big_img</code>) 를 작은 CNN 으로 요약</li>
+  <li><code>features_buffer</code> 평균, desire, traffic, action_t 와 이어 붙임 (concatenate)</li>
+  <li>MLP 로 길이 2576 벡터 출력</li>
+  <li><code>hidden_state</code> 구간은 features 요약으로 채워 시간 버퍼가 완전 난수가 아니게 함</li>
+  <li>학습 시 label 은 주로 <strong>plan 안의 가속 채널</strong>에 넣음 (로그 auto label)</li>
+</ol>
+
+<div class="term">
+  <div class="term-word">supervision (이 단계에서)</div>
+  <p>
+    2576 칸 전부를 “정답”으로 가르치지는 않습니다.
+    우리가 가진 자동 label 은 가속 숫자이므로, plan 의 가속 관련 칸에 맞춰 MSE 를 줍니다.
+    나머지 칸은 꼴을 채우기 위한 자리입니다 (dummy 에 가까움).
+  </p>
+</div>
+
+<!-- TRAIN BABY -->
+<h2 id="train-baby">8. 아기 model 학습 · export · smoke</h2>
+
+<pre># lab 폴더에서 (CUDA venv)
+python -m src.op_io_spec
+python -m src.train_baby_io
+python -m src.smoke_baby_io
+</pre>
+
+<table>
+  <thead>
+    <tr><th>산출물</th><th>의미</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>artifacts/op_io_spec.json</code></td><td>핀 번호표 (문서·코드 공유)</td></tr>
+    <tr><td><code>artifacts/baby_supercombo_io.pt</code></td><td>PyTorch weights</td></tr>
+    <tr><td><code>artifacts/baby_supercombo_io.onnx</code></td><td>replace 후보 꼴 + metadata</td></tr>
+    <tr><td><code>artifacts/baby_io_train_history.csv</code></td><td>epoch loss</td></tr>
+  </tbody>
+</table>
+
+<table>
+  <thead>
+    <tr><th>train_baby_io 결과 (10 epoch)</th><th>값</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>device</td><td>cuda</td></tr>
+    <tr><td>samples</td><td>train 47226 / val 5269 (같은 batch_auto dataset)</td></tr>
+    <tr><td>val_accel_mse</td><td>~0.296 (거의 정체 — 꼴 학습 단계, 성능 목표 아님)</td></tr>
+    <tr><td>ONNX smoke</td><td><strong>SMOKE PASS</strong> — 입력 6종 shape OK · outputs (1,2576) · slices · Parser OK</td></tr>
+    <tr><td>파일</td><td><code>baby_supercombo_io.pt</code> · <code>baby_supercombo_io.onnx</code> (~1.3 MB)</td></tr>
+  </tbody>
+</table>
+
+<div class="warn">
+  <div class="warn-title">아직 안 하는 것 / 의미</div>
+  <ul>
+    <li>3X 에 넣어 실제 modeld replace (다음 실험, 안전 환경)</li>
+    <li>comma 급 운전 성능 — smoke PASS ≠ 잘 달림</li>
+    <li>loss 가 안 줄어든 것은 “틀은 맞췄고, 가속 예측은 아직 약함” 으로 읽으면 됨</li>
+  </ul>
+</div>
+
+<!-- roles -->
+<h2 id="roles">9. 역할 분담 (3X / PC / git)</h2>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 200" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="30" y="30" width="280" height="140" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="170" y="60" text-anchor="middle" font-size="14" fill="#1a2332" font-family="sans-serif" font-weight="700">comma 3X</text>
+    <text x="170" y="90" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">openpilot_mj_develop</text>
+    <text x="170" y="115" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">git 그대로 주행·기록</text>
+    <text x="170" y="140" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">training 안 함</text>
+
+    <rect x="360" y="70" width="100" height="50" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <text x="410" y="100" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">scp</text>
+
+    <rect x="510" y="30" width="220" height="140" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="620" y="60" text-anchor="middle" font-size="14" fill="#1a2332" font-family="sans-serif" font-weight="700">PC lab</text>
+    <text x="620" y="90" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">e2e_learning_lab</text>
+    <text x="620" y="115" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">train / infer</text>
+    <text x="620" y="140" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">아기 model 준비</text>
+
+    <rect x="780" y="30" width="190" height="140" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="875" y="60" text-anchor="middle" font-size="14" fill="#1a2332" font-family="sans-serif" font-weight="700">GitHub</text>
+    <text x="875" y="95" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">abraxas4/*</text>
+    <text x="875" y="120" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">upstream 미 push</text>
+    <text x="875" y="145" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">commaai 아님</text>
+
+    <line x1="310" y1="100" x2="360" y2="95" stroke="#64748b" stroke-width="2"/>
+    <polygon points="360,95 348,89 348,101" fill="#64748b"/>
+    <line x1="730" y1="100" x2="780" y2="100" stroke="#64748b" stroke-width="2"/>
+    <polygon points="780,100 768,94 768,106" fill="#64748b"/>
+  </svg>
+  <div class="diagram-caption">그림 2. 누가 무엇을 하나</div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>역할</th><th>경로 / remote</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>실차 openpilot</td>
+      <td>3X · <code>openpilot_mj_develop</code> (frogpilot_port)</td>
+    </tr>
+    <tr>
+      <td>learning</td>
+      <td>PC · <code>S:\github\e2e_learning_lab</code></td>
+    </tr>
+    <tr>
+      <td>실차 자료 사본</td>
+      <td><code>e2e_learning_lab\data\from_3x\realdata\</code></td>
+    </tr>
+    <tr>
+      <td>origin (push OK)</td>
+      <td><code>abraxas4/openpilot_mj_develop</code>, <code>abraxas4/e2e_learning_lab</code></td>
+    </tr>
+    <tr>
+      <td>upstream (push 금지)</td>
+      <td><code>commaai/openpilot</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- 4 -->
+<h2 id="concepts">6. 꼭 필요한 개념</h2>
+
+<div class="term">
+  <div class="term-word">dataset</div>
+  <p>학습·평가용 예제 모음(문제집). 예: 이미지 파일들 + <code>labels.csv</code>.</p>
+</div>
+<div class="term">
+  <div class="term-word">sample</div>
+  <p>dataset 한 줄. 보통 이미지 1장 + label 1개.</p>
+</div>
+<div class="term">
+  <div class="term-word">label</div>
+  <p>
+    맞춰야 할 목표 값. 사람 클릭만이 아님.
+    로그 자동·프로그램 합성·사람 수정도 모두 label.
+  </p>
+</div>
+<div class="term">
+  <div class="term-word">supervised learning</div>
+  <p>입력 X 와 목표 Y 짝으로 weights 를 업데이트하는 학습 방식. 이 lab 이 해당.</p>
+</div>
+<div class="term">
+  <div class="term-word">training (learning)</div>
+  <p>데이터로 model weights 를 바꾸는 과정. PC 에서 함.</p>
+</div>
+<div class="term">
+  <div class="term-word">inference</div>
+  <p>고정 weights 로 새 입력을 넣어 출력 숫자를 계산. training 과 반대 방향의 실행.</p>
+</div>
+<div class="term">
+  <div class="term-word">weights</div>
+  <p>model 내부 파라미터 숫자. <code>.pt</code>, <code>.onnx</code> 등에 저장.</p>
+</div>
+<div class="term">
+  <div class="term-word">epoch</div>
+  <p>train dataset 전체를 한 번 다 보는 단위. 첫 train 은 15 epoch 고정 종료.</p>
+</div>
+<div class="term">
+  <div class="term-word">loss / MSE</div>
+  <p>
+    예측과 label 이 얼마나 다른지. MSE = Mean Squared Error (평균 제곱 오차).
+    작을수록 정답에 가깝게 맞추고 있다는 뜻.
+  </p>
+</div>
+<div class="term">
+  <div class="term-word">synthetic dataset</div>
+  <p>실제 도로가 아니라 프로그램이 만든 가짜 그림+정답. pipeline 연습용.</p>
+</div>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 160" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="200" height="70" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="140" y="80" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">1 make_dataset</text>
+
+    <rect x="280" y="40" width="200" height="70" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="380" y="80" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">2 train</text>
+
+    <rect x="520" y="40" width="200" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="620" y="80" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">3 infer</text>
+
+    <rect x="760" y="40" width="200" height="70" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <text x="860" y="80" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">4 weights 저장</text>
+
+    <line x1="240" y1="75" x2="280" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="280,75 268,69 268,81" fill="#64748b"/>
+    <line x1="480" y1="75" x2="520" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="520,75 508,69 508,81" fill="#64748b"/>
+    <line x1="720" y1="75" x2="760" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="760,75 748,69 748,81" fill="#64748b"/>
+
+    <text x="500" y="140" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">현재 정책: 사람 검수 없음 · 로그 자동 label 만 사용</text>
+  </svg>
+  <div class="diagram-caption">그림 3. 학습 루프 (전 자동)</div>
+</div>
+
+<!-- 5 -->
+<h2 id="pipeline">7. pipeline 5조각</h2>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 180" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="40" width="150" height="70" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="95" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">1 Sensor</text>
+    <text x="95" y="92" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">png / video</text>
+
+    <rect x="200" y="40" width="150" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="275" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">2 Preprocess</text>
+    <text x="275" y="92" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">resize / CHW</text>
+
+    <rect x="380" y="40" width="160" height="70" fill="#fef2f2" stroke="#b91c1c" stroke-width="2"/>
+    <text x="460" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">3 Model</text>
+    <text x="460" y="92" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">weights</text>
+
+    <rect x="570" y="40" width="150" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="645" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">4 Postprocess</text>
+    <text x="645" y="92" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">smooth / rule</text>
+
+    <rect x="750" y="40" width="210" height="70" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="855" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">5 Log / Act</text>
+    <text x="855" y="92" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">CSV (실차 제어 X)</text>
+
+    <line x1="170" y1="75" x2="200" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="200,75 188,69 188,81" fill="#64748b"/>
+    <line x1="350" y1="75" x2="380" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="380,75 368,69 368,81" fill="#64748b"/>
+    <line x1="540" y1="75" x2="570" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="570,75 558,69 558,81" fill="#64748b"/>
+    <line x1="720" y1="75" x2="750" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="750,75 738,69 738,81" fill="#64748b"/>
+
+    <text x="460" y="150" text-anchor="middle" font-size="12" fill="#b91c1c" font-family="sans-serif">빨간 칸 = black box core (weights forward)</text>
+  </svg>
+  <div class="diagram-caption">그림 4. 초록/파랑 = open source 로 읽기 쉬움 · 빨강 = 해석 어려운 weights</div>
+</div>
+
+<div class="term">
+  <div class="term-word">black box</div>
+  <p>
+    입력·출력은 보이지만 내부 계산 이유를 사람이 쉽게 설명하기 어려운 부분.
+    neural network weights forward 가 대표적. open source 여도 여기 의미는 불명할 수 있음.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">preprocess / postprocess</div>
+  <p>
+    model 앞(이미지 크기·정규화) / 뒤(smoothing, should_stop 규칙) 변환. 코드로 읽힘.
+  </p>
+</div>
+
+<!-- 6 -->
+<h2 id="done">8. 지금까지 한 일 (체크리스트)</h2>
+
+<table>
+  <thead>
+    <tr><th>항목</th><th>상태</th><th>메모</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>목표: 꼴 replace (아기 model)</td>
+      <td class="status-done">합의·문서화</td>
+      <td>기능 추종 아님</td>
+    </tr>
+    <tr>
+      <td>3X = openpilot 그대로 / 학습 = PC lab</td>
+      <td class="status-done">합의</td>
+      <td>scp 로 데이터</td>
+    </tr>
+    <tr>
+      <td>label = 로그 자동 (사람 검수 생략)</td>
+      <td class="status-done">합의·적용</td>
+      <td>정지 화면 검수 비현실적 → batch 전체</td>
+    </tr>
+    <tr>
+      <td>핀 배치표는 open source 로 알 수 있음</td>
+      <td class="status-done">설명함</td>
+      <td>내부 weights 는 black box</td>
+    </tr>
+    <tr>
+      <td><code>e2e_learning_lab</code> 생성</td>
+      <td class="status-done">완료</td>
+      <td>TinyAccelNet 연습용</td>
+    </tr>
+    <tr>
+      <td>synthetic make_dataset / train / infer</td>
+      <td class="status-done">완료</td>
+      <td>~15–20초 규모</td>
+    </tr>
+    <tr>
+      <td>3X realdata 전체 scp</td>
+      <td class="status-done">완료</td>
+      <td>~66.5 GB, 약 57분</td>
+    </tr>
+    <tr>
+      <td>git push abraxas4 (upstream 제외)</td>
+      <td class="status-done">완료</td>
+      <td>docs + lab repo</td>
+    </tr>
+    <tr>
+      <td>batch 전체 frame + auto label</td>
+      <td class="status-done">완료</td>
+      <td>444 segs, 52,495 samples, ~3.3분, fail 0</td>
+    </tr>
+    <tr>
+      <td>실차 auto train CPU (TinyAccelNet)</td>
+      <td class="status-done">완료</td>
+      <td>20 epoch, ~74분 · real_auto_accel.*</td>
+    </tr>
+    <tr>
+      <td>CUDA PyTorch 설치 (RTX 4050)</td>
+      <td class="status-done">완료</td>
+      <td>torch 2.6.0+cu124, cuda available True</td>
+    </tr>
+    <tr>
+      <td>같은 dataset GPU 재학습</td>
+      <td class="status-done">완료</td>
+      <td>cuda · 20 epoch · ~33분 · train 0.258→0.219</td>
+    </tr>
+    <tr>
+      <td>openpilot I/O 스펙 고정 (op_io_spec)</td>
+      <td class="status-done">완료</td>
+      <td>input 6종 · output 2576 · slices</td>
+    </tr>
+    <tr>
+      <td>BabySupercombo 코드 + train_baby_io</td>
+      <td class="status-done">완료</td>
+      <td>10 epoch · GPU · 꼴 학습 (가속 loss 거의 정체 = 예상 가능)</td>
+    </tr>
+    <tr>
+      <td>ONNX export + smoke_baby_io</td>
+      <td class="status-done">완료 SMOKE PASS</td>
+      <td>I/O shape · slices · Parser OK</td>
+    </tr>
+    <tr>
+      <td>3X modeld replace smoke</td>
+      <td class="status-todo">이후</td>
+      <td>안전 환경 · 기능 품질 아님</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- 7 -->
+<h2 id="first-run">9. synthetic 첫 러닝</h2>
+
+<p>
+  사용자가 실행한 명령:
+</p>
+<pre>cd S:\github\e2e_learning_lab
+.\.venv\Scripts\activate
+python -m src.make_dataset
+python -m src.train
+python -m src.infer --dir data/val
+</pre>
+
+<div class="term">
+  <div class="term-word">종료 조건 (현재 train.py)</div>
+  <p>
+    <code>epochs = 15</code> 고정. 15 epoch 끝나면 저장 후 종료.
+    early stopping (loss 임계로 조기 종료) 은 없음.
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr><th>항목</th><th>값</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>device</td><td>CPU (cuda 없으면)</td></tr>
+    <tr><td>train samples</td><td>200 images + labels</td></tr>
+    <tr><td>val samples</td><td>40</td></tr>
+    <tr><td>epochs</td><td>15</td></tr>
+    <tr><td>재측정 시간 (참고)</td><td>make_dataset ~2s, train ~13s</td></tr>
+    <tr><td>산출물</td><td><code>artifacts/toy_accel.pt</code>, <code>toy_accel.onnx</code>, <code>infer_log.csv</code></td></tr>
+    <tr><td>model</td><td>TinyAccelNet — 이미지 → desired_accel 1숫자</td></tr>
+  </tbody>
+</table>
+
+<h3>7.1 참고: 이전 스모크 테스트 loss 추이 (chart)</h3>
+<p>
+  동일 스크립트로 돌렸을 때 val_mse 가 epoch 에 따라 대체로 감소한 예입니다.
+  (사용자 실행 로그와 수치가 약간 다를 수 있음 — 랜덤 초기화.)
+</p>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 280" width="100%" xmlns="http://www.w3.org/2000/svg" aria-label="val mse chart">
+    <!-- axes -->
+    <line x1="80" y1="30" x2="80" y2="220" stroke="#64748b" stroke-width="2"/>
+    <line x1="80" y1="220" x2="960" y2="220" stroke="#64748b" stroke-width="2"/>
+    <text x="40" y="130" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif" transform="rotate(-90 40 130)">val_mse</text>
+    <text x="520" y="260" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">epoch</text>
+
+    <!-- approximate bars from smoke test:
+    ep1 0.042, 2 0.040, 3 0.027, 4 0.010, 5 0.012, 6 0.005, 7 0.0035, 8 0.0027,
+    9 0.001, 10 0.0007, 11 0.0016, 12 0.0008, 13 0.0012, 14 0.0005, 15 0.0004
+    max ~0.042 -> height scale: h = v/0.045 * 180
+    -->
+    <!-- bars -->
+    <rect x="100" y="52" width="40" height="168" fill="#3b82f6"/><!-- 0.042 -->
+    <rect x="155" y="60" width="40" height="160" fill="#3b82f6"/><!-- 0.040 -->
+    <rect x="210" y="112" width="40" height="108" fill="#3b82f6"/><!-- 0.027 -->
+    <rect x="265" y="180" width="40" height="40" fill="#3b82f6"/><!-- 0.010 -->
+    <rect x="320" y="172" width="40" height="48" fill="#3b82f6"/><!-- 0.012 -->
+    <rect x="375" y="200" width="40" height="20" fill="#22c55e"/><!-- 0.005 -->
+    <rect x="430" y="206" width="40" height="14" fill="#22c55e"/>
+    <rect x="485" y="209" width="40" height="11" fill="#22c55e"/>
+    <rect x="540" y="216" width="40" height="4" fill="#22c55e"/>
+    <rect x="595" y="217" width="40" height="3" fill="#22c55e"/>
+    <rect x="650" y="214" width="40" height="6" fill="#22c55e"/>
+    <rect x="705" y="217" width="40" height="3" fill="#22c55e"/>
+    <rect x="760" y="215" width="40" height="5" fill="#22c55e"/>
+    <rect x="815" y="218" width="40" height="2" fill="#22c55e"/>
+    <rect x="870" y="218" width="40" height="2" fill="#22c55e"/>
+
+    <text x="120" y="240" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">1</text>
+    <text x="285" y="240" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">4</text>
+    <text x="510" y="240" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">8</text>
+    <text x="730" y="240" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">12</text>
+    <text x="890" y="240" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">15</text>
+
+    <text x="200" y="50" font-size="12" fill="#1d4ed8" font-family="sans-serif">초반 loss 높음</text>
+    <text x="700" y="200" font-size="12" fill="#047857" font-family="sans-serif">후반 loss 낮음</text>
+  </svg>
+  <div class="diagram-caption">그림 5. val_mse vs epoch (참고 스모크 테스트). 학습이 “정답에 가까워지는” 전형적 모양</div>
+</div>
+
+<div class="card">
+  <strong style="color:var(--text);">infer 출력 예</strong>
+  <pre style="margin-bottom:0;">img_0000.png  raw=-0.368  smooth=-0.110  should_stop=True
+img_0004.png  raw=+0.284  smooth=-0.019  should_stop=True
+img_0009.png  raw=+0.143  smooth=+0.110  should_stop=False</pre>
+</div>
+
+<div class="warn">
+  <div class="warn-title">이 결과의 한계</div>
+  <p>
+    TinyAccelNet 은 openpilot model 과 <strong>입출력 꼴이 다릅니다</strong>.
+    3X 에 그대로 replace 할 수 없습니다. pipeline·label·train 감각용입니다.
+  </p>
+</div>
+
+<!-- BATCH -->
+<h2 id="batch">10. 전체 자동 batch + 실차 train (CPU)</h2>
+
+<div class="note">
+  <div class="note-title">정책</div>
+  <p>
+    사람 검수 없이, 복사해 둔 realdata 를 최대한 활용.
+    정지 화면만 보고 가속/감속을 고치는 것은 비현실적이므로 생략.
+    label 은 qlog <code>carState.vEgo</code> 의 시간 미분(초안)만 사용.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">batch</div>
+  <p>
+    여러 segment 를 한 스크립트가 순서대로(또는 일괄) 처리하는 방식입니다.
+    여기서는 각 segment 마다 frame 추출 + 자동 label 을 반복합니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">manifest</div>
+  <p>
+    학습에 쓸 샘플 목록 CSV 입니다.
+    각 행: segment_id, 이미지 상대경로, desired_accel 등.
+  </p>
+</div>
+
+<pre># 실행한 명령 (요지)
+# 1) batch extract + auto label
+S:\github\openpilot_mj_develop\.venv\Scripts\python.exe -m src.batch_process_all
+
+# 2) train on manifests
+.\.venv\Scripts\python.exe -m src.train_real
+</pre>
+
+<h3>8.1 batch 결과</h3>
+<table>
+  <thead>
+    <tr><th>항목</th><th>값</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>스크립트</td><td><code>src/batch_process_all.py</code></td></tr>
+    <tr><td>입력</td><td>qcamera.ts + qlog.zst 있는 segment</td></tr>
+    <tr><td>처리 수</td><td><strong>444</strong> / fail <strong>0</strong></td></tr>
+    <tr><td>frame</td><td>~2 fps JPEG (quality 85)</td></tr>
+    <tr><td>label</td><td>vEgo finite-diff accel, clip [-4, 4]</td></tr>
+    <tr><td>총 sample</td><td><strong>52,495</strong></td></tr>
+    <tr><td>train / val</td><td><strong>47,226</strong> / <strong>5,269</strong> (segment 단위 10% val)</td></tr>
+    <tr><td>segments train/val</td><td>400 / 44</td></tr>
+    <tr><td>소요</td><td>~3.3 분</td></tr>
+    <tr><td>출력 루트</td><td><code>data/batch_auto/</code></td></tr>
+    <tr><td>목록 파일</td><td>manifest_all / train / val + summary.json</td></tr>
+  </tbody>
+</table>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 180" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="180" height="70" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="130" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">from_3x realdata</text>
+    <text x="130" y="95" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">444 segs</text>
+
+    <rect x="280" y="40" width="180" height="70" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="370" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">batch_process_all</text>
+    <text x="370" y="95" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">frame + auto label</text>
+
+    <rect x="520" y="40" width="180" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="610" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">manifest CSV</text>
+    <text x="610" y="95" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">52k samples</text>
+
+    <rect x="760" y="40" width="200" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="860" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">train_real</text>
+    <text x="860" y="95" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">20 epoch → .pt/.onnx</text>
+
+    <line x1="220" y1="75" x2="280" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="280,75 268,69 268,81" fill="#64748b"/>
+    <line x1="460" y1="75" x2="520" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="520,75 508,69 508,81" fill="#64748b"/>
+    <line x1="700" y1="75" x2="760" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="760,75 748,69 748,81" fill="#64748b"/>
+
+    <text x="500" y="150" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">사람 CSV 편집 단계 없음</text>
+  </svg>
+  <div class="diagram-caption">그림 8. 전체 자동 데이터·학습 흐름</div>
+</div>
+
+<h3>8.2 train_real 결과</h3>
+<table>
+  <thead>
+    <tr><th>항목</th><th>값</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>스크립트</td><td><code>src/train_real.py</code></td></tr>
+    <tr><td>model</td><td>TinyAccelNet (image → desired_accel)</td></tr>
+    <tr><td>device</td><td>CPU</td></tr>
+    <tr><td>epochs</td><td>20 (고정 종료)</td></tr>
+    <tr><td>소요</td><td>~74 분</td></tr>
+    <tr><td>train_mse</td><td>0.258 → <strong>0.234</strong></td></tr>
+    <tr><td>val_mse</td><td>0.296 → <strong>0.286</strong> (소폭 개선)</td></tr>
+    <tr><td>산출물</td><td><code>artifacts/real_auto_accel.pt</code> · <code>.onnx</code> · history CSV</td></tr>
+  </tbody>
+</table>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 260" width="100%" xmlns="http://www.w3.org/2000/svg" aria-label="real train loss">
+    <line x1="80" y1="30" x2="80" y2="210" stroke="#64748b" stroke-width="2"/>
+    <line x1="80" y1="210" x2="960" y2="210" stroke="#64748b" stroke-width="2"/>
+    <text x="40" y="120" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif" transform="rotate(-90 40 120)">MSE</text>
+    <text x="520" y="245" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">epoch (train blue / val orange)</text>
+    <!-- scale: 0.22..0.30 -> y = 210 - (v-0.22)/0.08*170 -->
+    <!-- train points roughly: 0.258,0.258,0.258,0.258,0.257,0.256,0.256,0.254,0.253,0.252,0.251,0.249,0.248,0.246,0.244,0.243,0.241,0.240,0.238,0.234 -->
+    <!-- val: 0.296,0.296,0.297,0.295,0.291,0.295,0.292,0.294,0.293,0.297,0.291,0.289,0.290,0.290,0.293,0.293,0.287,0.288,0.282,0.286 -->
+    <!-- train line -->
+    <polyline fill="none" stroke="#2563eb" stroke-width="2"
+      points="100,129 140,129 180,129 220,129 260,131 300,133 340,134 380,138 420,140 460,142 500,145 540,149 580,150 620,155 660,159 700,161 740,165 780,168 820,172 860,180"/>
+    <polyline fill="none" stroke="#c2410c" stroke-width="2"
+      points="100,48 140,49 180,46 220,50 260,58 300,50 340,56 380,52 420,54 460,46 500,58 540,63 580,61 620,60 660,54 700,55 740,68 780,66 820,78 860,71"/>
+    <text x="100" y="40" font-size="12" fill="#c2410c" font-family="sans-serif">val ~0.30→0.28</text>
+    <text x="700" y="195" font-size="12" fill="#2563eb" font-family="sans-serif">train ~0.26→0.23</text>
+  </svg>
+  <div class="diagram-caption">그림 9. real_auto train MSE (대략). 한 장 이미지→가속 대응이 어려워 감소폭은 작음</div>
+</div>
+
+<div class="warn">
+  <div class="warn-title">해석</div>
+  <ul>
+    <li>파이프라인(전체 데이터 → 자동 label → train → weights)은 <strong>성공</strong>.</li>
+    <li>loss 소폭 감소 = “완벽 예측”이 아니라, 과제 난이도(정지 프레임 vs 가속)를 반영.</li>
+    <li>여전히 openpilot <strong>replace 꼴이 아님</strong> — 다음 단계가 I/O 맞춘 아기 net.</li>
+  </ul>
+</div>
+
+<!-- CUDA -->
+<h2 id="cuda">11. CUDA / GPU 설치</h2>
+
+<div class="term">
+  <div class="term-word">CUDA</div>
+  <p>
+    NVIDIA GPU 에서 병렬 연산을 쓰기 위한 플랫폼·드라이버 스택입니다.
+    PyTorch 가 CUDA 빌드이면 training 을 GPU 로 돌릴 수 있습니다.
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr><th>항목</th><th>값</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>GPU</td><td>NVIDIA GeForce RTX 4050 Laptop GPU</td></tr>
+    <tr><td>Driver / 보고 CUDA</td><td>592.82 / 13.1 (nvidia-smi)</td></tr>
+    <tr><td>이전 PyTorch</td><td>2.13.0+cpu → cuda_available False</td></tr>
+    <tr><td>설치 후</td><td><strong>torch 2.6.0+cu124</strong>, torchvision 0.21.0+cu124</td></tr>
+    <tr><td>검증</td><td>cuda_available True, tensor on cuda:0 OK</td></tr>
+    <tr><td>설치 위치</td><td><code>e2e_learning_lab\.venv</code></td></tr>
+  </tbody>
+</table>
+
+<pre># 설치에 사용한 요지 (venv 활성화 후)
+pip uninstall -y torch torchvision
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+</pre>
+
+<p>
+  코드는 원래부터 <code>torch.device("cuda" if torch.cuda.is_available() else "cpu")</code> 를 사용.
+  CPU 로 돌았던 이유는 GPU 부재가 아니라 <strong>CPU 전용 wheel</strong> 때문.
+</p>
+
+<!-- GPU RETRAIN -->
+<h2 id="gpu-retrain">12. 같은 dataset · GPU 재학습</h2>
+
+<div class="note">
+  <div class="note-title">의도</div>
+  <p>
+    model 틀(TinyAccelNet)은 그대로 두고, <strong>같은 batch_auto dataset</strong> 으로
+    train 한 사이클을 GPU 에서 다시 돌린다.
+    weights 파일이 갱신된다. (openpilot I/O 아기 model 과는 별개 — 그건 다음 단계의 “틀 만들기”)
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr><th>항목</th><th>값</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>명령</td><td><code>python -m src.train_real</code> (lab venv, CUDA 빌드)</td></tr>
+    <tr><td>dataset</td><td>batch_auto manifest (train 47226 / val 5269)</td></tr>
+    <tr><td>device</td><td><strong>cuda</strong> · RTX 4050</td></tr>
+    <tr><td>epochs</td><td>20 고정 종료</td></tr>
+    <tr><td>소요</td><td>~33분 (00:12 → 00:46) · CPU 때 ~74분 대비 약 2배+</td></tr>
+    <tr><td>train_mse</td><td>0.258 → <strong>0.219</strong></td></tr>
+    <tr><td>val_mse</td><td>0.296 → ~0.28대 (최종 0.290)</td></tr>
+    <tr><td>산출물</td><td><code>artifacts/real_auto_accel.pt</code> · <code>.onnx</code> · history CSV (덮어쓰기 완료)</td></tr>
+  </tbody>
+</table>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 160" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="200" height="70" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="140" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">CPU train</text>
+    <text x="140" y="95" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">~74 min · 1사이클</text>
+
+    <rect x="300" y="40" width="200" height="70" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="400" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">CUDA install</text>
+    <text x="400" y="95" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">cu124 + RTX 4050</text>
+
+    <rect x="560" y="40" width="200" height="70" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="660" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">GPU train</text>
+    <text x="660" y="95" text-anchor="middle" font-size="11" fill="#4b5563" font-family="sans-serif">same dataset</text>
+
+    <rect x="820" y="40" width="140" height="70" fill="#e5e7eb" stroke="#94a3b8" stroke-width="2"/>
+    <text x="890" y="80" text-anchor="middle" font-size="12" fill="#1a2332" font-family="sans-serif">I/O 아기 net</text>
+
+    <line x1="240" y1="75" x2="300" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="300,75 288,69 288,81" fill="#64748b"/>
+    <line x1="500" y1="75" x2="560" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="560,75 548,69 548,81" fill="#64748b"/>
+    <line x1="760" y1="75" x2="820" y2="75" stroke="#64748b" stroke-width="2"/>
+    <polygon points="820,75 808,69 808,81" fill="#64748b"/>
+  </svg>
+  <div class="diagram-caption">그림 11. CPU 1사이클 → CUDA → GPU 재학습 → 다음 틀(C)</div>
+</div>
+
+<p id="gpu-retrain-note">
+  GPU train 로그에 <code>device: cuda</code> 가 보이면 정상.
+  완료 후 history CSV 의 epoch·mse 를 CPU 결과와 비교하면 된다.
+</p>
+
+<!-- data -->
+<h2 id="data">13. 실차 데이터 복사</h2>
+
+<table>
+  <thead>
+    <tr><th>항목</th><th>값</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>소스</td><td>3X <code>/data/media/0/realdata</code></td></tr>
+    <tr><td>SSH</td><td><code>comma@192.168.35.191</code> (키: openpilot_ed25519)</td></tr>
+    <tr><td>대상</td><td><code>S:\github\e2e_learning_lab\data\from_3x\realdata\</code></td></tr>
+    <tr><td>용량</td><td>~66.5 GB (장치 ~67 GB 대비 ~100%)</td></tr>
+    <tr><td>시간</td><td>약 57분</td></tr>
+    <tr><td>segment 폴더</td><td>~450</td></tr>
+    <tr><td>route 수</td><td>~21</td></tr>
+    <tr><td>git</td><td><strong>올리지 않음</strong> (.gitignore)</td></tr>
+  </tbody>
+</table>
+
+<div class="bar-row">
+  <div>복사 진행</div>
+  <div class="bar-track"><div class="bar-fill green" style="width:100%"></div></div>
+  <div>~100%</div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>파일 종류</th><th>용도</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>qcamera.ts</code></td><td>작은 미리보기 영상 — frame 추출 연습에 유리</td></tr>
+    <tr><td><code>fcamera.hevc</code></td><td>전방 고해상 영상</td></tr>
+    <tr><td><code>qlog.zst</code> / <code>rlog.zst</code></td><td>속도 등 — 자동 label 재료</td></tr>
+  </tbody>
+</table>
+
+<!-- 9 -->
+<h2 id="git">14. git 에 올린 것</h2>
+
+<table>
+  <thead>
+    <tr><th>repo</th><th>remote</th><th>내용</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="https://github.com/abraxas4/openpilot_mj_develop">abraxas4/openpilot_mj_develop</a></td>
+      <td>origin only</td>
+      <td>
+        branch <code>frogpilot_port</code><br>
+        docs HTML (e2e guide, traffic light report, 본 문서 추가 예정)
+      </td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/abraxas4/e2e_learning_lab">abraxas4/e2e_learning_lab</a></td>
+      <td>origin only (upstream 없음)</td>
+      <td>lab 소스 · README · requirements (data/from_3x 제외)</td>
+    </tr>
+    <tr>
+      <td>commaai/openpilot</td>
+      <td>upstream</td>
+      <td><span class="badge b-no">push 안 함</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- 10 -->
+<h2 id="pins">15. 입출력 “핀” (알고 있는 것)</h2>
+
+<div class="note">
+  <div class="note-title">핵심</div>
+  <p>
+    핀 <strong>개수와 내용 종류</strong>는 open source 코드로 알 수 있다.
+    “개수만 알고 내용은 모른다”가 아니다.
+    모르는 것은 weights 가 그 값을 <strong>왜</strong> 냈는지다.
+  </p>
+</div>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 200" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="280" height="120" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="180" y="85" text-anchor="middle" font-size="14" fill="#1a2332" font-family="sans-serif">핀 배치표</text>
+    <text x="180" y="115" text-anchor="middle" font-size="12" fill="#047857" font-family="sans-serif">이름 · shape · 의미 종류</text>
+    <text x="180" y="140" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">open source 로 앎</text>
+
+    <rect x="360" y="40" width="280" height="120" fill="#fef2f2" stroke="#b91c1c" stroke-width="2"/>
+    <text x="500" y="85" text-anchor="middle" font-size="14" fill="#1a2332" font-family="sans-serif">weights forward</text>
+    <text x="500" y="115" text-anchor="middle" font-size="12" fill="#b91c1c" font-family="sans-serif">왜 이 숫자?</text>
+    <text x="500" y="140" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">black box</text>
+
+    <rect x="680" y="40" width="280" height="120" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="820" y="85" text-anchor="middle" font-size="14" fill="#1a2332" font-family="sans-serif">modelV2 message</text>
+    <text x="820" y="115" text-anchor="middle" font-size="12" fill="#1d4ed8" font-family="sans-serif">후처리 · 제어 쪽</text>
+    <text x="820" y="140" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">open source</text>
+
+    <line x1="320" y1="100" x2="360" y2="100" stroke="#64748b" stroke-width="2"/>
+    <polygon points="360,100 348,94 348,106" fill="#64748b"/>
+    <line x1="640" y1="100" x2="680" y2="100" stroke="#64748b" stroke-width="2"/>
+    <polygon points="680,100 668,94 668,106" fill="#64748b"/>
+  </svg>
+  <div class="diagram-caption">그림 6. 아는 것 / 모르는 것 경계</div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>방향</th><th>예 (개념)</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>input</td>
+      <td>road/wide image, desire, traffic_convention, action_t, features_buffer</td>
+    </tr>
+    <tr>
+      <td>output</td>
+      <td>plan, lane_lines, lead, action, meta, hidden_state → modelV2</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- POLICY -->
+<h2 id="policy">16. label / 검수 정책 (합의)</h2>
+<table>
+  <thead>
+    <tr><th>항목</th><th>결정</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>사람 frame 검수</td>
+      <td><strong>하지 않음</strong> (정지 화면으로 가속 판단 거의 불가)</td>
+    </tr>
+    <tr>
+      <td>label 출처</td>
+      <td>qlog <code>vEgo</code> 자동 미분만</td>
+    </tr>
+    <tr>
+      <td>데이터 범위</td>
+      <td>있는 qcamera+qlog segment <strong>전부 batch</strong></td>
+    </tr>
+    <tr>
+      <td>매일 추가 주행</td>
+      <td>scp 후 batch 재실행 (skip-existing 지원)</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- NEXT -->
+<h2 id="next">17. 다음에 할 일</h2>
+
+<div class="diagram">
+  <svg viewBox="0 0 1000 200" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="280" height="80" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="180" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">DONE</text>
+    <text x="180" y="95" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">batch · CPU train · CUDA</text>
+
+    <rect x="360" y="40" width="280" height="80" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+    <text x="500" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">DONE</text>
+    <text x="500" y="95" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">GPU 재학습 (~33분)</text>
+
+    <rect x="680" y="40" width="280" height="80" fill="#ffedd5" stroke="#c2410c" stroke-width="2"/>
+    <text x="820" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">NEXT</text>
+    <text x="820" y="95" text-anchor="middle" font-size="12" fill="#4b5563" font-family="sans-serif">I/O 아기 model 틀 1회</text>
+
+    <line x1="320" y1="80" x2="360" y2="80" stroke="#64748b" stroke-width="2"/>
+    <polygon points="360,80 348,74 348,86" fill="#64748b"/>
+    <line x1="640" y1="80" x2="680" y2="80" stroke="#64748b" stroke-width="2"/>
+    <polygon points="680,80 668,74 668,86" fill="#64748b"/>
+
+    <text x="500" y="160" text-anchor="middle" font-size="13" fill="#4b5563" font-family="sans-serif">틀 고정 후: 데이터 추가 → train 반복 = weights update (C 매번 아님)</text>
+  </svg>
+  <div class="diagram-caption">그림 10. 다음 액션</div>
+</div>
+
+<ol>
+  <li>단계 C <strong>완료</strong>: I/O 스펙 · BabySupercombo · train · <strong>SMOKE PASS</strong></li>
+  <li>선택 A: 같은 틀로 GPU 재학습 / 데이터 추가 후 weights update</li>
+  <li>선택 B: PC openpilot replay 연동 또는 3X replace 실험 (안전 환경)</li>
+  <li>도로 engage 로 품질 검증은 하지 않음</li>
+</ol>
+
+<!-- glossary -->
+<h2 id="glossary">18. 용어 모음</h2>
+<table>
+  <thead>
+    <tr><th>English</th><th>짧은 설명</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>dataset / sample / label</td><td>문제집 / 한 문항 / 정답</td></tr>
+    <tr><td>training / inference</td><td>weights 학습 / 고정 weights 예측</td></tr>
+    <tr><td>epoch / loss / MSE</td><td>전체 1회 학습 단위 / 오차 / 평균 제곱 오차</td></tr>
+    <tr><td>weights / ONNX / .pt</td><td>파라미터 / 교환 포맷 / PyTorch 저장</td></tr>
+    <tr><td>preprocess / postprocess</td><td>model 앞·뒤 처리</td></tr>
+    <tr><td>black box</td><td>내부 해석이 어려운 구간</td></tr>
+    <tr><td>interface / shape / replace</td><td>입출력 꼴 / 교체</td></tr>
+    <tr><td>synthetic</td><td>가짜 생성 데이터</td></tr>
+    <tr><td>route / segment</td><td>주행 묶음 / 약 1분 조각</td></tr>
+    <tr><td>scp / SSH</td><td>파일 복사 / 원격 접속</td></tr>
+    <tr><td>origin / upstream</td><td>abraxas4 fork / commaai 원본</td></tr>
+    <tr><td>modeld / modelV2</td><td>openpilot model process / 출력 메시지</td></tr>
+    <tr><td>supervised learning</td><td>입력+목표 짝 학습</td></tr>
+    <tr><td>batch</td><td>여러 segment 일괄 처리</td></tr>
+    <tr><td>manifest</td><td>학습 샘플 목록 CSV</td></tr>
+    <tr><td>dataset / train set / val set</td><td>전체 예제 모음 / 공부용 / 시험용</td></tr>
+    <tr><td>architecture</td><td>네트워크 구조 (틀)</td></tr>
+    <tr><td>CUDA</td><td>NVIDIA GPU 연산 스택</td></tr>
+    <tr><td>checkpoint</td><td>저장된 weights 스냅샷</td></tr>
+  </tbody>
+</table>
+
+<footer>
+  byGrok · progress log: batch · CPU train · CUDA · GPU retrain · model vs weights ·
+  light background · width 100% ·
+  lab: <code>S:\github\e2e_learning_lab</code> ·
+  detail guide: <code>docs/e2e_inference_opensource_guide_byGrok.html</code>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>신호등·제한속도 인식 점검 byGrok — Experimental Mode 로그 분석</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --border: #d8dee6;
+    --text: #1a2332;
+    --muted: #4a5568;
+    --accent: #2563eb;
+    --green: #15803d;
+    --red: #b91c1c;
+    --orange: #c2410c;
+    --purple: #6d28d9;
+    --soft-blue: #eff6ff;
+    --soft-green: #ecfdf5;
+    --soft-red: #fef2f2;
+    --soft-orange: #fff7ed;
+    --soft-purple: #f5f3ff;
+    --line: #94a3b8;
+    --box: #e2e8f0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    padding: 32px 3%;
+  }
+  .page { width: 100%; max-width: none; margin: 0 auto; }
+  h1 {
+    font-size: 1.85rem;
+    line-height: 1.35;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .subtitle {
+    color: var(--muted);
+    margin-bottom: 28px;
+    font-size: 0.95rem;
+  }
+  .subtitle code {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+  h2 {
+    font-size: 1.25rem;
+    margin: 48px 0 14px;
+    padding: 10px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--accent);
+    color: var(--text);
+  }
+  h3 {
+    font-size: 1.05rem;
+    color: var(--accent);
+    margin: 24px 0 10px;
+  }
+  h4 {
+    font-size: 0.95rem;
+    color: var(--purple);
+    margin: 18px 0 8px;
+  }
+  p { color: var(--muted); font-size: 0.95rem; margin-bottom: 12px; }
+  strong { color: var(--text); }
+  ul, ol { margin: 8px 0 14px 22px; color: var(--muted); font-size: 0.95rem; }
+  li { margin-bottom: 8px; }
+  a { color: var(--accent); }
+  code {
+    font-family: "SFMono-Regular", Consolas, "Cascadia Code", monospace;
+    font-size: 0.86em;
+    background: #eef2f7;
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 14px 0;
+    width: 100%;
+  }
+  .toc {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 22px;
+    margin: 8px 0 28px;
+    width: 100%;
+  }
+  .toc a { color: var(--accent); text-decoration: none; font-size: 0.92rem; }
+  .toc a:hover { text-decoration: underline; }
+  .toc ol { margin: 6px 0 0 18px; }
+  .toc li { margin-bottom: 4px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 12px 0 18px;
+    background: var(--card);
+  }
+  th, td {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+    text-align: left;
+  }
+  th {
+    background: #eef2f7;
+    color: var(--text);
+    font-weight: 600;
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .b-ok { background: #dcfce7; color: var(--green); }
+  .b-no { background: #fee2e2; color: var(--red); }
+  .b-warn { background: #ffedd5; color: var(--orange); }
+  .b-info { background: #dbeafe; color: var(--accent); }
+  .b-tool { background: #ede9fe; color: var(--purple); }
+  .note {
+    background: var(--soft-green);
+    border: 1px solid #86efac;
+    border-left: 5px solid var(--green);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin: 16px 0;
+    width: 100%;
+  }
+  .note-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+  }
+  .note p, .note li { color: #166534; }
+  .warn {
+    background: var(--soft-orange);
+    border: 1px solid #fdba74;
+    border-left: 5px solid var(--orange);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin: 16px 0;
+    width: 100%;
+  }
+  .warn-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--orange);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+  }
+  .warn p, .warn li { color: #9a3412; }
+  .danger {
+    background: var(--soft-red);
+    border: 1px solid #fca5a5;
+    border-left: 5px solid var(--red);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin: 16px 0;
+    width: 100%;
+  }
+  .danger-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--red);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+  }
+  .danger p, .danger li { color: #991b1b; }
+  .term {
+    background: var(--soft-blue);
+    border: 1px solid #93c5fd;
+    border-left: 5px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin: 10px 0 16px;
+    width: 100%;
+  }
+  .term-word {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.88rem;
+    margin-bottom: 4px;
+  }
+  .term p { color: #1e3a8a; margin-bottom: 0; font-size: 0.9rem; }
+  .verdict-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    width: 100%;
+    margin: 14px 0;
+  }
+  @media (max-width: 800px) {
+    .verdict-grid { grid-template-columns: 1fr; }
+  }
+  .verdict {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    background: var(--card);
+    width: 100%;
+  }
+  .verdict h3 { margin-top: 0; }
+  /* straight-line diagrams only */
+  .diagram {
+    width: 100%;
+    overflow-x: auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 14px;
+    margin: 14px 0;
+  }
+  /* Cap growth on maximize; keep diagram text near body size (~70rem). */
+  .diagram svg {
+    display: block;
+    width: 100%;
+    max-width: min(100%, 70rem);
+    height: auto;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .diagram-caption {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 10px;
+    text-align: center;
+    max-width: min(100%, 70rem);
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 80px;
+    gap: 10px;
+    align-items: center;
+    margin: 6px 0;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+  .bar-track {
+    height: 18px;
+    background: #e5e7eb;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--accent);
+  }
+  .bar-fill.green { background: var(--green); }
+  .bar-fill.orange { background: var(--orange); }
+  .bar-fill.red { background: var(--red); }
+  .bar-fill.purple { background: var(--purple); }
+  pre {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 0.8rem;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    overflow-x: auto;
+    color: var(--muted);
+    margin: 10px 0;
+    line-height: 1.55;
+    width: 100%;
+    white-space: pre;
+  }
+  footer {
+    margin-top: 56px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.82rem;
+    text-align: center;
+    width: 100%;
+  }
+  .meta-table td:first-child { width: 28%; font-weight: 600; color: var(--text); background: #f8fafc; }
+  .kpi {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    width: 100%;
+    margin: 14px 0;
+  }
+  @media (max-width: 900px) {
+    .kpi { grid-template-columns: repeat(2, 1fr); }
+  }
+  .kpi-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .kpi-val {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.2;
+  }
+  .kpi-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .callout-title { font-weight: 700; color: var(--text); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>신호등·제한속도 인식 점검 <span class="badge b-tool">byGrok</span></h1>
+<p class="subtitle">
+  comma 3X (deviceType <code>tizi</code>) · Experimental Mode · SSH 로그 분석 ·
+  브랜치 <code>frogpilot_port</code> · openpilot <code>0.11.2</code> ·
+  작성일 2026-08-09 · 이 문서는 로컬 docs 전용 (upstream 커밋/푸시 없음)
+</p>
+
+<div class="toc">
+  <strong style="color:var(--text);">목차</strong>
+  <ol>
+    <li><a href="#summary">한 줄 결론</a></li>
+    <li><a href="#what-we-asked">무엇을 확인했나</a></li>
+    <li><a href="#which-route">어떤 주행 로그를 골랐나</a></li>
+    <li><a href="#how-openpilot-sees">openpilot은 신호등/제한속도를 어떻게 “보나”</a></li>
+    <li><a href="#pipeline">데이터가 흐르는 길 (파이프라인)</a></li>
+    <li><a href="#results-2b">핵심 결과: 약 16.8 km 주행 (0000022b)</a></li>
+    <li><a href="#results-2d">참고: 가장 최근 주행 20.5 km (0000022d)</a></li>
+    <li><a href="#traffic-light">신호등 인식 — 증거와 한계</a></li>
+    <li><a href="#speed-limit">제한속도 인식 — 증거와 한계</a></li>
+    <li><a href="#dev-deep">개발자용: 로그 필드 바닥까지</a></li>
+    <li><a href="#howto">직접 재현하는 방법</a></li>
+    <li><a href="#glossary">용어 빠른 찾기</a></li>
+  </ol>
+</div>
+
+<!-- ========== 1 ========== -->
+<h2 id="summary">1. 한 줄 결론</h2>
+
+<div class="verdict-grid">
+  <div class="verdict">
+    <h3><span class="badge b-warn">부분 예</span> 신호등</h3>
+    <p>
+      로그에 <strong>“빨간불/초록불” 같은 명시적 라벨은 없습니다.</strong>
+      대신 Experimental Mode에서는 신경망이 화면 전체를 보고
+      <code>desiredAcceleration</code>(원하는 가속)과 <code>shouldStop</code>(멈춰야 함)을
+      내보냅니다. 이번 16.8 km 주행에서 <strong>e2e(종단간) 감속·정차 신호가 활발히 동작</strong>했습니다.
+      따라서 “장면을 보고 멈추려는 행동”은 확인되지만,
+      “신호등 객체를 따로 인식했다”고 로그로 증명할 수는 없습니다.
+    </p>
+  </div>
+  <div class="verdict">
+    <h3><span class="badge b-no">아니오</span> 제한속도 (표지/지도)</h3>
+    <p>
+      이번 로그에는 지도/내비 기반 제한속도 메시지
+      (<code>liveMapData</code>, <code>navInstruction.speedLimit</code>)가
+      <strong>한 건도 없었습니다.</strong>
+      크루즈 설정 속도 <code>vCruise</code>는 전 구간 <strong>105 km/h로 고정</strong>되어 있었고,
+      이는 “표지판을 읽은 값”이 아니라 운전자(또는 시스템)가 잡은 크루즈 목표 속도입니다.
+    </p>
+  </div>
+</div>
+
+<div class="note">
+  <div class="note-title">초보자를 위한 한 문장</div>
+  <p>
+    이 차는 “신호등 글자를 로그에 적어두지는 않지만”, Experimental Mode에서는
+    AI가 영상만 보고 스스로 감속·정차 명령을 만들고 있었습니다.
+    반면 “이 도로는 50 km/h” 같은 제한속도 숫자는 로그에 나타나지 않았습니다.
+  </p>
+</div>
+
+<!-- ========== 2 ========== -->
+<h2 id="what-we-asked">2. 무엇을 확인했나</h2>
+<p>
+  사용자 요청은 단순합니다. <strong>comma 3X</strong>에서 Experimental Mode로 달린 최근 주행 중,
+  특히 약 10 km 이상 구간에서 <strong>신호등과 제한속도를 인식하고 있는지</strong> 로그로 확인하라는 것입니다.
+</p>
+<p>
+  여기서 “인식”을 두 층으로 나눠 생각하면 오해가 줄어듭니다.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>층</th>
+      <th>의미</th>
+      <th>로그에서 보이는 것</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>명시적 인식</strong></td>
+      <td>“빨간불”, “제한 50 km/h”처럼 이름 붙은 결과</td>
+      <td>별도 메시지 필드 (예: 지도 속도, 내비 속도)</td>
+    </tr>
+    <tr>
+      <td><strong>암시적 인식 (행동)</strong></td>
+      <td>표지/신호의 이름을 안 써도, 감속·정차로 반응</td>
+      <td><code>desiredAcceleration</code>, <code>shouldStop</code>, 종방향 계획 소스</td>
+    </tr>
+  </tbody>
+</table>
+<p>
+  stock openpilot(공식 구조)의 Experimental Mode는 주로 <strong>암시적 인식</strong> 쪽입니다.
+  신호등 전용 디텍터 출력을 로그에 남기지 않고, 운전 신경망이 바로 “얼마나 가속/감속할지”를 뱉습니다.
+</p>
+
+<!-- ========== 3 ========== -->
+<h2 id="which-route">3. 어떤 주행 로그를 골랐나</h2>
+<p>
+  장치 <code>comma-e0ee42a4</code> (IP <code>192.168.35.191</code>)에 SSH로 접속해
+  <code>/data/media/0/realdata</code> 아래 route 목록을 확인했습니다.
+</p>
+
+<div class="term">
+  <div class="term-word">Route (라우트)</div>
+  <p>
+    openpilot이 “시동(이그니션)이 켜진 뒤부터 꺼질 때까지” 한 번의 주행을 묶은 단위입니다.
+    이름은 보통 <code>0000022b--6947e9c3c5</code>처럼
+    <em>순번--해시</em> 형태입니다. 한 route는 다시 약 1분 단위의
+    <strong>segment(세그먼트)</strong>로 잘립니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">SSH</div>
+  <p>
+    Secure Shell의 약자입니다. 집 컴퓨터에서 네트워크로 comma 장치에 “원격 터미널”로 들어가
+    파일을 읽고 명령을 실행하는 안전한 접속 방식입니다.
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>순서</th>
+      <th>Route ID</th>
+      <th>세그먼트 수</th>
+      <th>추정 거리</th>
+      <th>비고</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>마지막</td>
+      <td><code>0000022d--75541d0fce</code></td>
+      <td>51</td>
+      <td><strong>20.5 km</strong></td>
+      <td>가장 최근 장거리 주행</td>
+    </tr>
+    <tr>
+      <td>마지막에서 2번째</td>
+      <td><code>0000022c--70b85baf22</code></td>
+      <td>1</td>
+      <td>≈ 0 km (정차/손상 구간)</td>
+      <td>qlog 손상 경고, 거리 누적 0</td>
+    </tr>
+    <tr style="background:#ecfdf5;">
+      <td><strong>마지막에서 3번째</strong><br>(실질 10 km+ 후보)</td>
+      <td><code>0000022b--6947e9c3c5</code></td>
+      <td>40</td>
+      <td><strong>16.8 km</strong></td>
+      <td>요청의 “약 10 km 이상”에 해당. <strong>본문 핵심 분석 대상</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="warn">
+  <div class="warn-title">Route 번호 정리</div>
+  <p>
+    이름 순서상 “마지막에서 2번째”는 <code>0000022c</code>이지만, 세그먼트가 1개뿐이고
+    거의 움직이지 않은(또는 로그가 깨진) 짧은 기록입니다.
+    사용자가 말한 “약 10 km 이상”은 <code>0000022b</code>(16.8 km) 또는
+    최신 <code>0000022d</code>(20.5 km)에 해당합니다.
+    아래에서는 요청 취지에 맞춰 <strong>0000022b를 주 분석</strong>하고, 0000022d를 교차 확인합니다.
+  </p>
+</div>
+
+<div class="kpi">
+  <div class="kpi-item">
+    <div class="kpi-val">16.8 km</div>
+    <div class="kpi-label">주 분석 거리 (2b)</div>
+  </div>
+  <div class="kpi-item">
+    <div class="kpi-val">37.9 min</div>
+    <div class="kpi-label">주행 시간 (2b)</div>
+  </div>
+  <div class="kpi-item">
+    <div class="kpi-val">100%</div>
+    <div class="kpi-label">Experimental Mode</div>
+  </div>
+  <div class="kpi-item">
+    <div class="kpi-val">93 km/h</div>
+    <div class="kpi-label">최고 속도 (2b)</div>
+  </div>
+</div>
+
+<table class="meta-table">
+  <tbody>
+    <tr><td>장치</td><td>comma 3X · <code>deviceType = tizi</code> · hostname <code>comma-e0ee42a4</code></td></tr>
+    <tr><td>차량 fingerprint</td><td><code>HYUNDAI_AZERA_HEV_6TH_GEN</code></td></tr>
+    <tr><td>소프트웨어</td><td>openpilot <code>0.11.2</code> · git branch <code>frogpilot_port</code> · commit <code>abb28a42e522</code></td></tr>
+    <tr><td>분석 로그</td><td>세그먼트별 <code>qlog.zst</code> (압축·다운샘플 로그). 모델 행동은 <code>drivingModelData</code> 사용</td></tr>
+    <tr><td>DongleId</td><td><code>3a0cde9552891b341</code></td></tr>
+  </tbody>
+</table>
+
+<!-- ========== 4 ========== -->
+<h2 id="how-openpilot-sees">4. openpilot은 신호등/제한속도를 어떻게 “보나”</h2>
+
+<div class="term">
+  <div class="term-word">Experimental Mode (실험 모드)</div>
+  <p>
+    openpilot UI에서 켤 수 있는 종방향(가속/감속) 모드입니다.
+    켜면 전통적인 “앞차 거리 + 크루즈 속도” 중심 계획 위에,
+    카메라 신경망의 e2e(end-to-end, 종단간) 가속 명령이 더해집니다.
+    빨간불·횡단보도·정체 같은 장면에 더 잘 반응하도록 설계된 실험적 경로입니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">e2e / End-to-End (종단간)</div>
+  <p>
+    “차선 검출 → 신호등 분류 → 규칙으로 브레이크”처럼 단계를 나누지 않고,
+    카메라 이미지에서 바로 “가속값/정지 여부”를 신경망이 한 번에 예측하는 방식입니다.
+    장점은 장면 전체 맥락을 쓰기 쉽고, 단점은 로그에 “빨간불을 봤다”는 중간 증거가 잘 안 남는 것입니다.
+  </p>
+</div>
+
+<p>
+  이번 코드베이스(<code>longitudinal_planner.py</code>)의 핵심 분기는 아래와 같습니다.
+</p>
+<pre>modelV2.action.desiredAcceleration   <span style="color:#64748b"># 신경망이 원하는 가속 (m/s²)</span>
+modelV2.action.shouldStop            <span style="color:#64748b"># 신경망이 “멈춰라”고 함</span>
+
+if experimentalMode:
+    a_target = min(e2e_accel, mpc_accel)   <span style="color:#64748b"># 둘 중 더 보수적(작은) 가속</span>
+    shouldStop = e2e_shouldStop OR mpc_shouldStop
+else:
+    a_target = mpc_accel                   <span style="color:#64748b"># 전통 MPC만 사용</span>
+</pre>
+
+<div class="diagram">
+  <svg viewBox="0 0 980 320" width="100%" xmlns="http://www.w3.org/2000/svg" aria-label="experimental mode longitudinal pipeline">
+    <!-- boxes -->
+    <rect x="20" y="40" width="160" height="60" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+    <text x="100" y="65" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">카메라</text>
+    <text x="100" y="85" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">road / wide</text>
+
+    <rect x="240" y="40" width="170" height="60" fill="#f5f3ff" stroke="#6d28d9" stroke-width="2"/>
+    <text x="325" y="65" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">modeld</text>
+    <text x="325" y="85" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">운전 신경망</text>
+
+    <rect x="470" y="20" width="200" height="100" fill="#ecfdf5" stroke="#15803d" stroke-width="2"/>
+    <text x="570" y="50" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">action 출력</text>
+    <text x="570" y="72" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">desiredAcceleration</text>
+    <text x="570" y="92" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">shouldStop</text>
+
+    <rect x="730" y="40" width="220" height="60" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="840" y="65" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">longitudinalPlan</text>
+    <text x="840" y="85" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">aTarget / shouldStop</text>
+
+    <!-- arrows horizontal -->
+    <line x1="180" y1="70" x2="240" y2="70" stroke="#64748b" stroke-width="2"/>
+    <polygon points="240,70 228,64 228,76" fill="#64748b"/>
+
+    <line x1="410" y1="70" x2="470" y2="70" stroke="#64748b" stroke-width="2"/>
+    <polygon points="470,70 458,64 458,76" fill="#64748b"/>
+
+    <line x1="670" y1="70" x2="730" y2="70" stroke="#64748b" stroke-width="2"/>
+    <polygon points="730,70 718,64 718,76" fill="#64748b"/>
+
+    <!-- second row: radar / cruise -->
+    <rect x="240" y="180" width="170" height="60" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <text x="325" y="205" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">MPC / 레이더</text>
+    <text x="325" y="225" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">lead / cruise</text>
+
+    <rect x="470" y="180" width="200" height="60" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <text x="570" y="205" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">mpc accel</text>
+    <text x="570" y="225" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">전통 종방향 계획</text>
+
+    <!-- vertical join into plan -->
+    <line x1="325" y1="240" x2="325" y2="280" stroke="#64748b" stroke-width="2"/>
+    <line x1="325" y1="280" x2="840" y2="280" stroke="#64748b" stroke-width="2"/>
+    <line x1="840" y1="280" x2="840" y2="100" stroke="#64748b" stroke-width="2"/>
+    <polygon points="840,100 834,112 846,112" fill="#64748b"/>
+
+    <line x1="570" y1="240" x2="570" y2="260" stroke="#64748b" stroke-width="2"/>
+    <line x1="570" y1="260" x2="800" y2="260" stroke="#64748b" stroke-width="2"/>
+
+    <text x="100" y="300" font-size="12" fill="#4a5568" font-family="sans-serif">Experimental ON: e2e와 MPC 중 더 보수적인 쪽을 채택</text>
+  </svg>
+  <div class="diagram-caption">그림 1. Experimental Mode 종방향 제어 경로 (직선 화살표만 사용)</div>
+</div>
+
+<p>
+  정리하면, 신호등을 “이름 붙여 분류”하지 않아도 신경망이 영상에서 감속 필요성을 배우면
+  <code>desiredAcceleration &lt; 0</code> 또는 <code>shouldStop = true</code>로 나타납니다.
+  제한속도 표지판 역시 e2e가 암시적으로 반영할 수는 있지만,
+  stock 경로에서는 보통 지도/내비 필드가 별도로 있어야 “숫자로 인식했다”고 말하기 쉽습니다.
+</p>
+
+<!-- ========== 5 ========== -->
+<h2 id="pipeline">5. 데이터가 흐르는 길 (파이프라인)</h2>
+
+<div class="term">
+  <div class="term-word">qlog / rlog</div>
+  <p>
+    주행 중 프로세스들이 주고받은 메시지를 파일로 남긴 것입니다.
+    <code>rlog.zst</code>는 거의 전부 기록(용량 큼),
+    <code>qlog.zst</code>는 일부만 추려 담은 가벼운 버전입니다.
+    둘 다 zstd 압축과 Cap’n Proto 직렬화를 씁니다.
+  </p>
+</div>
+
+<div class="term">
+  <div class="term-word">Cap’n Proto</div>
+  <p>
+    메시지 스키마(필드 이름·타입)를 정해 두고, 프로세스 간/파일에 빠르게 읽고 쓰는 직렬화 포맷입니다.
+    openpilot의 스키마는 <code>openpilot/cereal/log.capnp</code>에 있습니다.
+  </p>
+</div>
+
+<div class="diagram">
+  <svg viewBox="0 0 980 260" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="30" y="30" width="140" height="50" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+    <text x="100" y="60" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">camerad</text>
+
+    <rect x="220" y="30" width="140" height="50" fill="#f5f3ff" stroke="#6d28d9" stroke-width="2"/>
+    <text x="290" y="60" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">modeld</text>
+
+    <rect x="410" y="30" width="160" height="50" fill="#ecfdf5" stroke="#15803d" stroke-width="2"/>
+    <text x="490" y="60" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">controlsd 등</text>
+
+    <rect x="620" y="30" width="140" height="50" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="690" y="60" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">loggerd</text>
+
+    <rect x="810" y="30" width="140" height="50" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+    <text x="880" y="60" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">realdata</text>
+
+    <line x1="170" y1="55" x2="220" y2="55" stroke="#64748b" stroke-width="2"/>
+    <polygon points="220,55 208,49 208,61" fill="#64748b"/>
+    <line x1="360" y1="55" x2="410" y2="55" stroke="#64748b" stroke-width="2"/>
+    <polygon points="410,55 398,49 398,61" fill="#64748b"/>
+    <line x1="570" y1="55" x2="620" y2="55" stroke="#64748b" stroke-width="2"/>
+    <polygon points="620,55 608,49 608,61" fill="#64748b"/>
+    <line x1="760" y1="55" x2="810" y2="55" stroke="#64748b" stroke-width="2"/>
+    <polygon points="810,55 798,49 798,61" fill="#64748b"/>
+
+    <rect x="30" y="140" width="280" height="70" fill="#ffffff" stroke="#d8dee6" stroke-width="2"/>
+    <text x="170" y="170" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">msgq (메모리 메시지 큐)</text>
+    <text x="170" y="192" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">실시간 프로세스 간 통신</text>
+
+    <rect x="360" y="140" width="280" height="70" fill="#ffffff" stroke="#d8dee6" stroke-width="2"/>
+    <text x="500" y="170" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">qlog.zst / rlog.zst</text>
+    <text x="500" y="192" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">디스크에 저장되는 기록</text>
+
+    <rect x="690" y="140" width="260" height="70" fill="#ffffff" stroke="#d8dee6" stroke-width="2"/>
+    <text x="820" y="170" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">LogReader 분석</text>
+    <text x="820" y="192" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">이 문서의 통계 산출</text>
+
+    <line x1="290" y1="80" x2="290" y2="140" stroke="#64748b" stroke-width="2"/>
+    <polygon points="290,140 284,128 296,128" fill="#64748b"/>
+    <line x1="490" y1="80" x2="490" y2="140" stroke="#64748b" stroke-width="2"/>
+    <polygon points="490,140 484,128 496,128" fill="#64748b"/>
+    <line x1="640" y1="175" x2="690" y2="175" stroke="#64748b" stroke-width="2"/>
+    <polygon points="690,175 678,169 678,181" fill="#64748b"/>
+  </svg>
+  <div class="diagram-caption">그림 2. 실시간 통신(msgq)과 로그 파일, 분석 도구의 관계</div>
+</div>
+
+<p>
+  이번 분석에서 특히 본 메시지:
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>메시지</th>
+      <th>역할</th>
+      <th>qlog 포함?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>selfdriveState.experimentalMode</code></td>
+      <td>실험 모드 on/off</td>
+      <td>예 (decimation 10)</td>
+    </tr>
+    <tr>
+      <td><code>drivingModelData.action</code></td>
+      <td>신경망 가속/정지 (qlog용 축약 모델 스트림)</td>
+      <td>예 (decimation 10)</td>
+    </tr>
+    <tr>
+      <td><code>modelV2.action</code></td>
+      <td>전체 모델 출력 (동일 action 포함)</td>
+      <td>아니오 (decimation None → rlog 전용)</td>
+    </tr>
+    <tr>
+      <td><code>longitudinalPlan</code></td>
+      <td>최종 종방향 계획, source (e2e/lead/cruise…)</td>
+      <td>예</td>
+    </tr>
+    <tr>
+      <td><code>carState.vCruise</code></td>
+      <td>크루즈 설정 속도 (km/h 단위 계열)</td>
+      <td>예</td>
+    </tr>
+    <tr>
+      <td><code>liveMapData</code> / <code>navInstruction</code></td>
+      <td>지도·내비 제한속도 (있을 때만)</td>
+      <td>이번 주행: <strong>0건</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ========== 6 ========== -->
+<h2 id="results-2b">6. 핵심 결과: 약 16.8 km 주행 (<code>0000022b--6947e9c3c5</code>)</h2>
+
+<div class="card">
+  <div class="callout-title">주행 개요</div>
+  <ul>
+    <li>거리 약 <strong>16.8 km</strong>, 시간 약 <strong>37.9분</strong>, 세그먼트 40개</li>
+    <li>평균 속도 약 <strong>25.8 km/h</strong>, 최고 약 <strong>93.0 km/h</strong> (시내·정체 섞인 패턴)</li>
+    <li><code>experimentalMode = true</code> 비율: <strong>100%</strong> (샘플 23,364 / 23,364)</li>
+    <li>차량: 현대 아제라 HEV 6세대 fingerprint</li>
+  </ul>
+</div>
+
+<h3>6.1 종방향 계획 소스가 말해 주는 것</h3>
+<p>
+  <code>longitudinalPlan.longitudinalPlanSource</code>는 “지금 가속 명령을 누가 이끌었는지”를 나타냅니다.
+</p>
+
+<div class="bar-row">
+  <div>e2e (신경망)</div>
+  <div class="bar-track"><div class="bar-fill purple" style="width:60.7%"></div></div>
+  <div>2836 · 60.7%</div>
+</div>
+<div class="bar-row">
+  <div>lead0 (1등 앞차)</div>
+  <div class="bar-track"><div class="bar-fill" style="width:32.9%"></div></div>
+  <div>1537 · 32.9%</div>
+</div>
+<div class="bar-row">
+  <div>cruise (설정속도)</div>
+  <div class="bar-track"><div class="bar-fill green" style="width:4.6%"></div></div>
+  <div>216 · 4.6%</div>
+</div>
+<div class="bar-row">
+  <div>lead1 (2등 앞차)</div>
+  <div class="bar-track"><div class="bar-fill orange" style="width:1.8%"></div></div>
+  <div>82 · 1.8%</div>
+</div>
+<p style="font-size:0.85rem;color:var(--muted);">총 longitudinalPlan 메시지 4,671건 기준 (qlog decimation 반영)</p>
+
+<div class="note">
+  <div class="note-title">해석</div>
+  <p>
+    Experimental Mode답게 <strong>e2e가 과반</strong>입니다.
+    앞차 추종(lead)도 상당 부분 쓰였고, 순수 크루즈 목표 추종은 소수입니다.
+    즉 “크루즈 숫자만 보고 달렸다”기보다, <strong>장면/앞차 기반으로 감속·가속</strong>이 많이 일어났습니다.
+  </p>
+</div>
+
+<h3>6.2 shouldStop — “멈춰라” 신호</h3>
+<table>
+  <thead>
+    <tr>
+      <th>항목</th>
+      <th>값</th>
+      <th>의미</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>shouldStop = true</code></td>
+      <td>2,263 / 4,671 (48.5%)</td>
+      <td>모델 액션 중 절반 가까이 “정지 유지/정지 필요”</td>
+    </tr>
+    <tr>
+      <td>속도 0–5 km/h 구간</td>
+      <td>stop 2,253 / 2,389</td>
+      <td>거의 멈춘 상태에서 정지 플래그가 집중</td>
+    </tr>
+    <tr>
+      <td>속도 5–20 km/h</td>
+      <td>stop 10 / 398</td>
+      <td>저속에서 드물게 정지 플래그</td>
+    </tr>
+    <tr>
+      <td>속도 20 km/h 이상</td>
+      <td>stop 0</td>
+      <td>고속 구간에서는 shouldStop 대신 감속(accel)으로 반응</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="diagram">
+  <svg viewBox="0 0 980 220" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <!-- axes -->
+    <line x1="80" y1="30" x2="80" y2="180" stroke="#64748b" stroke-width="2"/>
+    <line x1="80" y1="180" x2="940" y2="180" stroke="#64748b" stroke-width="2"/>
+    <text x="40" y="100" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif" transform="rotate(-90 40 100)">메시지 수</text>
+    <text x="510" y="210" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">속도 구간 (km/h)</text>
+
+    <!-- bars stop (red) and go (blue) side by side per bin -->
+    <!-- v0-5 -->
+    <rect x="140" y="40" width="40" height="140" fill="#ef4444"/>
+    <rect x="185" y="172" width="40" height="8" fill="#3b82f6"/>
+    <text x="182" y="195" text-anchor="middle" font-size="12" fill="#1a2332" font-family="sans-serif">0-5</text>
+    <text x="160" y="32" text-anchor="middle" font-size="11" fill="#b91c1c" font-family="sans-serif">2253</text>
+
+    <!-- v5-20 -->
+    <rect x="320" y="176" width="40" height="4" fill="#ef4444"/>
+    <rect x="365" y="117" width="40" height="63" fill="#3b82f6"/>
+    <text x="362" y="195" text-anchor="middle" font-size="12" fill="#1a2332" font-family="sans-serif">5-20</text>
+    <text x="385" y="110" text-anchor="middle" font-size="11" fill="#2563eb" font-family="sans-serif">388 go</text>
+
+    <!-- v20-40 -->
+    <rect x="500" y="180" width="40" height="0" fill="#ef4444"/>
+    <rect x="545" y="126" width="40" height="54" fill="#3b82f6"/>
+    <text x="542" y="195" text-anchor="middle" font-size="12" fill="#1a2332" font-family="sans-serif">20-40</text>
+    <text x="565" y="118" text-anchor="middle" font-size="11" fill="#2563eb" font-family="sans-serif">332 go</text>
+
+    <!-- v40+ -->
+    <rect x="700" y="180" width="40" height="0" fill="#ef4444"/>
+    <rect x="745" y="40" width="40" height="140" fill="#3b82f6"/>
+    <text x="742" y="195" text-anchor="middle" font-size="12" fill="#1a2332" font-family="sans-serif">40+</text>
+    <text x="765" y="32" text-anchor="middle" font-size="11" fill="#2563eb" font-family="sans-serif">1552 go</text>
+
+    <!-- legend -->
+    <rect x="820" y="50" width="16" height="12" fill="#ef4444"/>
+    <text x="842" y="60" font-size="12" fill="#1a2332" font-family="sans-serif">shouldStop true</text>
+    <rect x="820" y="75" width="16" height="12" fill="#3b82f6"/>
+    <text x="842" y="85" font-size="12" fill="#1a2332" font-family="sans-serif">shouldStop false</text>
+  </svg>
+  <div class="diagram-caption">그림 3. 속도 구간별 shouldStop (route 0000022b). 정지 플래그는 거의 0–5 km/h에만 몰림</div>
+</div>
+
+<div class="warn">
+  <div class="warn-title">중요한 해석 포인트</div>
+  <p>
+    고속에서 신호등에 접근할 때 모델은 먼저 <strong>음의 가속도(감속)</strong>로 반응하고,
+    거의 멈춘 뒤에야 <code>shouldStop=true</code>로 “정지 유지”를 거는 패턴이 일반적입니다.
+    그래서 “shouldStop이 20 km/h 이상에서 0”이라고 해서 신호등 반응을 안 한 것은 아닙니다.
+  </p>
+</div>
+
+<h3>6.3 감속(desiredAcceleration) — 움직이는 동안의 반응</h3>
+<table>
+  <thead>
+    <tr>
+      <th>지표</th>
+      <th>값</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>desiredAcceleration 최소</td><td><strong>-2.04 m/s²</strong> (강한 감속)</td></tr>
+    <tr><td>desiredAcceleration 최대</td><td>+1.82 m/s²</td></tr>
+    <tr><td>음의 가속(감속) 메시지 수</td><td>1,966 / 4,671</td></tr>
+    <tr><td>강한 감속 (&lt; -1.0 m/s²)</td><td>95회 (qlog 샘플)</td></tr>
+    <tr><td>5–20 km/h 구간 강한 감속</td><td>41</td></tr>
+    <tr><td>20–40 km/h 구간 강한 감속</td><td>32</td></tr>
+    <tr><td>40+ km/h 구간 강한 감속</td><td>22</td></tr>
+  </tbody>
+</table>
+
+<p>강한 감속 이벤트 예시 (일부, 소스 포함):</p>
+<table>
+  <thead>
+    <tr>
+      <th>세그먼트</th>
+      <th>상대 시각(s)</th>
+      <th>속도</th>
+      <th>가속도</th>
+      <th>계획 소스</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>6</td><td>374.0</td><td>15.6 km/h</td><td>-1.17 m/s²</td><td><code>e2e</code></td></tr>
+    <tr><td>7</td><td>423.0</td><td>22.5 km/h</td><td>-1.05 m/s²</td><td><code>lead0</code></td></tr>
+    <tr><td>7</td><td>430.5</td><td>22.1 km/h</td><td>-1.51 m/s²</td><td><code>lead1</code></td></tr>
+    <tr><td>7</td><td>431.5</td><td>17.1 km/h</td><td>-1.73 m/s²</td><td><code>lead1</code></td></tr>
+  </tbody>
+</table>
+<p>
+  같은 감속이라도 소스가 <code>e2e</code>이면 장면 기반(신호·도로 상황 포함 가능),
+  <code>lead*</code>이면 앞차 추종 기반일 가능성이 큽니다.
+  둘 다 Experimental Mode 파이프라인 안에서 정상적으로 섞입니다.
+</p>
+
+<h3>6.4 제한속도 관련 필드</h3>
+<table>
+  <thead>
+    <tr>
+      <th>필드</th>
+      <th>결과</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>navInstruction</code> / DEPRECATED</td>
+      <td><span class="badge b-no">0건</span> 메시지 없음 → 내비 제한속도 없음</td>
+    </tr>
+    <tr>
+      <td><code>liveMapData</code> / DEPRECATED</td>
+      <td><span class="badge b-no">0건</span> 메시지 없음 → 지도 제한속도 없음</td>
+    </tr>
+    <tr>
+      <td><code>carState.vCruise</code></td>
+      <td><span class="badge b-info">105 km/h 고정</span> (15,982 샘플 모두 동일)</td>
+    </tr>
+    <tr>
+      <td><code>speed_limit_events</code> (분석 스크립트)</td>
+      <td>빈 배열</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="danger">
+  <div class="danger-title">제한속도 “인식” 판정</div>
+  <p>
+    이 주행 로그 기준으로는 <strong>표지판/지도 제한속도를 숫자로 읽어 로그에 남긴 흔적이 없습니다.</strong>
+    105 km/h는 크루즈 설정값이며, 한국 일반 도로 표지 제한속도로 보기 어렵습니다.
+    e2e가 암묵적으로 주변 속도감에 맞춰 더 느리게 달렸을 수는 있으나,
+    그것은 “제한속도 인식”과는 다른 범주입니다.
+  </p>
+</div>
+
+<!-- ========== 7 ========== -->
+<h2 id="results-2d">7. 참고: 가장 최근 주행 20.5 km (<code>0000022d--75541d0fce</code>)</h2>
+<p>
+  같은 방법으로 최신 route를 교차 확인했습니다. 결론 방향이 동일합니다.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>항목</th>
+      <th>0000022b (16.8 km)</th>
+      <th>0000022d (20.5 km)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Experimental Mode</td><td>100%</td><td>100%</td></tr>
+    <tr><td>shouldStop true 비율</td><td>48.5%</td><td>44.6%</td></tr>
+    <tr><td>longitudinal source e2e</td><td>2,836 (60.7%)</td><td>4,297 (70.9%)</td></tr>
+    <tr><td>source lead0</td><td>1,537</td><td>1,088</td></tr>
+    <tr><td>source cruise</td><td>216</td><td>435</td></tr>
+    <tr><td>nav / liveMap 제한속도</td><td>0</td><td>0</td></tr>
+    <tr><td>vCruise</td><td>105 km/h 고정</td><td>105 km/h 고정</td></tr>
+    <tr><td>최고 속도</td><td>93.0 km/h</td><td>95.7 km/h</td></tr>
+    <tr><td>20 km/h+ 에서 shouldStop</td><td>0</td><td>0</td></tr>
+  </tbody>
+</table>
+<p>
+  두 장거리 주행 모두 <strong>e2e 종방향이 활발</strong>하고,
+  <strong>명시적 제한속도 필드는 전무</strong>합니다.
+</p>
+
+<!-- ========== 8 ========== -->
+<h2 id="traffic-light">8. 신호등 인식 — 증거와 한계</h2>
+
+<div class="diagram">
+  <svg viewBox="0 0 980 280" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="40" y="40" width="200" height="80" fill="#fef2f2" stroke="#b91c1c" stroke-width="2"/>
+    <text x="140" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">로그에 없는 것</text>
+    <text x="140" y="95" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">trafficLight = red/green</text>
+
+    <rect x="390" y="40" width="220" height="80" fill="#ecfdf5" stroke="#15803d" stroke-width="2"/>
+    <text x="500" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">로그에 있는 것</text>
+    <text x="500" y="95" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">accel / shouldStop / source</text>
+
+    <rect x="740" y="40" width="200" height="80" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+    <text x="840" y="70" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">추가로 필요한 것</text>
+    <text x="840" y="95" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">영상(fcamera) 대조</text>
+
+    <line x1="240" y1="80" x2="390" y2="80" stroke="#64748b" stroke-width="2"/>
+    <polygon points="390,80 378,74 378,86" fill="#64748b"/>
+    <line x1="610" y1="80" x2="740" y2="80" stroke="#64748b" stroke-width="2"/>
+    <polygon points="740,80 728,74 728,86" fill="#64748b"/>
+
+    <rect x="200" y="170" width="580" height="70" fill="#ffffff" stroke="#d8dee6" stroke-width="2"/>
+    <text x="490" y="200" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">판정: “명시적 신호등 클래스 인식” = 로그만으로 확인 불가</text>
+    <text x="490" y="222" text-anchor="middle" font-size="12" fill="#4a5568" font-family="sans-serif">“장면 기반 감속·정차 행동” = 확인됨 (e2e + shouldStop + 강한 감속)</text>
+  </svg>
+  <div class="diagram-caption">그림 4. 신호등 관련 판단 구조</div>
+</div>
+
+<h3>확인된 증거 (행동 수준)</h3>
+<ol>
+  <li>Experimental Mode가 전 구간 활성.</li>
+  <li><code>drivingModelData.action</code>이 지속 기록되고, 감속·정차 플래그가 대량 발생.</li>
+  <li><code>longitudinalPlanSource = e2e</code>가 주력 — 신경망 종방향이 실제로 선택됨.</li>
+  <li>거의 정지 시 <code>shouldStop=true</code> 비율이 매우 높음 → 정지선/정체/신호 대기와 양립.</li>
+  <li>중·저속에서 강한 감속 이벤트 존재 (앞차 또는 장면).</li>
+</ol>
+
+<h3>확인되지 않은 것 (라벨 수준)</h3>
+<ol>
+  <li><code>TrafficLight</code> 상태 enum 메시지 없음 (deprecated trafficEvents도 이번 which 목록에 없음).</li>
+  <li>특정 시각의 shouldStop이 “빨간불 때문”인지 “앞차/정체 때문”인지 로그 단독 분리 불가.</li>
+  <li>영상 프레임과 1:1 대조는 이번 문서 범위에서 수행하지 않음
+      (장치에 <code>fcamera.hevc</code>는 존재).</li>
+</ol>
+
+<div class="note">
+  <div class="note-title">실사용 관점</div>
+  <p>
+    운전자 체감으로 “빨간불에 선다”와 로그의 “e2e가 감속·정지를 냈다”는 대체로 같은 파이프라인입니다.
+    다만 개발/검증 문서에서는 <strong>행동 증거</strong>와 <strong>클래스 라벨 증거</strong>를 구분해서 적는 것이 정확합니다.
+  </p>
+</div>
+
+<!-- ========== 9 ========== -->
+<h2 id="speed-limit">9. 제한속도 인식 — 증거와 한계</h2>
+
+<div class="diagram">
+  <svg viewBox="0 0 980 300" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <rect x="60" y="30" width="240" height="50" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+    <text x="180" y="60" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">가능한 제한속도 출처</text>
+
+    <rect x="60" y="110" width="200" height="50" fill="#fef2f2" stroke="#b91c1c" stroke-width="2"/>
+    <text x="160" y="140" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">liveMapData</text>
+
+    <rect x="300" y="110" width="200" height="50" fill="#fef2f2" stroke="#b91c1c" stroke-width="2"/>
+    <text x="400" y="140" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">navInstruction</text>
+
+    <rect x="540" y="110" width="200" height="50" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <text x="640" y="140" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">e2e 암시적 속도감</text>
+
+    <rect x="780" y="110" width="160" height="50" fill="#ecfdf5" stroke="#15803d" stroke-width="2"/>
+    <text x="860" y="140" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">vCruise 설정</text>
+
+    <line x1="180" y1="80" x2="180" y2="110" stroke="#64748b" stroke-width="2"/>
+    <line x1="180" y1="80" x2="400" y2="80" stroke="#64748b" stroke-width="2"/>
+    <line x1="400" y1="80" x2="400" y2="110" stroke="#64748b" stroke-width="2"/>
+    <line x1="400" y1="80" x2="640" y2="80" stroke="#64748b" stroke-width="2"/>
+    <line x1="640" y1="80" x2="640" y2="110" stroke="#64748b" stroke-width="2"/>
+    <line x1="640" y1="80" x2="860" y2="80" stroke="#64748b" stroke-width="2"/>
+    <line x1="860" y1="80" x2="860" y2="110" stroke="#64748b" stroke-width="2"/>
+
+    <text x="160" y="185" text-anchor="middle" font-size="12" fill="#b91c1c" font-family="sans-serif">0건</text>
+    <text x="400" y="185" text-anchor="middle" font-size="12" fill="#b91c1c" font-family="sans-serif">0건</text>
+    <text x="640" y="185" text-anchor="middle" font-size="12" fill="#c2410c" font-family="sans-serif">로그 라벨 없음</text>
+    <text x="860" y="185" text-anchor="middle" font-size="12" fill="#15803d" font-family="sans-serif">105 km/h</text>
+
+    <rect x="200" y="220" width="580" height="50" fill="#ffffff" stroke="#d8dee6" stroke-width="2"/>
+    <text x="490" y="250" text-anchor="middle" font-size="13" fill="#1a2332" font-family="sans-serif">판정: 명시적 제한속도 인식 = 아니오 / 크루즈 설정값만 존재</text>
+  </svg>
+  <div class="diagram-caption">그림 5. 제한속도 후보 소스와 이번 로그 결과</div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>질문</th>
+      <th>답</th>
+      <th>근거</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>지도 제한속도를 읽었나?</td>
+      <td><span class="badge b-no">아니오</span></td>
+      <td><code>liveMapData</code> 메시지 0</td>
+    </tr>
+    <tr>
+      <td>내비 제한속도를 받았나?</td>
+      <td><span class="badge b-no">아니오</span></td>
+      <td><code>navInstruction</code> 메시지 0</td>
+    </tr>
+    <tr>
+      <td>크루즈 목표 속도가 있었나?</td>
+      <td><span class="badge b-ok">예</span></td>
+      <td><code>vCruise = 105</code> 고정</td>
+    </tr>
+    <tr>
+      <td>표지판 OCR 결과가 로그에 있나?</td>
+      <td><span class="badge b-no">아니오</span></td>
+      <td>stock 스키마에 해당 전용 필드 없음 (e2e 암시만 가능)</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ========== 10 ========== -->
+<h2 id="dev-deep">10. 개발자용: 로그 필드 바닥까지</h2>
+
+<h3>10.1 스키마 위치</h3>
+<table>
+  <thead>
+    <tr>
+      <th>내용</th>
+      <th>위치</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Model action</td>
+      <td><code>log.capnp</code> → <code>ModelDataV2.Action</code>
+        (<code>desiredAcceleration</code>, <code>shouldStop</code>)</td>
+    </tr>
+    <tr>
+      <td>qlog용 축약 모델</td>
+      <td><code>DrivingModelData.action</code> (동일 Action 타입 재사용)</td>
+    </tr>
+    <tr>
+      <td>Experimental 플래그</td>
+      <td><code>SelfdriveState.experimentalMode</code></td>
+    </tr>
+    <tr>
+      <td>종방향 계획</td>
+      <td><code>LongitudinalPlan</code>
+        (<code>aTarget</code>, <code>shouldStop</code>, <code>longitudinalPlanSource</code>)</td>
+    </tr>
+    <tr>
+      <td>지도 제한속도 (deprecated)</td>
+      <td><code>LiveMapDataDEPRECATED.speedLimit*</code></td>
+    </tr>
+    <tr>
+      <td>내비 제한속도</td>
+      <td><code>NavInstruction.speedLimit</code> (m/s),
+        현재 Event union에서는 <code>navInstructionDEPRECATED</code></td>
+    </tr>
+    <tr>
+      <td>qlog decimation 표</td>
+      <td><code>openpilot/cereal/services.py</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>10.2 Experimental 분기 (코드)</h3>
+<pre>// openpilot/selfdrive/controls/lib/longitudinal_planner.py (요약)
+
+output_a_target_e2e = sm['modelV2'].action.desiredAcceleration
+output_should_stop_e2e = sm['modelV2'].action.shouldStop
+
+if sm['selfdriveState'].experimentalMode:
+    output_a_target = min(output_a_target_e2e, output_a_target_mpc)
+    self.output_should_stop = output_should_stop_e2e or output_should_stop_mpc
+    if output_a_target &lt; output_a_target_mpc:
+        self.mpc.source = LongitudinalPlanSource.e2e
+else:
+    output_a_target = output_a_target_mpc
+    self.output_should_stop = output_should_stop_mpc
+</pre>
+
+<div class="term">
+  <div class="term-word">MPC (Model Predictive Control)</div>
+  <p>
+    모델 예측 제어. 앞으로 몇 초의 속력 궤적을 수학적으로 최적화해
+    “지금 얼마로 가속할지”를 고르는 전통적 제어기입니다.
+    openpilot에서는 앞차·크루즈 속도 제약을 넣은 종방향 MPC가 돌아가고,
+    Experimental Mode에서는 이 결과와 신경망 e2e 가속 중 더 보수적인 쪽을 고릅니다.
+  </p>
+</div>
+
+<h3>10.3 왜 modelV2가 아니라 drivingModelData인가</h3>
+<p>
+  <code>services.py</code>에서 <code>modelV2</code>의 qlog decimation은 <code>None</code>입니다.
+  로거 구현상 이는 qlog에 넣지 않는다는 뜻에 가깝습니다.
+  대신 <code>drivingModelData</code>(decimation 10)가 action을 포함하므로,
+  qlog만으로도 e2e 가속/정지를 통계할 수 있습니다.
+  더 촘촘한 시계열이 필요하면 세그먼트의 <code>rlog.zst</code>를 읽으면 됩니다
+  (세그먼트당 약 8–9 MB, 이번 40–50분 주행은 수백 MB 규모).
+</p>
+
+<h3>10.4 which_seen에 없었던 것 (0000022b qlog)</h3>
+<ul>
+  <li><code>modelV2</code> — 예상대로 qlog 미포함</li>
+  <li><code>liveMapData</code> / <code>liveMapDataDEPRECATED</code></li>
+  <li><code>navInstruction</code> / <code>navInstructionDEPRECATED</code></li>
+  <li>구형 <code>trafficEvents</code></li>
+</ul>
+<p>
+  즉 “제한속도 숫자 채널” 자체가 이 빌드·이 주행 설정에서는 동작/기록되지 않았습니다.
+</p>
+
+<h3>10.5 openpilot enabled 비율 참고</h3>
+<p>
+  route 0000022b에서 <code>selfdriveState.enabled=true</code>는 3,961 / 23,364 샘플로,
+  전체 시간의 일부만 실제 제어 engage 상태였습니다.
+  그래도 모델 추론과 experimental 플래그는 계속 돌아가며 로그에 남습니다.
+  “인식 파이프라인 동작 여부”와 “운전자가 핸즈온으로 engage 했는지”는 별개입니다.
+</p>
+
+<div class="diagram">
+  <svg viewBox="0 0 980 240" width="100%" xmlns="http://www.w3.org/2000/svg">
+    <text x="40" y="30" font-size="14" fill="#1a2332" font-family="sans-serif" font-weight="700">시간축에서 신호 계층 (개념도)</text>
+
+    <rect x="40" y="50" width="900" height="28" fill="#dbeafe" stroke="#2563eb" stroke-width="1"/>
+    <text x="50" y="69" font-size="12" fill="#1a2332" font-family="sans-serif">experimentalMode = true (전 구간)</text>
+
+    <rect x="40" y="90" width="900" height="28" fill="#ede9fe" stroke="#6d28d9" stroke-width="1"/>
+    <text x="50" y="109" font-size="12" fill="#1a2332" font-family="sans-serif">model action 스트림 (drivingModelData)</text>
+
+    <rect x="40" y="130" width="200" height="28" fill="#dcfce7" stroke="#15803d" stroke-width="1"/>
+    <rect x="280" y="130" width="120" height="28" fill="#fee2e2" stroke="#b91c1c" stroke-width="1"/>
+    <rect x="440" y="130" width="160" height="28" fill="#dcfce7" stroke="#15803d" stroke-width="1"/>
+    <rect x="640" y="130" width="100" height="28" fill="#fee2e2" stroke="#b91c1c" stroke-width="1"/>
+    <rect x="780" y="130" width="160" height="28" fill="#dcfce7" stroke="#15803d" stroke-width="1"/>
+    <text x="50" y="149" font-size="12" fill="#1a2332" font-family="sans-serif">shouldStop false (주행)</text>
+    <text x="290" y="149" font-size="12" fill="#1a2332" font-family="sans-serif">true (정차)</text>
+
+    <rect x="40" y="180" width="140" height="28" fill="#ffedd5" stroke="#c2410c" stroke-width="1"/>
+    <rect x="220" y="180" width="200" height="28" fill="#e2e8f0" stroke="#64748b" stroke-width="1"/>
+    <rect x="460" y="180" width="180" height="28" fill="#ffedd5" stroke="#c2410c" stroke-width="1"/>
+    <rect x="680" y="180" width="260" height="28" fill="#e2e8f0" stroke="#64748b" stroke-width="1"/>
+    <text x="50" y="199" font-size="12" fill="#1a2332" font-family="sans-serif">강한 감속</text>
+    <text x="230" y="199" font-size="12" fill="#1a2332" font-family="sans-serif">완만 / 가속</text>
+
+    <line x1="40" y1="230" x2="940" y2="230" stroke="#64748b" stroke-width="2"/>
+    <polygon points="940,230 928,224 928,236" fill="#64748b"/>
+    <text x="900" y="225" font-size="11" fill="#4a5568" font-family="sans-serif">시간 →</text>
+  </svg>
+  <div class="diagram-caption">그림 6. experimental 플래그 / 모델 스트림 / shouldStop / 감속의 계층 (모식도)</div>
+</div>
+
+<!-- ========== 11 ========== -->
+<h2 id="howto">11. 직접 재현하는 방법</h2>
+<p>
+  아래는 이번 분석에 사용한 흐름입니다. 장치 IP와 키 경로는 환경에 맞게 바꾸면 됩니다.
+</p>
+<pre># 1) 장치 접속
+ssh -i ~/.ssh/openpilot_ed25519 comma@192.168.35.191
+
+# 2) 최근 route 확인
+ls /data/media/0/realdata | cut -d- -f1-3 | sort -u | tail
+
+# 3) 분석 스크립트 실행 (장치 위 venv + PYTHONPATH)
+cd /data/openpilot
+PYTHONPATH=/data/openpilot /usr/local/venv/bin/python /tmp/analyze_tl_speedlimit.py
+
+# 결과 JSON
+cat /tmp/tl_speedlimit_analysis.json
+</pre>
+<p>
+  로컬 워크스페이스에는 분석 스크립트와 결과 JSON이 임시로 저장되어 있습니다.
+</p>
+<ul>
+  <li><code>tmp/analyze_tl_speedlimit.py</code> — route 전체 요약</li>
+  <li><code>tmp/enrich_analysis.py</code> — 속도 bin / 강한 감속 이벤트</li>
+  <li><code>tmp/tl_speedlimit_analysis.json</code>, <code>tmp/tl_enrich.json</code> — 결과</li>
+</ul>
+
+<div class="term">
+  <div class="term-word">LogReader</div>
+  <p>
+    openpilot이 제공하는 파이썬 유틸로, <code>qlog.zst</code>/<code>rlog.zst</code>를 열어
+    메시지 단위로 순회합니다. 예:
+    <code>for msg in LogReader(path): print(msg.which())</code>
+  </p>
+</div>
+
+<!-- ========== 12 ========== -->
+<h2 id="glossary">12. 용어 빠른 찾기</h2>
+<table>
+  <thead>
+    <tr>
+      <th>용어</th>
+      <th>한 줄 설명</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Route</td><td>시동 ON~OFF 한 번의 주행 묶음</td></tr>
+    <tr><td>Segment</td><td>route를 약 1분 단위로 나눈 조각</td></tr>
+    <tr><td>qlog / rlog</td><td>가벼운 로그 / 전체 로그</td></tr>
+    <tr><td>SSH</td><td>장치 원격 터미널 접속</td></tr>
+    <tr><td>Experimental Mode</td><td>신경망 e2e 종방향을 켜는 실험 모드</td></tr>
+    <tr><td>e2e</td><td>영상→가속 명령을 한 번에 내는 방식</td></tr>
+    <tr><td>MPC</td><td>궤적 최적화 기반 전통 종방향 제어</td></tr>
+    <tr><td>desiredAcceleration</td><td>모델이 원하는 가속도 (m/s²)</td></tr>
+    <tr><td>shouldStop</td><td>모델의 정지 유지/정지 필요 플래그</td></tr>
+    <tr><td>vCruise</td><td>크루즈 설정 속도 (표지 제한속도와 다름)</td></tr>
+    <tr><td>Cap’n Proto</td><td>메시지 스키마·직렬화 포맷</td></tr>
+    <tr><td>msgq</td><td>프로세스 간 실시간 메시지 큐</td></tr>
+    <tr><td>fingerprint</td><td>차량 식별 문자열 (CAN 특성 등)</td></tr>
+    <tr><td>decimation</td><td>qlog에 몇 개 중 하나만 넣는 다운샘플 비율</td></tr>
+    <tr><td>tizi</td><td>comma 3X 장치 타입 코드</td></tr>
+  </tbody>
+</table>
+
+<!-- final -->
+<h2>최종 체크리스트</h2>
+<table>
+  <thead>
+    <tr>
+      <th>확인 항목</th>
+      <th>결과</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Experimental Mode 사용 중인가?</td>
+      <td><span class="badge b-ok">예</span> 100% (2b, 2d)</td>
+    </tr>
+    <tr>
+      <td>~10 km 이상 주행 로그가 있는가?</td>
+      <td><span class="badge b-ok">예</span> 2b=16.8 km, 2d=20.5 km
+        (이름상 2번째는 짧은 2c)</td>
+    </tr>
+    <tr>
+      <td>신호등 “클래스” 인식 로그가 있는가?</td>
+      <td><span class="badge b-no">아니오</span></td>
+    </tr>
+    <tr>
+      <td>신호등/장면에 대한 e2e 감속·정차 행동이 있는가?</td>
+      <td><span class="badge b-ok">예</span> (암시적, 영상 미대조)</td>
+    </tr>
+    <tr>
+      <td>제한속도 숫자(지도/내비) 인식이 있는가?</td>
+      <td><span class="badge b-no">아니오</span> 메시지 0건</td>
+    </tr>
+    <tr>
+      <td>크루즈 설정 속도가 기록되었는가?</td>
+      <td><span class="badge b-ok">예</span> 105 km/h 고정</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="card">
+  <div class="callout-title">다음에 하면 좋은 일 (선택)</div>
+  <ol>
+    <li>특정 shouldStop/강한 감속 시각의 <code>fcamera.hevc</code> 프레임을 뽑아 실제 신호등 유무 대조</li>
+    <li>지도/OSM 기반 speed limit 기능이 이 브랜치에 있는지 확인하고, 켜진 상태에서 재로깅</li>
+    <li>engage 구간만 필터링해 e2e 비율·감속 통계를 다시 계산</li>
+    <li>rlog 전 구간으로 decimation 없는 고해상도 시계열 분석</li>
+  </ol>
+</div>
+
+<footer>
+  byGrok · local docs only · no upstream commit/push ·
+  source routes on device <code>/data/media/0/realdata</code> ·
+  analysis scripts under workspace <code>tmp/</code> ·
+  HTML path: <code>docs/traffic_light_speed_limit_check_byGrok.html</code>
+</footer>
+
+</div>
+</body>
+</html>
