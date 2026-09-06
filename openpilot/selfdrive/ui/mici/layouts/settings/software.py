@@ -20,6 +20,7 @@ UPDATER_TIMEOUT = 10.0  # seconds to wait for updater to respond
 
 def _split_description(desc: str) -> tuple[str, str, str, str] | None:
   # UpdaterCurrentDescription/UpdaterNewDescription format: "version / branch / commit / date"
+  # commit is a 7-12 char git hash; date is YYYY-MM-DD (older builds used "Mon DD").
   parts = [p.strip() for p in desc.split(" / ")]
   if len(parts) != 4:
     return None
@@ -53,11 +54,15 @@ class SoftwareInfoLayoutMici(Widget):
     desc = _split_description(ui_state.params.get("UpdaterCurrentDescription") or "")
     if desc is not None:
       version, branch, commit, date = desc
-      self._version_text_label.set_text(f"{version} ({date})")
-      self._branch_text_label.set_text(f"{branch} ({commit})")
+      # Hash first so it matches GitHub commit IDs (e.g. db36f0262).
+      self._version_text_label.set_text(f"{commit}  {version}")
+      self._branch_text_label.set_text(f"{branch}  {date}")
     else:
-      self._version_text_label.set_text(ui_state.params.get("Version") or "N/A")
-      self._branch_text_label.set_text(ui_state.params.get("GitBranch") or "N/A")
+      commit = (ui_state.params.get("GitCommit") or "")[:12]
+      version = ui_state.params.get("Version") or "N/A"
+      branch = ui_state.params.get("GitBranch") or "N/A"
+      self._version_text_label.set_text(f"{commit}  {version}" if commit else version)
+      self._branch_text_label.set_text(branch)
 
   def _render(self, _):
     self._version_label.set_position(self._rect.x + 20, self._rect.y - 10)

@@ -211,7 +211,7 @@ class MiciHomeLayout(Widget):
     try:
       # GitCommitDate format from get_commit_date(): '%ct %ci' e.g. "'1708012345 2024-02-15 ...'"
       unix_ts = int(commit_date_raw.strip("'").split()[0])
-      date_str = datetime.datetime.fromtimestamp(unix_ts).strftime("%b %d")
+      date_str = datetime.datetime.fromtimestamp(unix_ts, datetime.UTC).strftime("%Y-%m-%d")
     except (ValueError, IndexError, TypeError, AttributeError):
       date_str = ""
 
