@@ -175,8 +175,13 @@ class NavWidget(Widget, abc.ABC):
 
   def _layout(self):
     # Dim whatever is behind this widget, fading with position (runs after _update_state so position is correct)
-    overlay_alpha = int(200 * max(0.0, min(1.0, 1.0 - self._rect.y / self._rect.height))) if self._rect.height > 0 else 0
-    rl.draw_rectangle_rec(rl.Rectangle(0, 0, self._rect.width, self._rect.height), rl.Color(0, 0, 0, overlay_alpha))
+    showing_in = self._rect.y > 1 and self._drag_start_pos is None and not self._playing_dismiss_animation
+    if showing_in:
+      # Cover the previous screen while this page slides up (avoids a 1-frame comma/home flash).
+      rl.draw_rectangle_rec(rl.Rectangle(0, 0, gui_app.width, gui_app.height), rl.BLACK)
+    else:
+      overlay_alpha = int(200 * max(0.0, min(1.0, 1.0 - self._rect.y / self._rect.height))) if self._rect.height > 0 else 0
+      rl.draw_rectangle_rec(rl.Rectangle(0, 0, self._rect.width, self._rect.height), rl.Color(0, 0, 0, overlay_alpha))
 
     bounce_height = 20
     rl.draw_rectangle_rec(rl.Rectangle(self._rect.x, self._rect.y, self._rect.width, self._rect.height + bounce_height), rl.BLACK)

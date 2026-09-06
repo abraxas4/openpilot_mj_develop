@@ -48,12 +48,42 @@ def time_ago(date: datetime.datetime | None) -> str:
   return date.strftime("%a %b %d %Y")
 
 
+def _parse_commit_date(raw: str | None) -> str:
+  if not raw:
+    return ""
+  try:
+    tokens = raw.strip().strip("'").split()
+    if len(tokens) >= 2 and "-" in tokens[1]:
+      return tokens[1]
+    if tokens:
+      return datetime.datetime.fromtimestamp(int(tokens[0]), datetime.UTC).strftime("%Y-%m-%d")
+  except (ValueError, IndexError, TypeError):
+    pass
+  return ""
+
+
+def _running_software_text() -> str:
+  """GitHub-comparable running build. Do not use LastUpdateTime (stale after git pull)."""
+  desc = ui_state.params.get("UpdaterCurrentDescription") or ""
+  parts = [p.strip() for p in desc.split(" / ")] if desc else []
+  if len(parts) == 4:
+    version, branch, commit, date = parts
+    return f"{commit}  {version} / {branch}  {date}"
+  commit = (ui_state.params.get("GitCommit") or "")[:12]
+  version = ui_state.params.get("Version") or ""
+  branch = ui_state.params.get("GitBranch") or ""
+  date = _parse_commit_date(ui_state.params.get("GitCommitDate"))
+  left = "  ".join(x for x in (commit, version) if x)
+  right = "  ".join(x for x in (branch, date) if x)
+  return " / ".join(x for x in (left, right) if x)
+
+
 class SoftwareLayout(Widget):
   def __init__(self):
     super().__init__()
 
     self._onroad_label = ListItem(lambda: tr("Updates are only downloaded while the car is off."))
-    self._version_item = text_item(lambda: tr("Current Version"), ui_state.params.get("UpdaterCurrentDescription") or "")
+    self._version_item = text_item(lambda: tr("Current Version"), _running_software_text())
     self._download_btn = button_item(lambda: tr("Download"), lambda: tr("CHECK"), callback=self._on_download_update)
 
     # Install button is initially hidden
@@ -91,9 +121,8 @@ class SoftwareLayout(Widget):
     self._onroad_label.set_visible(ui_state.is_onroad())
 
     # Update current version and release notes
-    current_desc = ui_state.params.get("UpdaterCurrentDescription") or ""
     current_release_notes = (ui_state.params.get("UpdaterCurrentReleaseNotes") or b"").decode("utf-8", "replace")
-    self._version_item.action_item.set_text(current_desc)
+    self._version_item.action_item.set_text(_running_software_text())
     self._version_item.set_description(current_release_notes)
 
     # Update download button visibility and state
@@ -119,12 +148,16 @@ class SoftwareLayout(Widget):
         self._download_btn.action_item.set_value(tr("update available"))
         self._download_btn.action_item.set_text(tr("DOWNLOAD"))
       else:
-        last_update = ui_state.params.get("LastUpdateTime")
-        if last_update:
-          formatted = time_ago(last_update)
-          self._download_btn.action_item.set_value(tr("up to date, last checked {}").format(formatted))
+        commit = (ui_state.params.get("GitCommit") or "")[:12]
+        if commit:
+          self._download_btn.action_item.set_value(tr("up to date, {}").format(commit))
         else:
-          self._download_btn.action_item.set_value(tr("up to date, last checked never"))
+          last_update = ui_state.params.get("LastUpdateTime")
+          if last_update:
+            formatted = time_ago(last_update)
+            self._download_btn.action_item.set_value(tr("up to date, last checked {}").format(formatted))
+          else:
+            self._download_btn.action_item.set_value(tr("up to date, last checked never"))
         self._download_btn.action_item.set_text(tr("CHECK"))
 
       # If we've been waiting too long without a state change, reset state
