@@ -123,10 +123,14 @@ class TogglesLayout(Widget):
     self._toggles = {}
     self._locked_toggles = set()
     for param, (title, desc, icon, needs_restart) in self._toggle_defs.items():
+      try:
+        initial = self._params.get_bool(param)
+      except UnknownKeyName:
+        continue
       toggle = toggle_item(
         title,
         desc,
-        self._params.get_bool(param),
+        initial,
         callback=lambda state, p=param: self._toggle_callback(state, p),
         icon=icon,
       )

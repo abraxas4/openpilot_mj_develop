@@ -10,7 +10,7 @@ from opendbc.car.structs import car
 from msgq.visionipc import VisionIpcClient, VisionStreamType
 
 
-from openpilot.common.params import Params
+from openpilot.common.params import Params, UnknownKeyName
 from openpilot.common.realtime import config_realtime_process, Priority, Ratekeeper, DT_CTRL
 from openpilot.common.swaglog import cloudlog
 from openpilot.common.gps import get_gps_location_service
@@ -96,7 +96,10 @@ class SelfdriveD:
     self.is_metric = self.params.get_bool("IsMetric")
     self.is_ldw_enabled = self.params.get_bool("IsLdwEnabled")
     self.disengage_on_accelerator = self.params.get_bool("DisengageOnAccelerator")
-    self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
+    try:
+      self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
+    except UnknownKeyName:
+      self.slow_speed_engage = False
 
     car_recognized = self.CP.brand != 'mock'
 
@@ -658,7 +661,10 @@ class SelfdriveD:
       self.is_metric = self.params.get_bool("IsMetric")
       self.is_ldw_enabled = self.params.get_bool("IsLdwEnabled")
       self.disengage_on_accelerator = self.params.get_bool("DisengageOnAccelerator")
-      self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
+      try:
+        self.slow_speed_engage = self.params.get_bool("SlowSpeedEngage")
+      except UnknownKeyName:
+        self.slow_speed_engage = False
       self.experimental_mode = self.params.get_bool("ExperimentalMode")
       self.personality = self.params.get("LongitudinalPersonality", return_default=True)
       time.sleep(0.1)
