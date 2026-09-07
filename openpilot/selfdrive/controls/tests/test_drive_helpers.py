@@ -2,10 +2,11 @@ import numpy as np
 
 from openpilot.common.constants import CV
 from openpilot.selfdrive.controls.lib.drive_helpers import (
-  HIGH_SPEED_LIMIT_SCALE, LOW_SPEED_MAX_LAT_ACCEL, MAX_CURVATURE,
-  MAX_LATERAL_ACCEL_NO_ROLL, PATH_STABLE_SAMPLES, PathSteerHelper,
-  V_LIMIT_HIGH, V_LIMIT_LOW, clip_curvature, curvature_from_path_xy,
-  path_follow_weight, scheduled_lat_accel_limit, speed_blend,
+  HIGH_SPEED_LIMIT_SCALE, LOW_SPEED_MAX_CURVATURE, LOW_SPEED_MAX_LAT_ACCEL,
+  MAX_CURVATURE, MAX_LATERAL_ACCEL_NO_ROLL, PATH_STABLE_SAMPLES, PathSteerHelper,
+  V_LIMIT_HIGH, V_LIMIT_LOW, clip_curvature, curvature_from_path_turn,
+  curvature_from_path_xy, path_follow_weight, scheduled_lat_accel_limit,
+  scheduled_max_curvature, speed_blend,
 )
 
 
@@ -80,7 +81,17 @@ class TestClipCurvature:
     stock_max = MAX_LATERAL_ACCEL_NO_ROLL / (v ** 2)
     got, _ = self._wind_to(v, 1.0)
     assert got > stock_max
-    assert got <= MAX_CURVATURE + 1e-9
+    assert got <= scheduled_max_curvature(v) + 1e-9
+
+  def test_low_speed_max_curvature_above_highway_cap(self):
+    v = 8.0 * CV.KPH_TO_MS
+    got, _ = self._wind_to(v, 1.0)
+    assert got > MAX_CURVATURE
+    assert abs(got - LOW_SPEED_MAX_CURVATURE) / LOW_SPEED_MAX_CURVATURE < 0.02
+
+  def test_high_speed_max_curvature_unchanged(self):
+    v = 100.0 * CV.KPH_TO_MS
+    assert abs(scheduled_max_curvature(v) - MAX_CURVATURE) < 1e-9
 
 
 class TestPathSteer:
@@ -100,7 +111,7 @@ class TestPathSteer:
     out = action
     for _ in range(PATH_STABLE_SAMPLES):
       out = helper.blend(model, v, action, model_updated=True)
-    path_kappa = curvature_from_path_xy(xs, ys, max(8.0, v * 1.5))
+    path_kappa = curvature_from_path_turn(xs, ys, v)
     assert abs(out - path_kappa) < 1e-6
     assert abs(out) > abs(action)
 
@@ -109,9 +120,9 @@ class TestPathSteer:
     action = 0.01
     v = 15.0 * CV.KPH_TO_MS
     out = action
+    xs = np.linspace(0.0, 30.0, 33)
     for i in range(PATH_STABLE_SAMPLES):
-      xs, ys = _circle_path(8.0)
-      ys = ys + (2.5 if i % 2 == 0 else -2.5)
+      ys = np.full_like(xs, 3.0 if i % 2 == 0 else -3.0)
       out = helper.blend(_Model(xs, ys), v, action, model_updated=True)
     assert abs(out - action) < 1e-9
 
@@ -125,6 +136,18 @@ class TestPathSteer:
       xs, ys = _circle_path(8.0)
       ys = ys + 2.0 * i  # same side, growing offset
       out = helper.blend(_Model(xs, ys), v, action, model_updated=True)
+    assert abs(out) > abs(action) * 3
+
+  def test_passing_corner_same_side_follows_path(self):
+    # y grows then shrinks on one side while passing a corner — not L/R shake.
+    helper = PathSteerHelper()
+    action = 0.005
+    v = 12.0 * CV.KPH_TO_MS
+    out = action
+    offsets = [2.0, 6.0, 12.0, 20.0, 25.0, 22.0, 16.0, 10.0, 6.0, 3.0]
+    for off in offsets:
+      xs, ys = _circle_path(8.0)
+      out = helper.blend(_Model(xs, ys + off), v, action, model_updated=True)
     assert abs(out) > abs(action) * 3
 
   def test_growing_corner_mid_speed_keeps_action(self):

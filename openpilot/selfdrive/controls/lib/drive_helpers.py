@@ -7,8 +7,9 @@ from openpilot.common.realtime import DT_CTRL, DT_MDL
 MIN_SPEED = 1.0
 CONTROL_N = 17
 CAR_ROTATION_RADIUS = 0.0
-# This is a turn radius smaller than most cars can achieve
+# Highway / high-speed curvature cap. Low speed uses LOW_SPEED_MAX_CURVATURE.
 MAX_CURVATURE = 0.2
+LOW_SPEED_MAX_CURVATURE = 0.35  # ~2.9 m radius; parking-lot / tight urban
 MAX_VEL_ERR = 5.0  # m/s
 MIN_STABLE_DELAY = 0.3
 
@@ -20,15 +21,17 @@ MAX_LATERAL_ACCEL_NO_ROLL = 3.0  # m/s^2
 V_LIMIT_LOW = 30.0 * CV.KPH_TO_MS
 V_LIMIT_HIGH = 80.0 * CV.KPH_TO_MS
 HIGH_SPEED_LIMIT_SCALE = 1.20
-LOW_SPEED_MAX_LAT_ACCEL = 5.0  # m/s^2, urban 90-deg corners
-LOW_SPEED_MAX_LAT_JERK = 8.0   # m/s^3, wind into tight corners faster
-PATH_STABLE_X = 15.0           # m, UI target point used for shake check
-PATH_STABLE_STD = 0.8          # m, mid-speed only; low speed allows growing 90deg paths
+LOW_SPEED_MAX_LAT_ACCEL = 5.0  # m/s^2
+LOW_SPEED_MAX_LAT_JERK = 8.0   # m/s^3
+PATH_STABLE_X = 15.0           # m, UI point used for L/R shake check
+PATH_STABLE_STD = 0.8          # m, mid-speed only
 PATH_STABLE_SAMPLES = 10       # model frames (~0.5 s at 20 Hz)
-PATH_OSCILLATION_DY = 0.3      # m, ignore smaller y steps when counting L/R flips
-PATH_OSCILLATION_FLIPS = 3     # significant sign changes => shaking, keep action
-PATH_CURV_X_MIN = 8.0          # m
-PATH_CURV_X_MAX = 18.0         # m
+PATH_OSCILLATION_Y = 1.0       # m, ignore |y| below this when counting L/R
+PATH_OSCILLATION_FLIPS = 2     # y sign groups L-R-L => shaking, keep action
+PATH_ONE_SIDED_Y = 2.0         # m, mean |y| of a real corner (not a shake)
+PATH_LOOKAHEAD_S = 2.5         # s, path distance to steer toward at low speed
+PATH_CURV_X_MIN = 4.0          # m
+PATH_CURV_X_MAX = 16.0         # m
 
 
 def clamp(val, min_val, max_val):
@@ -55,9 +58,16 @@ def scheduled_lat_jerk_limit(v_ego: float) -> float:
   high = MAX_LATERAL_JERK * HIGH_SPEED_LIMIT_SCALE
   return float(LOW_SPEED_MAX_LAT_JERK * (1.0 - t) + high * t)
 
+def scheduled_max_curvature(v_ego: float) -> float:
+  t = speed_blend(v_ego)
+  return float(LOW_SPEED_MAX_CURVATURE * (1.0 - t) + MAX_CURVATURE * t)
+
 def path_follow_weight(v_ego: float) -> float:
   """Fully follow a stable UI path at/under 30 km/h, none at/above 80 km/h."""
   return 1.0 - speed_blend(v_ego)
+
+def path_lookahead_x(v_ego: float) -> float:
+  return float(np.clip(v_ego * PATH_LOOKAHEAD_S, PATH_CURV_X_MIN, PATH_CURV_X_MAX))
 
 def curvature_from_path_xy(xs, ys, lookahead_x: float) -> float | None:
   """Constant-curvature arc through a path point at lookahead_x. Same geometry the UI draws."""
@@ -75,11 +85,26 @@ def curvature_from_path_xy(xs, ys, lookahead_x: float) -> float | None:
   return float(2.0 * y / denom)
 
 
+def curvature_from_path_turn(xs, ys, v_ego: float) -> float | None:
+  """Curvature of the UI path. Near and far looks; same-sign takes the tighter one."""
+  far_x = path_lookahead_x(v_ego)
+  near_x = float(np.clip(v_ego * 1.5, PATH_CURV_X_MIN, far_x))
+  k_near = curvature_from_path_xy(xs, ys, near_x)
+  k_far = curvature_from_path_xy(xs, ys, far_x)
+  if k_near is None:
+    return k_far
+  if k_far is None:
+    return k_near
+  if k_near * k_far >= 0.0:
+    return k_far if abs(k_far) >= abs(k_near) else k_near
+  return k_near
+
+
 class PathSteerHelper:
   """Blend steering toward the UI path at low speed.
 
-  A 90deg corner growing in the camera is not 'shake': y at 15 m increases
-  smoothly. Reject only left/right oscillation. The std cap is for mid-speed.
+  Reject only left/right oscillation of the path. A large turn that grows
+  then shrinks as it is passed is not shake. Mid-speed still uses the std cap.
   """
 
   def __init__(self):
@@ -92,19 +117,24 @@ class PathSteerHelper:
     return len(self._y_hist) >= PATH_STABLE_SAMPLES
 
   def _oscillating(self) -> bool:
+    """True if the 15 m point flips left/right. Grow-then-shrink on one side is not."""
     if not self._ready():
       return True
-    dys = np.diff(np.asarray(self._y_hist, dtype=float))
     prev = 0
     flips = 0
-    for d in dys:
-      if abs(d) <= PATH_OSCILLATION_DY:
+    for y in self._y_hist:
+      if abs(y) <= PATH_OSCILLATION_Y:
         continue
-      si = 1 if d > 0 else -1
+      si = 1 if y > 0 else -1
       if prev != 0 and si != prev:
         flips += 1
       prev = si
     return flips >= PATH_OSCILLATION_FLIPS
+
+  def _one_sided_turn(self) -> bool:
+    if not self._ready():
+      return False
+    return abs(float(np.mean(self._y_hist))) >= PATH_ONE_SIDED_Y
 
   def _tight_stable(self) -> bool:
     if not self._ready():
@@ -126,13 +156,14 @@ class PathSteerHelper:
   def blend(self, model_v2, v_ego: float, action_curvature: float, model_updated: bool) -> float:
     self.update(model_v2, model_updated)
     weight = path_follow_weight(v_ego)
-    if weight <= 0.0 or not self._ready() or self._oscillating():
+    if weight <= 0.0 or not self._ready():
+      return float(action_curvature)
+    if self._oscillating() and not self._one_sided_turn():
       return float(action_curvature)
     # Below 30 km/h, a growing corner is allowed. Mid-speed still needs small std.
     if weight < 1.0 and not self._tight_stable():
       return float(action_curvature)
-    lookahead_x = float(np.clip(v_ego * 1.5, PATH_CURV_X_MIN, PATH_CURV_X_MAX))
-    path_curv = curvature_from_path_xy(model_v2.position.x, model_v2.position.y, lookahead_x)
+    path_curv = curvature_from_path_turn(model_v2.position.x, model_v2.position.y, v_ego)
     if path_curv is None:
       return float(action_curvature)
     return float(weight * path_curv + (1.0 - weight) * action_curvature)
@@ -153,7 +184,8 @@ def clip_curvature(v_ego, prev_curvature, new_curvature, roll) -> tuple[float, b
   min_lat_accel = -scheduled_lat_accel_limit(v_ego) + roll_compensation
   new_curvature, limited_accel = clamp(new_curvature, min_lat_accel / v_clip ** 2, max_lat_accel / v_clip ** 2)
 
-  new_curvature, limited_max_curv = clamp(new_curvature, -MAX_CURVATURE, MAX_CURVATURE)
+  max_curv = scheduled_max_curvature(v_ego)
+  new_curvature, limited_max_curv = clamp(new_curvature, -max_curv, max_curv)
   return float(new_curvature), limited_accel or limited_max_curv
 
 
