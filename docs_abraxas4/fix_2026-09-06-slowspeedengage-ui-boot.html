@@ -31,6 +31,7 @@
       padding:14px;overflow-x:auto;color:var(--muted);margin:10px 0;line-height:1.6;}
   pre .a{color:var(--accent);} pre .g{color:var(--green);}
   pre .r{color:var(--red);}   pre .o{color:var(--orange);}
+  pre .cmt{color:#6e7681;font-style:italic;}
   .badge{display:inline-block;font-size:0.68rem;font-weight:700;padding:2px 8px;
           border-radius:10px;text-transform:uppercase;margin-right:4px;vertical-align:middle;}
   .b-symptom{background:rgba(248,81,73,0.12);color:var(--red);}
@@ -114,7 +115,9 @@
   <ul>
     <li><strong>문제:</strong> 3X 부팅 후 홈 화면이 안 나옴. SSH는 됨.</li>
     <li><strong>원인:</strong> UI 토글 <code>SlowSpeedEngage</code>가 <code>params_keys.h</code>에 없음 → <code>UnknownKeyName</code></li>
-    <li><strong>결과:</strong> 키 등록 + 모르는 토글은 건너뛰기. 화면 복구 확인. 커밋 <code>6fe1bea50</code></li>
+    <li><strong>결과:</strong> 키 등록 + 모르는 토글은 건너뛰기. 화면 복구. 커밋 <code>6fe1bea50</code></li>
+    <li><strong>후속:</strong> Toggles를 열면 생략한 키를 다시 조회해 KeyError. 만든 토글만 새로고침. 커밋 <code>5be1e1b06</code></li>
+    <li><strong>관련:</strong> 소프트웨어 화면 SHA / live git HEAD — <a href="fix_2026-09-07-software-version-git-sha.html">3X 소프트웨어 버전 SHA</a></li>
   </ul>
 </div>
 
@@ -124,6 +127,7 @@
     <li><a href="#find">어떻게 찾았나</a></li>
     <li><a href="#why">왜 키가 없었나</a></li>
     <li><a href="#fix">고친 것</a></li>
+    <li><a href="#followup">후속 — Toggles KeyError</a></li>
     <li><a href="#prebuilt">prebuilt / 다음에 볼 것</a></li>
     <li><a href="#glossary">용어</a></li>
   </ol>
@@ -147,6 +151,10 @@ manager가 다시 띄우기를 반복합니다. 사용자는 “부팅이 안 �
   <div class="tl-item ok">
     <div class="tl-title">수정 후 화면 복구</div>
     <div class="tl-body"><code>openpilot.selfdrive.ui.ui</code> 유지. 커밋 <code>6fe1bea50</code></div>
+  </div>
+  <div class="tl-item bad">
+    <div class="tl-title">Toggles를 열면 다시 홈 스피너</div>
+    <div class="tl-body">건너뛴 <code>SlowSpeedEngage</code>를 새로고침에서 다시 조회 → KeyError. 커밋 <code>5be1e1b06</code>로 수정.</div>
   </div>
 </div>
 
@@ -240,6 +248,47 @@ ui.py
   </p>
 </div>
 
+<h2 id="followup"><span class="badge b-fix">후속</span> Toggles를 열면 KeyError — 커밋 5be1e1b06</h2>
+<p>
+첫 수정은 <code>__init__</code>에서 모르는 키를 <code>continue</code> 해서 화면이 뜨게 했습니다.
+그런데 Toggles 화면을 열 때 <code>_update_toggles</code>가
+<strong>정의 목록 전체</strong>를 다시 돌며 <code>self._toggles[param]</code>에 접근합니다.
+건너뛴 <code>SlowSpeedEngage</code>는 dict에 없으므로 KeyError → UI가 죽고 홈 스피너로 돌아갑니다.
+</p>
+
+<pre>
+TogglesLayout.__init__
+  for param in _toggle_defs:
+    try: get_bool(param)
+    except UnknownKeyName: <span class="g">continue</span>   <span class="cmt"># SlowSpeedEngage 생략</span>
+
+show_event → _update_toggles
+  for param in _toggle_defs:           <span class="r"># 생략한 키까지 다시 순회</span>
+    self._toggles[param].set_state(...)  <span class="r">← KeyError</span>
+</pre>
+
+<table>
+  <tr><th>파일</th><th>내용</th></tr>
+  <tr>
+    <td><code>openpilot/selfdrive/ui/layouts/settings/toggles.py</code></td>
+    <td>
+      새로고침은 <code>self._toggles.items()</code>만 돈다. 실제로 만든 토글만.
+      <code>LongitudinalPersonality</code>처럼 defs에 없는 항목은 건너뜀.
+    </td>
+  </tr>
+</table>
+
+<div class="card">
+  <p><strong>같은 날 관련 UI</strong></p>
+  <p>
+  화면이 뜬 뒤 소프트웨어 페이지가 예전 날짜(LastUpdateTime)를 보여
+  <code>git pull</code> 여부를 알 수 없었습니다.
+  Current Version / Fork Version을 live git HEAD(12자 SHA)로 바꿨고,
+  설정 슬라이드 때 홈 화면이 한 프레임 비치는 것도 막았습니다.
+  기록: <a href="fix_2026-09-07-software-version-git-sha.html">3X 소프트웨어 버전 SHA</a>
+  </p>
+</div>
+
 <h2 id="prebuilt"><span class="badge b-warn">참고</span> 기기에 남은 prebuilt</h2>
 <p>
 복구 중에 전체 scons가 tinygrad device probe에서 SIGKILL(메모리)로 막혀,
@@ -278,8 +327,9 @@ pgrep -a selfdrive.ui.ui</pre>
 </dl>
 
 <footer>
-  2026-09-06 &middot;
-  abraxas4/openpilot_mj_develop <code>main</code> <code>6fe1bea50</code> &middot;
+  2026-09-06 / 후속 2026-09-07 &middot;
+  abraxas4/openpilot_mj_develop <code>main</code>
+  <code>6fe1bea50</code> · <code>5be1e1b06</code> &middot;
   7월 AOL unavailable 문서와 별개 사건
 </footer>
 

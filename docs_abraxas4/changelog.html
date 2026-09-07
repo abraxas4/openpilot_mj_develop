@@ -89,7 +89,7 @@
 
 <h1>openpilot_mj_develop</h1>
 <p class="subtitle">
-  Branch <code>frogpilot_port</code> &middot;
+  Branch <code>main</code> &middot;
   Fork <code>abraxas4/openpilot_mj_develop</code> &middot;
   Hyundai Azera HEV 6th Gen &middot; comma 3x
 </p>
@@ -194,7 +194,119 @@
 </div>
 
 <!-- ============================================ -->
-<!-- 3. Onroad HUD -->
+<!-- 3. Lateral path / 90deg -->
+<!-- ============================================ -->
+<div class="section">
+  <h2>저속 90도 경로 조향</h2>
+  <p>
+    UI가 그리는 코너를 저속에서 휠이 따라가게 함.
+    상세: <a href="90deg_corner_steering_limits.html">90도 외길에서 스티어링이 덜 도는 이유</a>
+  </p>
+
+  <div class="feature">
+    <h3><span class="tag tag-ctrl">control</span> PathSteerHelper — 30 km/h 이하 UI 경로 추종</h3>
+    <div class="detail">
+      모델 <code>action</code> 곡률은 짧은 구간 명령이라 90도 접근을 놓친다.
+      30 km/h 이하에서 화면과 같은 <code>modelV2.position</code> 곡률로 조향을 연다.
+      <ul>
+        <li>15 m 앞 y가 같은 쪽으로 커지는 것은 코너 접근 — 흔들림으로 보지 않음</li>
+        <li>좌우로 진동할 때만 action으로 되돌림</li>
+        <li>중간 속도는 표준편차 0.8 m 게이트 유지</li>
+        <li>80 km/h 이상: 허용 횡가속도·횡저크 스톡 대비 +20% (3.0 → 3.6 m/s²)</li>
+        <li>30~80 km/h: 경로 비중과 상한을 선형으로 이음</li>
+      </ul>
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/controls/lib/drive_helpers.py</span>
+      <span class="file">selfdrive/controls/controlsd.py</span>
+      <span class="file">selfdrive/controls/tests/test_drive_helpers.py</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 4. Slow Speed Engage -->
+<!-- ============================================ -->
+<div class="section">
+  <h2>Slow Speed Engage</h2>
+  <p>
+    최저 속도 제한을 우회해 저속 engage.
+    부팅 수정 로그: <a href="fix_2026-09-06-slowspeedengage-ui-boot.html">3X 화면 안 뜸 — SlowSpeedEngage</a>
+  </p>
+
+  <div class="feature">
+    <h3><span class="tag tag-ctrl">control</span> 저속 engage 토글</h3>
+    <div class="detail">
+      설정 → Toggles → Slow Speed Engage.
+      켜면 selfdrived가 일반 최저 속도 블록을 건너뛴다.
+      키는 <code>params_keys.h</code>에 등록되어 있어야 한다. 없으면 3X UI가 부팅 루프에 빠진다.
+    </div>
+    <div class="files">
+      <span class="file">common/params_keys.h</span>
+      <span class="file">selfdrive/selfdrived/selfdrived.py</span>
+      <span class="file">selfdrive/ui/layouts/settings/toggles.py</span>
+    </div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ui">UI</span> 미등록 토글은 건너뛰기 + 새로고침 범위</h3>
+    <div class="detail">
+      <ul>
+        <li>생성 시 키를 모르면 그 토글만 생략 (<code>UnknownKeyName</code>으로 화면이 검게 되지 않게)</li>
+        <li>Toggles 화면을 열 때는 <strong>실제로 만든 토글만</strong> 새로고침. 생략된 키를 다시 조회하면 KeyError로 홈 스피너로 떨어짐</li>
+      </ul>
+    </div>
+    <div class="files"><span class="file">selfdrive/ui/layouts/settings/toggles.py</span></div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 5. Settings / Software -->
+<!-- ============================================ -->
+<div class="section">
+  <h2>설정 — Software 버전</h2>
+  <p>
+    comma 3X 소프트웨어 화면이 GitHub SHA와 맞게 보이게.
+    로그: <a href="fix_2026-09-07-software-version-git-sha.html">3X 소프트웨어 버전 SHA</a>
+  </p>
+
+  <div class="feature">
+    <h3><span class="tag tag-ui">UI</span> Current Version = 살아 있는 git HEAD</h3>
+    <div class="detail">
+      Params <code>GitCommit</code>은 manager 시작 때 한 번만 쓰인다. <code>git pull</code> 후에도 예전 SHA가 남았다.
+      Software 화면은 checkout에서 <code>git rev-parse HEAD</code>를 읽어 Current Version / Download / Fork Version에 쓴다.
+      <ul>
+        <li>표시: 12자 SHA · Version · branch · 커밋 날짜</li>
+        <li>git 실패 시에만 Params로 fallback</li>
+        <li>Download의 “up to date”도 LastUpdateTime(예: Feb 15) 대신 HEAD SHA</li>
+      </ul>
+    </div>
+    <div class="files">
+      <span class="file">selfdrive/ui/layouts/settings/software.py</span>
+      <span class="file">selfdrive/ui/mici/layouts/settings/software.py</span>
+    </div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ui">UI</span> Fork Version 행</h3>
+    <div class="detail">
+      Target Branch는 공식 updater 브랜치 선택으로 둔다.
+      그 아래에 Fork Version: 12자 SHA + 날짜, 설명에 <code>GitRemote (branch)</code>.
+    </div>
+    <div class="files"><span class="file">selfdrive/ui/layouts/settings/software.py</span></div>
+  </div>
+
+  <div class="feature">
+    <h3><span class="tag tag-ui">UI</span> 설정 슬라이드 플래시 제거</h3>
+    <div class="detail">
+      설정 페이지가 올라오는 1프레임 동안 홈/comma 로고가 비치지 않게, 슬라이드 중 이전 화면을 검정으로 덮음.
+    </div>
+    <div class="files"><span class="file">system/ui/widgets/nav_widget.py</span></div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 6. Onroad HUD -->
 <!-- ============================================ -->
 <div class="section">
   <h2>Onroad HUD</h2>
@@ -285,7 +397,7 @@
 </div>
 
 <!-- ============================================ -->
-<!-- 4. Tools -->
+<!-- 7. Tools -->
 <!-- ============================================ -->
 <div class="section">
   <h2>Analysis Tools</h2>
@@ -438,7 +550,7 @@
 </div>
 
 <footer>
-  openpilot_mj_develop &middot; branch <code>frogpilot_port</code> &middot; abraxas4
+  openpilot_mj_develop &middot; branch <code>main</code> &middot; abraxas4
 </footer>
 
 </div>

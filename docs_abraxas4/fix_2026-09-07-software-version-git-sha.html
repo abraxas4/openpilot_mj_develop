@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fix: 3X 소프트웨어 화면이 git pull SHA를 안 보여줌</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+        --accent:#58a6ff;--green:#3fb950;--red:#f85149;--orange:#d29922;--purple:#bc8cff;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.85;padding:48px 20px;}
+  .container{max-width:960px;margin:0 auto;}
+  h1{font-size:1.65rem;margin-bottom:8px;line-height:1.35;
+     background:linear-gradient(90deg,var(--accent),var(--purple));
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .subtitle{color:var(--muted);margin-bottom:28px;font-size:0.88rem;}
+  .subtitle code{background:var(--card);padding:2px 8px;border-radius:4px;
+    font-size:0.8rem;border:1px solid var(--border);}
+  h2{font-size:1.2rem;margin:48px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  h3{font-size:1rem;color:var(--accent);margin:22px 0 10px;}
+  p{color:var(--muted);font-size:0.9rem;margin-bottom:12px;}
+  strong{color:var(--text);}
+  ul,ol{margin:8px 0 14px 22px;color:var(--muted);font-size:0.9rem;}
+  li{margin-bottom:8px;}
+  a{color:var(--accent);}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;
+        padding:18px 22px;margin:14px 0;}
+  pre{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.76rem;
+      background:#010409;border:1px solid var(--border);border-radius:6px;
+      padding:14px;overflow-x:auto;color:var(--muted);margin:10px 0;line-height:1.6;}
+  pre .a{color:var(--accent);} pre .g{color:var(--green);}
+  pre .r{color:var(--red);}   pre .o{color:var(--orange);}
+  pre .cmt{color:#6e7681;font-style:italic;}
+  .badge{display:inline-block;font-size:0.68rem;font-weight:700;padding:2px 8px;
+          border-radius:10px;text-transform:uppercase;margin-right:4px;vertical-align:middle;}
+  .b-symptom{background:rgba(248,81,73,0.12);color:var(--red);}
+  .b-root{background:rgba(188,140,255,0.15);color:var(--purple);}
+  .b-fix{background:rgba(63,185,80,0.15);color:var(--green);}
+  .b-warn{background:rgba(210,153,34,0.15);color:var(--orange);}
+  .b-goal{background:rgba(88,166,255,0.18);color:var(--accent);}
+  .timeline{border-left:2px solid var(--border);margin:14px 0;padding-left:24px;}
+  .tl-item{position:relative;margin-bottom:22px;}
+  .tl-item::before{content:'';position:absolute;left:-29px;top:7px;
+    width:10px;height:10px;border-radius:50%;background:var(--accent);}
+  .tl-item.ok::before{background:var(--green);}
+  .tl-item.bad::before{background:var(--red);}
+  .tl-item.warn::before{background:var(--orange);}
+  .tl-title{font-weight:600;font-size:0.92rem;margin-bottom:6px;color:var(--text);}
+  .tl-body{color:var(--muted);font-size:0.88rem;}
+  .note{background:#0d1f0d;border:1px solid #2ea043;border-left:4px solid #3fb950;
+        border-radius:0 8px 8px 0;padding:16px 20px;margin:16px 0;}
+  .note-title{font-size:0.78rem;font-weight:700;color:#3fb950;
+               text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;}
+  .note p,.note li{color:#a5d6a7;font-size:0.86rem;margin-bottom:6px;}
+  .warnbox{background:#1c1508;border:1px solid #9e6a03;border-left:4px solid #d29922;
+           border-radius:0 8px 8px 0;padding:16px 20px;margin:16px 0;}
+  .warnbox .note-title{color:#d29922;}
+  .warnbox p,.warnbox li{color:#e3b341;font-size:0.86rem;}
+  .purposebox{background:#0d1423;border:2px solid var(--accent);
+               border-radius:10px;padding:22px 26px;margin:0 0 28px;}
+  .purposebox h2{margin:0 0 12px;border:none;padding:0;font-size:1.15rem;color:var(--accent);}
+  .purposebox p{color:#b6c9e0;font-size:0.92rem;}
+  .purposebox li{color:#b6c9e0;font-size:0.9rem;}
+  .toc{background:var(--card);border:1px solid var(--border);border-radius:8px;
+       padding:16px 22px;margin:20px 0 32px;}
+  .toc a{color:var(--accent);text-decoration:none;font-size:0.85rem;}
+  .toc ol{margin:0 0 0 18px;}
+  .toc li{margin-bottom:5px;}
+  table{width:100%;border-collapse:collapse;font-size:0.85rem;margin:12px 0;}
+  td,th{padding:10px 12px;border:1px solid var(--border);vertical-align:top;}
+  th{background:var(--card);color:var(--muted);text-align:left;}
+  code{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.84em;
+       background:rgba(110,118,129,0.15);padding:1px 5px;border-radius:3px;}
+  footer{margin-top:60px;padding-top:16px;border-top:1px solid var(--border);
+         color:var(--muted);font-size:0.78rem;text-align:center;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="purposebox">
+  <h2><span class="badge b-goal">먼저 읽기</span> 이 문서는 무엇인가?</h2>
+  <p><strong>한 줄 목적</strong><br>
+  2026-09-07에 comma 3X 설정 → Software가 GitHub 커밋과 다른 값을 보여
+  <code>git pull</code>이 됐는지 알 수 없었던 기록입니다.</p>
+  <p>
+  <a href="fix_2026-09-06-slowspeedengage-ui-boot.html">전날 SlowSpeedEngage 부팅 수정</a>과
+  같은 기기 세션입니다. 화면은 뜬 뒤의 문제입니다.
+  </p>
+  <ul>
+    <li><strong>문제:</strong> Current Version / Download가 Feb 15 같은 예전 날짜. SHA가 안 보임.</li>
+    <li><strong>원인 1:</strong> tizi Software가 <code>LastUpdateTime</code>을 씀 (updater가 검사한 시각, HEAD 아님).</li>
+    <li><strong>원인 2:</strong> Params <code>GitCommit</code>은 manager 시작 때 한 번만 기록. pull 후에도 예전 SHA.</li>
+    <li><strong>결과:</strong> checkout에서 <code>git rev-parse HEAD</code>를 읽어 12자 SHA를 표시. Fork Version 행 추가.</li>
+  </ul>
+</div>
+
+<div class="toc">
+  <ol>
+    <li><a href="#symptom">증상</a></li>
+    <li><a href="#why">왜 안 맞았나</a></li>
+    <li><a href="#fix">고친 것</a></li>
+    <li><a href="#nav">설정 슬라이드 플래시</a></li>
+    <li><a href="#commits">커밋</a></li>
+  </ol>
+</div>
+
+<h2 id="symptom"><span class="badge b-symptom">증상</span> git pull 했는데 버전이 그대로</h2>
+<p>
+기기는 <code>main</code>이고 SSH로 HEAD는 GitHub와 같습니다.
+설정 → Software만 보면 예전 빌드처럼 보입니다.
+</p>
+
+<div class="timeline">
+  <div class="tl-item ok">
+    <div class="tl-title">SSH / git log</div>
+    <div class="tl-body">HEAD가 GitHub <code>main</code>과 같음 (예: <code>db36f0262</code> … <code>9c72d9f32</code>).</div>
+  </div>
+  <div class="tl-item bad">
+    <div class="tl-title">3X Software 화면</div>
+    <div class="tl-body">Current Version이 커밋 해시가 아니거나, Download가 “up to date, last checked Feb 15”.</div>
+  </div>
+  <div class="tl-item warn">
+    <div class="tl-title">manager를 안 재시작하면 계속 예전 SHA</div>
+    <div class="tl-body">Params <code>GitCommit</code>은 부팅(manager 시작) 때만 갱신.</div>
+  </div>
+</div>
+
+<h2 id="why"><span class="badge b-root">원인</span> 화면에 쓰는 값이 HEAD가 아님</h2>
+
+<div class="card">
+  <p><strong>LastUpdateTime</strong></p>
+  <p>
+  tizi Software의 Download 줄은 updater가 마지막으로 검사한 시각입니다.
+  기기 시계/updater 상태가 오래되면 Feb 15처럼 보입니다. 지금 checkout SHA가 아닙니다.
+  </p>
+</div>
+
+<div class="card">
+  <p><strong>Params GitCommit</strong></p>
+  <p>
+  <code>manager.py</code>가 시작할 때 <code>build_metadata.openpilot.git_commit</code>을 넣습니다.
+  UI는 그 Params를 읽습니다. <code>git pull</code>만 하면 파일은 새 HEAD인데 Params는 예전 값입니다.
+  </p>
+</div>
+
+<pre>
+manager 시작
+  params.put("GitCommit", build_metadata.git_commit)
+  params.put("GitCommitDate", ...)
+
+git pull          <span class="cmt"># 디스크 HEAD만 바뀜</span>
+Software 화면
+  params.get("GitCommit")     <span class="r">← 여전히 부팅 때 SHA</span>
+  params.get("LastUpdateTime") <span class="r">← updater 검사 시각</span>
+</pre>
+
+<h2 id="fix"><span class="badge b-fix">수정</span> live git HEAD</h2>
+<p>
+tizi Software는 checkout에서 git을 직접 읽습니다. manager 재시작 없이 pull이 보입니다.
+</p>
+
+<pre>
+<span class="cmt"># openpilot/selfdrive/ui/layouts/settings/software.py</span>
+def _live_git():
+    git -C BASEDIR rev-parse HEAD          <span class="g"># 12자</span>
+    git show -s --format=%cs HEAD          <span class="g"># YYYY-MM-DD</span>
+    git rev-parse --abbrev-ref HEAD
+    git config --get remote.origin.url
+    <span class="cmt"># 실패 시에만 Params GitCommit / GitBranch / GitRemote</span>
+</pre>
+
+<table>
+  <tr><th>화면 항목</th><th>내용</th></tr>
+  <tr>
+    <td>Current Version</td>
+    <td><code>12자SHA  Version / branch  YYYY-MM-DD</code>. GitHub 커밋 ID와 비교 가능.</td>
+  </tr>
+  <tr>
+    <td>Download (up to date)</td>
+    <td><code>up to date, {SHA}</code>. LastUpdateTime은 git이 실패할 때만.</td>
+  </tr>
+  <tr>
+    <td>Target Branch</td>
+    <td>공식 updater가 받을 브랜치. 그대로 둠.</td>
+  </tr>
+  <tr>
+    <td>Fork Version</td>
+    <td>12자 SHA + 날짜. 설명: <code>github.com/abraxas4/openpilot_mj_develop (main)</code></td>
+  </tr>
+</table>
+
+<div class="note">
+  <div class="note-title">mici (소형 UI) 는 Params를 씀</div>
+  <p>
+  comma 3X tizi 경로는 live git입니다. mici Software/홈 버전 줄은 아직
+  <code>UpdaterCurrentDescription</code> / <code>GitCommit</code> 입니다.
+  3X에서 보는 설정 화면이 tizi 쪽입니다.
+  </p>
+</div>
+
+<h2 id="nav"><span class="badge b-fix">같이 고친 것</span> 설정 슬라이드 플래시</h2>
+<p>
+설정이 아래에서 올라올 때 1프레임 동안 홈/comma 로고가 비쳤습니다.
+<code>NavWidget</code>이 슬라이드 인 동안 이전 화면을 검정으로 덮습니다.
+</p>
+<p>파일: <code>openpilot/system/ui/widgets/nav_widget.py</code></p>
+
+<h2 id="commits"><span class="badge b-warn">커밋</span></h2>
+<table>
+  <tr><th>커밋</th><th>내용</th></tr>
+  <tr>
+    <td><code>95e68bce4</code></td>
+    <td>mici Software/홈에 git 해시 표시</td>
+  </tr>
+  <tr>
+    <td><code>546d97603</code></td>
+    <td>tizi Current Version/Download에 12자 GitCommit. 슬라이드 플래시 제거</td>
+  </tr>
+  <tr>
+    <td><code>5be1e1b06</code></td>
+    <td>Fork Version 행. Toggles KeyError는
+      <a href="fix_2026-09-06-slowspeedengage-ui-boot.html">SlowSpeedEngage 문서</a></td>
+  </tr>
+  <tr>
+    <td><code>9c72d9f32</code></td>
+    <td>Params 대신 live <code>git rev-parse HEAD</code>. pull 직후 반영</td>
+  </tr>
+</table>
+
+<div class="warnbox">
+  <div class="note-title">기기에서 확인</div>
+  <p>설정 → Software → Current Version / Fork Version의 12자가
+  <code>git -C /data/openpilot rev-parse --short=12 HEAD</code> 및 GitHub
+  <code>abraxas4/openpilot_mj_develop</code> <code>main</code>과 같으면 됩니다.</p>
+</div>
+
+<footer>
+  2026-09-07 &middot;
+  abraxas4/openpilot_mj_develop <code>main</code>
+  <code>95e68bce4</code> · <code>546d97603</code> · <code>5be1e1b06</code> · <code>9c72d9f32</code>
+</footer>
+
+</div>
+</body>
+</html>
