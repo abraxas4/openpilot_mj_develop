@@ -29,8 +29,8 @@ PATH_STABLE_SAMPLES = 10       # model frames (~0.5 s at 20 Hz)
 PATH_OSCILLATION_Y = 1.0       # m, ignore |y| below this when counting L/R
 PATH_OSCILLATION_FLIPS = 2     # y sign groups L-R-L => shaking, keep action
 PATH_ONE_SIDED_Y = 2.0         # m, mean |y| of a real corner (not a shake)
-PATH_LOOKAHEAD_S = 2.5         # s, path distance to steer toward at low speed
-PATH_CURV_X_MIN = 4.0          # m
+PATH_LOOKAHEAD_S = 2.5         # s, timed lookahead used above 30 km/h
+PATH_CURV_X_MIN = 4.0          # m, near look while already in the corner
 PATH_CURV_X_MAX = 16.0         # m
 
 
@@ -67,7 +67,14 @@ def path_follow_weight(v_ego: float) -> float:
   return 1.0 - speed_blend(v_ego)
 
 def path_lookahead_x(v_ego: float) -> float:
-  return float(np.clip(v_ego * PATH_LOOKAHEAD_S, PATH_CURV_X_MIN, PATH_CURV_X_MAX))
+  """Distance along the UI path to steer toward.
+
+  At/under 30 km/h this is PATH_STABLE_X (15 m), inside the onroad draw
+  range (10–100 m). Above 30 km/h, blend toward the timed lookahead.
+  """
+  timed = float(np.clip(v_ego * PATH_LOOKAHEAD_S, PATH_CURV_X_MIN, PATH_CURV_X_MAX))
+  w = path_follow_weight(v_ego)
+  return float(w * PATH_STABLE_X + (1.0 - w) * timed)
 
 def curvature_from_path_xy(xs, ys, lookahead_x: float) -> float | None:
   """Constant-curvature arc through a path point at lookahead_x. Same geometry the UI draws."""
@@ -156,12 +163,14 @@ class PathSteerHelper:
   def blend(self, model_v2, v_ego: float, action_curvature: float, model_updated: bool) -> float:
     self.update(model_v2, model_updated)
     weight = path_follow_weight(v_ego)
-    if weight <= 0.0 or not self._ready():
+    if weight <= 0.0:
       return float(action_curvature)
-    if self._oscillating() and not self._one_sided_turn():
+    # Mid/high speed still needs a filled history and a tight path.
+    if weight < 1.0 and (not self._ready() or not self._tight_stable()):
       return float(action_curvature)
-    # Below 30 km/h, a growing corner is allowed. Mid-speed still needs small std.
-    if weight < 1.0 and not self._tight_stable():
+    # L/R shake only once we have enough samples. At low speed a visible UI
+    # corner is followed from the first frame so steering is not delayed 0.5 s.
+    if self._ready() and self._oscillating() and not self._one_sided_turn():
       return float(action_curvature)
     path_curv = curvature_from_path_turn(model_v2.position.x, model_v2.position.y, v_ego)
     if path_curv is None:
