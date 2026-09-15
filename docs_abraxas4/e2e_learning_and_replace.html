@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>e2e 학습과 model replace</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+        --accent:#58a6ff;--green:#3fb950;--red:#f85149;--orange:#d29922;--purple:#bc8cff;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.75;padding:48px 20px;}
+  .container{max-width:880px;margin:0 auto;}
+  h1{font-size:1.7rem;margin-bottom:6px;
+     background:linear-gradient(90deg,var(--accent),var(--purple));
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .subtitle{color:var(--muted);margin-bottom:28px;font-size:0.88rem;}
+  .subtitle code{background:var(--card);padding:2px 8px;border-radius:4px;
+    font-size:0.8rem;border:1px solid var(--border);}
+  h2{font-size:1.12rem;margin:40px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  h3{font-size:0.95rem;color:var(--accent);margin:18px 0 8px;}
+  p{color:var(--muted);font-size:0.88rem;margin-bottom:10px;}
+  ul,ol{margin:8px 0 14px 22px;color:var(--muted);font-size:0.88rem;}
+  li{margin-bottom:6px;}
+  strong{color:var(--text);}
+  code{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.82em;
+       background:rgba(88,166,255,0.08);padding:1px 5px;border-radius:3px;}
+  a{color:var(--accent);}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;
+        padding:16px 20px;margin:14px 0;}
+  pre{font-family:'SFMono-Regular',Consolas,monospace;font-size:0.76rem;
+      background:#010409;border:1px solid var(--border);border-radius:6px;
+      padding:14px 16px;overflow-x:auto;color:var(--muted);margin:12px 0;line-height:1.55;}
+  .toc{background:var(--card);border:1px solid var(--border);border-radius:8px;
+       padding:16px 22px;margin:8px 0 28px;}
+  .toc a{text-decoration:none;font-size:0.85rem;}
+  .toc a:hover{text-decoration:underline;}
+  .toc ol{margin:6px 0 0 18px;}
+  table{width:100%;border-collapse:collapse;font-size:0.83rem;margin:12px 0;}
+  td,th{padding:8px 12px;border:1px solid var(--border);vertical-align:top;text-align:left;}
+  th{background:var(--card);color:var(--muted);}
+  tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+  .note{background:#0d1f0d;border:1px solid #2ea043;border-left:4px solid #3fb950;
+        border-radius:0 8px 8px 0;padding:14px 18px;margin:14px 0;}
+  .note-title{font-size:0.75rem;font-weight:700;color:#3fb950;
+               text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;}
+  .note p,.note li{color:#a5d6a7;font-size:0.84rem;margin-bottom:4px;}
+  .warn{background:#241c0d;border:1px solid #9e6a03;border-left:4px solid var(--orange);
+        border-radius:0 8px 8px 0;padding:14px 18px;margin:14px 0;}
+  .warn-title{font-size:0.75rem;font-weight:700;color:var(--orange);
+               text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;}
+  .warn p,.warn li{color:#e3c78a;font-size:0.84rem;margin-bottom:4px;}
+  .warn ul{margin-left:18px;}
+  footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--border);
+         color:var(--muted);font-size:0.78rem;text-align:center;}
+  .ok{color:var(--green);font-weight:700;}
+  .todo{color:var(--orange);font-weight:700;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>e2e 학습과 model replace</h1>
+<p class="subtitle">
+  입출력 크기를 맞춰 openpilot driving model 자리에 우리 모델을 넣는 것.
+  운전 성능을 comma 수준으로 맞추는 것은 목표가 아님.
+  학습은 PC의 <code>e2e_learning_lab</code>, 실차는 3X의 <code>openpilot_mj_develop</code>.
+</p>
+
+<div class="toc">
+  <strong style="color:var(--text);font-size:0.9rem;">목차</strong>
+  <ol>
+    <li><a href="#goal">목표</a></li>
+    <li><a href="#roles">역할: 3X / PC</a></li>
+    <li><a href="#words">용어</a></li>
+    <li><a href="#label">label은 어디서 오나</a></li>
+    <li><a href="#io">openpilot 입출력</a></li>
+    <li><a href="#models">TinyAccelNet과 BabySupercombo</a></li>
+    <li><a href="#status">2026-08 진행 상태</a></li>
+    <li><a href="#lab">lab 명령</a></li>
+    <li><a href="#safety">안전</a></li>
+    <li><a href="#next">다음에 할 일</a></li>
+  </ol>
+</div>
+
+<h2 id="goal">1. 목표</h2>
+<div class="note">
+  <div class="note-title">한 문장</div>
+  <p>
+    openpilot driving model과 <strong>같은 입력 이름·shape, 같은 출력 길이(2576)와 output_slices</strong>를 가진
+    작은 모델을 PC에서 학습·export한다.
+    나중에 그 파일을 3X <code>modeld</code>가 읽는 자리에 넣었을 때
+    <strong>프로세스가 에러 없이 돌아가는 것</strong>이 성공이다.
+    차선·추종·신호 성능이 comma와 비슷한 것은 성공 조건이 아니다.
+  </p>
+</div>
+
+<table>
+  <thead>
+    <tr><th>한다</th><th>하지 않는다</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>입출력 이름·shape를 supercombo ONNX와 맞춤</td>
+      <td>comma 공식 weights를 이어서 fine-tune</td>
+    </tr>
+    <tr>
+      <td>PC에서 dataset · train · ONNX export</td>
+      <td>3X 위에서 training</td>
+    </tr>
+    <tr>
+      <td>로그에서 가속 숫자를 자동 label로 씀 (사람 검수 없음)</td>
+      <td>도로에서 이 모델로 안전 완전자율</td>
+    </tr>
+    <tr>
+      <td>shape가 맞아 forward / parser가 통과하는 smoke</td>
+      <td>“잘 달린다”는 체감 품질</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  네트워크 구조(architecture)와 입출력 크기는 한 번 정한다.
+  그다음 사이클은 같은 구조로 <strong>weights만</strong> 다시 학습한다.
+  입출력 크기를 바꾸면 예전 weights는 replace에 쓸 수 없다.
+</p>
+
+<h2 id="roles">2. 역할: 3X / PC</h2>
+<table>
+  <thead>
+    <tr><th>역할</th><th>어디</th><th>무엇</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>실차 openpilot</td>
+      <td>comma 3X</td>
+      <td><code>openpilot_mj_develop</code> git 그대로 주행·기록. training 안 함.</td>
+    </tr>
+    <tr>
+      <td>학습</td>
+      <td>PC</td>
+      <td><code>e2e_learning_lab</code> (openpilot과 다른 폴더)</td>
+    </tr>
+    <tr>
+      <td>데이터 이동</td>
+      <td>3X → PC</td>
+      <td><code>scp</code>. 예: <code>e2e_learning_lab/data/from_3x/realdata/</code> (~66 GB, 1회 복사됨)</td>
+    </tr>
+    <tr>
+      <td>push</td>
+      <td>GitHub abraxas4</td>
+      <td><code>abraxas4/openpilot_mj_develop</code>, <code>abraxas4/e2e_learning_lab</code>. commaai에는 안 올림.</td>
+    </tr>
+  </tbody>
+</table>
+<p>
+  Windows PC 경로 예: <code>S:\github\e2e_learning_lab</code>.
+  이 저장소는 <code>/home/abraxas4/github/openpilot_mj_develop</code>.
+</p>
+
+<h2 id="words">3. 용어</h2>
+<table>
+  <thead>
+    <tr><th>말</th><th>뜻</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>training</td><td>데이터로 model 안의 weights를 업데이트하는 과정</td></tr>
+    <tr><td>inference</td><td>weights를 고정한 채 새 입력으로 출력을 계산. 차가 달릴 때 modeld가 하는 일</td></tr>
+    <tr><td>weights</td><td>model 내부 숫자. 파일은 <code>.pt</code>(PyTorch), <code>.onnx</code>(교환용)</td></tr>
+    <tr><td>tensor / shape</td><td>다차원 숫자 배열 / 그 크기. 예: <code>(1, 12, 128, 256)</code>. 크기가 안 맞으면 즉시 에러</td></tr>
+    <tr><td>dataset / sample</td><td>학습·평가용 예제 모음 / 그중 한 개 (보통 이미지 1장 + 목표 값)</td></tr>
+    <tr><td>label</td><td>그 입력에 대해 맞춰야 할 목표 값. 사람이 찍을 수도, 차 로그가 만들 수도 있음</td></tr>
+    <tr><td>supervised learning</td><td>입력 X와 목표 Y를 짝으로 주고 Y를 맞추게 하는 학습. 이 lab의 train이 이쪽</td></tr>
+    <tr><td>loss / MSE / epoch</td><td>오차 / 평균제곱오차 / 데이터 전체를 한 바퀴 학습하는 단위</td></tr>
+    <tr><td>ONNX</td><td>모델을 다른 runtime으로 옮기는 파일 형식. Netron으로 입출력 이름을 볼 수 있음</td></tr>
+    <tr><td>output_slices</td><td>길이 2576 출력을 plan, hidden_state 등으로 자르는 구간 표. modeld가 이걸 읽음</td></tr>
+    <tr><td>route / segment</td><td>openpilot 한 번의 주행 묶음 / 약 1분 조각</td></tr>
+    <tr><td>modeld / modelV2</td><td>openpilot에서 모델을 돌리는 프로세스 / 그 출력 메시지</td></tr>
+    <tr><td>replace</td><td>openpilot이 읽는 driving model 파일 자리에 우리 파일을 넣는 것</td></tr>
+    <tr><td>smoke</td><td>실제 운전이 아니라, 입력 shape를 넣고 forward가 되는지 확인하는 검사</td></tr>
+  </tbody>
+</table>
+
+<p>
+  training은 weights를 바꾸고, inference는 바꾸지 않는다.
+  3X 주행은 inference다. 학습은 PC에서만 한다.
+</p>
+
+<h2 id="label">4. label은 어디서 오나</h2>
+<p>
+  이 lab은 supervised다. 목표 값(label)이 필요하다.
+  label이 있다고 해서 사람이 frame마다 클릭한다는 뜻은 아니다.
+</p>
+<table>
+  <thead>
+    <tr><th>출처</th><th>내용</th><th>이 lab</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>프로그램이 만든 값</td><td>가짜 이미지와 같이 생성한 숫자</td><td>synthetic <code>make_dataset</code> (파이프라인 연습)</td></tr>
+    <tr><td>차 로그</td><td>속도, 가속도, 조향 등 이미 기록된 숫자</td><td><strong>실차 학습의 기본</strong>. qlog에서 가속을 뽑아 label</td></tr>
+    <tr><td>사람 주석</td><td>클릭·박스·클래스 이름</td><td>쓰지 않음</td></tr>
+  </tbody>
+</table>
+<div class="card">
+  <p>합의된 작업 방식:</p>
+  <ol>
+    <li>로그로 자동 label 생성 (예: vEgo 미분)</li>
+    <li>정지 화면을 보고 가속/감속을 고치지 않음</li>
+    <li>있는 qcamera+qlog segment를 batch로 전부 처리한 뒤 train</li>
+  </ol>
+</div>
+
+<h2 id="io">5. openpilot 입출력</h2>
+<p>
+  참조는 comma driving supercombo ONNX.
+  정본 표는 lab의 <code>src/op_io_spec.py</code> → <code>artifacts/op_io_spec.json</code>.
+  내부 weights가 왜 그 숫자를 내는지는 이 표로 설명되지 않는다. 맞추는 것은 입출력 크기와 이름이다.
+</p>
+
+<table>
+  <thead>
+    <tr><th>입력 이름</th><th>shape</th><th>의미</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>img</code></td><td>(1, 12, 128, 256)</td><td>전방 비전 (여러 frame을 채널로 묶음)</td></tr>
+    <tr><td><code>big_img</code></td><td>(1, 12, 128, 256)</td><td>wide 비전</td></tr>
+    <tr><td><code>features_buffer</code></td><td>(1, 24, 512)</td><td>과거 feature</td></tr>
+    <tr><td><code>desire_pulse</code></td><td>(1, 25, 8)</td><td>차로 변경 등 의도</td></tr>
+    <tr><td><code>traffic_convention</code></td><td>(1, 2)</td><td>좌핸/우핸</td></tr>
+    <tr><td><code>action_t</code></td><td>(1, 2)</td><td>제어 delay 시간</td></tr>
+  </tbody>
+</table>
+
+<table>
+  <thead>
+    <tr><th>출력</th><th>shape</th><th>의미</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>outputs</code></td><td>(1, 2576)</td><td>한 벡터. modeld가 output_slices로 자름</td></tr>
+    <tr><td>slices 예</td><td>구간별</td><td>meta 0:55, hidden_state 1064:1576, plan 1576:2566</td></tr>
+    <tr><td>action head</td><td>—</td><td>이 ONNX 버전에는 없음. 가속은 plan 쪽에서 유도</td></tr>
+  </tbody>
+</table>
+
+<p>
+  smoke에서는 카메라 대신 <code>numpy.zeros((1,12,128,256))</code>처럼
+  정해진 크기의 배열만 넣어도 된다. 목적은 “크기가 맞아 forward가 되나”이다.
+</p>
+
+<h2 id="models">6. TinyAccelNet과 BabySupercombo</h2>
+<table>
+  <thead>
+    <tr><th></th><th>TinyAccelNet</th><th>BabySupercombo</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>입력</td><td>이미지 1장</td><td>supercombo과 같은 입력 6종</td></tr>
+    <tr><td>출력</td><td>숫자 1개 (가속)</td><td>(1, 2576) + output_slices</td></tr>
+    <tr><td>용도</td><td>파이프라인 연습. replace 불가</td><td>입출력 크기를 맞춰 replace 후보를 만드는 단계</td></tr>
+    <tr><td>코드</td><td><code>src/model.py</code></td><td><code>src/baby_supercombo.py</code></td></tr>
+  </tbody>
+</table>
+
+<p>BabySupercombo이 하는 일:</p>
+<ol>
+  <li>전방 <code>img</code>(와 약간 <code>big_img</code>)를 작은 CNN으로 요약</li>
+  <li><code>features_buffer</code> 평균, desire, traffic, action_t와 이어 붙임</li>
+  <li>MLP로 길이 2576 벡터 출력</li>
+  <li>학습 때 2576칸 전부를 가르치지 않음. 로그 자동 label이 있는 <strong>plan의 가속 채널</strong>에만 MSE</li>
+  <li>나머지 칸은 크기를 채우기 위한 자리</li>
+</ol>
+
+<h2 id="status">7. 2026-08 진행 상태</h2>
+<table>
+  <thead>
+    <tr><th>항목</th><th>상태</th><th>메모</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>synthetic make_dataset / train / infer</td><td class="ok">완료</td><td>파이프라인 연습, ~15–20초</td></tr>
+    <tr><td>3X realdata scp</td><td class="ok">완료</td><td>~66.5 GB</td></tr>
+    <tr><td>batch 전체 + 자동 label</td><td class="ok">완료</td><td>444 segs, 52,495 samples, fail 0</td></tr>
+    <tr><td>TinyAccelNet 실차 train (CPU)</td><td class="ok">완료</td><td>20 epoch, ~74분</td></tr>
+    <tr><td>CUDA (RTX 4050)</td><td class="ok">완료</td><td>torch 2.6.0+cu124</td></tr>
+    <tr><td>같은 dataset GPU 재학습</td><td class="ok">완료</td><td>20 epoch, ~33분</td></tr>
+    <tr><td>op_io_spec (입력 6 · 출력 2576)</td><td class="ok">완료</td><td><code>artifacts/op_io_spec.json</code></td></tr>
+    <tr><td>BabySupercombo train</td><td class="ok">완료</td><td>10 epoch GPU. val_accel_mse ~0.296 (가속 예측은 약함, 크기 맞추기 단계)</td></tr>
+    <tr><td>ONNX export + smoke</td><td class="ok">SMOKE PASS</td><td>입력 6종 shape, outputs (1,2576), slices, parser</td></tr>
+    <tr><td>3X modeld replace</td><td class="todo">이후</td><td>PC replay 또는 통제된 환경. 도로 engage로 품질 검증하지 않음</td></tr>
+  </tbody>
+</table>
+
+<h2 id="lab">8. lab 명령</h2>
+<p>환경 (Windows 예):</p>
+<pre>cd S:\github\e2e_learning_lab
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt</pre>
+
+<p>연습용 (이미지 → 가속 1개):</p>
+<pre>python -m src.make_dataset
+python -m src.train
+python -m src.infer --dir data/val</pre>
+
+<p>실차 batch + TinyAccelNet:</p>
+<pre>python -m src.batch_process_all
+python -m src.train_real</pre>
+
+<p>입출력 맞춤 모델:</p>
+<pre>python -m src.op_io_spec
+python -m src.train_baby_io
+python -m src.smoke_baby_io</pre>
+
+<table>
+  <thead>
+    <tr><th>파일</th><th>역할</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>src/make_dataset.py</code></td><td>synthetic 이미지 + label</td></tr>
+    <tr><td><code>src/model.py</code></td><td>TinyAccelNet</td></tr>
+    <tr><td><code>src/train.py</code> / <code>src/infer.py</code></td><td>연습용 학습 / 추론</td></tr>
+    <tr><td><code>src/batch_process_all.py</code></td><td>segment frame + 로그 자동 label</td></tr>
+    <tr><td><code>src/train_real.py</code></td><td>실차 TinyAccelNet 학습</td></tr>
+    <tr><td><code>src/op_io_spec.py</code></td><td>supercombo 입출력 표</td></tr>
+    <tr><td><code>src/baby_supercombo.py</code></td><td>작은 CNN+MLP, 출력 2576</td></tr>
+    <tr><td><code>src/train_baby_io.py</code></td><td>BabySupercombo 학습</td></tr>
+    <tr><td><code>src/smoke_baby_io.py</code></td><td>shape · metadata · ONNX Runtime 검사</td></tr>
+    <tr><td><code>artifacts/baby_supercombo_io.onnx</code></td><td>replace 후보 (~1.3 MB)</td></tr>
+  </tbody>
+</table>
+
+<h2 id="safety">9. 안전</h2>
+<div class="warn">
+  <div class="warn-title">하지 말 것</div>
+  <ul>
+    <li>이 모델로 일반 도로에서 engage하지 말 것. smoke PASS는 “크기가 맞다”이지 “운전이 된다”가 아니다.</li>
+    <li>replace 1차는 PC replay 또는 바퀴가 구르지 않는 환경을 우선할 것.</li>
+    <li>synthetic 빨간/초록 blob 규칙을 신호등 인식으로 착각하지 말 것.</li>
+    <li>panda safety가 잘못된 model 출력을 전부 막아주지는 않는다.</li>
+  </ul>
+</div>
+
+<h2 id="next">10. 다음에 할 일</h2>
+<ol>
+  <li>같은 BabySupercombo 구조로 데이터 추가 후 GPU 재학습 (weights만 갱신)</li>
+  <li>PC에서 openpilot replay로 입출력 연결 확인</li>
+  <li>통제된 환경에서 3X modeld replace 실험</li>
+  <li>도로 engage로 품질을 보지 않음</li>
+</ol>
+
+<footer>
+  docs_abraxas4 · e2e_learning_lab · 예전 두 문서(입문 / 진행 로그)를 이 파일로 합침
+</footer>
+
+</div>
+</body>
+</html>

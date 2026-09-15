@@ -199,20 +199,24 @@
 <div class="section">
   <h2>저속 90도 경로 조향</h2>
   <p>
-    UI가 그리는 코너를 저속에서 휠이 따라가게 함.
+    가까운 코너에 들어온 뒤에만 UI 경로 곡률로 조향한다.
+    15 m UI만 꺾여 있으면 먼저 꺾지 않는다.
     상세: <a href="90deg_corner_steering_limits.html">90도 외길에서 스티어링이 덜 도는 이유</a>
   </p>
 
   <div class="feature">
-    <h3><span class="tag tag-ctrl">control</span> PathSteerHelper — 30 km/h 이하 UI 경로 추종</h3>
+    <h3><span class="tag tag-ctrl">control</span> PathSteerHelper — 가까운 코너만 경로 추종</h3>
     <div class="detail">
-      모델 <code>action</code> 곡률은 짧은 구간 명령이라 90도 접근을 놓친다.
+      모델 <code>action</code> 곡률은 짧은 구간 명령이라 90도를 놓친다.
       30 km/h 이하에서 화면과 같은 <code>modelV2.position</code> 곡률로 조향을 연다.
+      다만 <strong>~4 m 경로가 이미 꺾인 뒤</strong>에만 연다.
       <ul>
-        <li>15 m 앞 y가 같은 쪽으로 커지는 것은 코너 접근 — 흔들림으로 보지 않음</li>
-        <li>좌우로 진동할 때만 action으로 되돌림</li>
+        <li>가까운 경로 |κ| &lt; 0.02 (아직 직선) → action 유지. 15 m UI만 보고 먼저 꺾지 않음</li>
+        <li>action이 경로와 반대(옆차) → action 유지</li>
+        <li>좌우로 진동할 때만 action으로 되돌림. 같은 쪽 y 증가는 흔들림이 아님</li>
         <li>중간 속도는 표준편차 0.8 m 게이트 유지</li>
-        <li>80 km/h 이상: 허용 횡가속도·횡저크 스톡 대비 +20% (3.0 → 3.6 m/s²)</li>
+        <li>저속 곡률 캡 0.35 /m, 고속 0.2 /m</li>
+        <li>80 km/h 이상: 허용 횡가속도·횡저크 스톡 대비 +20% (3.0 → 3.6 m/s²), 조향은 action만</li>
         <li>30~80 km/h: 경로 비중과 상한을 선형으로 이음</li>
       </ul>
     </div>
@@ -434,7 +438,7 @@
   │  origin  → https://github.com/abraxas4/openpilot_mj_develop.git  (push 대상)
   └  upstream → https://github.com/commaai/openpilot.git              (upstream 동기화 전용)
 
-  ※ commaai/openpilot 을 fork → frogpilot_port 브랜치에서 커스텀 개발
+  ※ commaai/openpilot 을 fork → <span class="hlg">main</span> 브랜치에서 커스텀 개발
 
 
 <span class="hl">Level 1 — Submodules (.gitmodules)</span>

@@ -118,7 +118,7 @@
 <p class="subtitle">
   AOL<span class="full"> (Always On Lateral, 상시 횡제어)</span> +
   Experimental Mode<span class="full"> (실험 모드, 종방향 종단간 제어)</span> &middot;
-  원인 분석 + 적용된 제어 변경 (저속 경로 조향, 고속 +20%, 중간 선형)
+  원인 분석 + 적용된 제어 변경 (가까운 코너만 경로 조향, 고속 +20%, 중간 선형)
 </p>
 
 <div class="toc">
@@ -131,12 +131,12 @@
     <li><a href="#exp">실험 모드 — 이번 현상과 무관</a></li>
     <li><a href="#flow-exp">흐름도 — 0.3 m/s 곡률 동결 (거의 정지)</a></li>
     <li><a href="#limits">있는 제한들 (변경 전)</a></li>
-    <li><a href="#flow-clip">흐름도 — clip_curvature 제한 (변경 전)</a></li>
+    <li><a href="#flow-clip">흐름도 — clip_curvature 제한 (적용 후)</a></li>
     <li><a href="#hyundai">Hyundai EPS 85도 펄스</a></li>
     <li><a href="#flow-diag">흐름도 — 로그로 원인 가르기</a></li>
     <li><a href="#patch">코드 변경 — 무엇을 바꿨나</a></li>
     <li><a href="#schedule">속도 스케줄 (30 / 80 km/h, 중간 선형)</a></li>
-    <li><a href="#path-follow">저속 UI 경로 조향 허가</a></li>
+    <li><a href="#path-follow">저속 UI 경로 조향 허가 (가까운 코너만)</a></li>
     <li><a href="#files">관련 코드</a></li>
     <li><a href="#action">action이란</a></li>
     <li><a href="#jerk">횡저크(jerk)와 30~80 km/h</a></li>
@@ -275,7 +275,7 @@
       <td><code>PathSteerHelper</code></td>
       <td>path steer helper</td>
       <td>경로 조향 보조</td>
-      <td>UI 경로가 안정되면 그 곡률을 저속 조향 목표에 섞음.</td>
+      <td>가까운 경로가 이미 꺾이면 그 곡률을 저속 조향 목표에 섞음. 먼 15 m UI만 꺾인 상태·모델이 반대면 action 유지.</td>
     </tr>
     <tr>
       <td><code>speed_blend</code></td>
@@ -305,15 +305,17 @@
   휠 명령은 위 계수로 clip된 곡률입니다.</p>
   <p><code>vEgo ≤ 0.3 m/s</code> (약 1.1 km/h) 곡률 동결은 서행과 무관합니다.</p>
   <p><span class="badge b-ok">적용 후</span>
-  그 max 계수를 속도별로 바꿨습니다.</p>
+  그 max 계수를 속도별로 바꿨고, 저속 조향 목표는 가까운 코너일 때만 UI 경로를 씁니다.</p>
   <ul>
-    <li>30 km/h 이하: 횡가속도 5.0 m/s², 횡저크 8.0 m/s³.
-      UI 경로가 안정되면 그 경로 곡률을 조향 목표에 사용.</li>
-    <li>80 km/h 이상: 횡가속도 3.6 m/s², 횡저크 6.0 m/s³ (스톡 대비 +20%).</li>
-    <li>30~80 km/h: 위 두 값 사이를 선형.</li>
-    <li><code>MAX_CURVATURE = 0.2</code> 절대 캡은 그대로.</li>
+    <li>30 km/h 이하: 횡가속도 5.0 m/s², 횡저크 8.0 m/s³, 곡률 캡 0.35 /m.
+      <strong>가까운 ~4 m 경로가 이미 꺾이면</strong> 그 경로 곡률을 조향 목표에 사용.
+      15 m UI만 꺾이고 가까운 길이 아직 직선이면 action 유지 (옆차 앞으로 먼저 꺾지 않음).
+      모델 action이 경로와 반대면 action 유지.</li>
+    <li>80 km/h 이상: 횡가속도 3.6 m/s², 횡저크 6.0 m/s³ (스톡 대비 +20%). 조향 목표는 action만.</li>
+    <li>30~80 km/h: 위 두 값 사이를 선형. 경로 비중도 선형.</li>
+    <li>고속 곡률 캡 <code>MAX_CURVATURE = 0.2</code> /m. 저속은 <code>LOW_SPEED_MAX_CURVATURE = 0.35</code>.</li>
   </ul>
-  <p>상세는 <a href="#patch">11절</a>.</p>
+  <p>상세는 <a href="#patch">11절</a>, 경로 허가는 <a href="#path-follow">13절</a>.</p>
 </div>
 
 <div class="warn">
@@ -371,10 +373,10 @@
         <div class="t">modelV2.action.desiredCurvature</div>
         <div class="d">짧은 구간의 조향 곡률 명령<br>횡가속도 / max(1, vEgo)²</div>
       </div>
-      <div class="arrow">↓<span>vEgo ≤ 0.3 m/s (≈1.1 km/h) 에서만 이전 값 유지. 서행에는 해당 없음</span></div>
+      <div class="arrow">↓<span>latActive이면 PathSteerHelper.blend. 가까운 코너만 경로, 아니면 action</span></div>
       <div class="node warn">
         <div class="t">clip_curvature()</div>
-        <div class="d">횡저크 · 횡가속도 · MAX_CURVATURE=0.2</div>
+        <div class="d">횡저크 · 횡가속도 · 속도별 곡률 캡<br>(저속 0.35, 고속 0.2)</div>
       </div>
       <div class="arrow">↓</div>
       <div class="node lat">
@@ -603,11 +605,12 @@ else:
 </div>
 
 <!-- ====================================================== -->
-<h2 id="flow-clip">8. 흐름도 — clip_curvature 제한 (변경 전 고정값)</h2>
+<h2 id="flow-clip">8. 흐름도 — clip_curvature 제한 (적용 후)</h2>
 <p>
   <code>controlsd</code> 가 모델 곡률을 받은 뒤, 매 10 ms마다 세 겹으로 자릅니다.
   속도는 최소 1.0 m/s로 올려 계산합니다.
-  변경 뒤에는 횡저크·횡가속도 상한이 속도에 따라 바뀝니다. 절대 곡률 캡 0.2는 그대로입니다.
+  변경 뒤에는 횡저크·횡가속도·곡률 캡이 속도에 따라 바뀝니다.
+  저속 곡률 캡 0.35, 고속 0.2, 사이는 선형입니다.
 </p>
 
 <div class="flow">
@@ -620,17 +623,17 @@ else:
     <div class="arrow">↓<span>v_ego = max(vEgo, 1.0)</span></div>
     <div class="node warn">
       <div class="t">1) 횡저크 레이트 제한</div>
-      <div class="d">Δκ ≤ 5.0 / v² · 0.01 s<br>한 주기에 곡률이 너무 빨리 안 변하게</div>
+      <div class="d">Δκ ≤ jerk(v) / v² · 0.01 s<br>저속 8.0, 고속 6.0 m/s³</div>
     </div>
     <div class="arrow">↓</div>
     <div class="node warn">
       <div class="t">2) 횡가속도 제한</div>
-      <div class="d">|κ| ≤ (3.0 ± roll 보정) / v²<br>ISO 11270 3.0 m/s²</div>
+      <div class="d">|κ| ≤ (a_max(v) ± roll 보정) / v²<br>저속 5.0, 고속 3.6 m/s²</div>
     </div>
     <div class="arrow">↓</div>
     <div class="node warn">
-      <div class="t">3) 절대 곡률 캡</div>
-      <div class="d">|κ| ≤ 0.2 &nbsp;→ 반경 5 m<br>저속에서 보통 여기가 가장 빡셈</div>
+      <div class="t">3) 속도별 곡률 캡</div>
+      <div class="d">저속 |κ| ≤ 0.35 (반경 ~2.9 m)<br>고속 |κ| ≤ 0.2 (반경 5 m)</div>
     </div>
     <div class="arrow">↓</div>
     <div class="node lat">
@@ -641,10 +644,13 @@ else:
 </div>
 
 <pre>
-<span class="c"># openpilot/selfdrive/controls/lib/drive_helpers.py</span>
-MAX_CURVATURE = <span class="o">0.2</span>                 <span class="c"># 1/m, 반경 5 m</span>
-MAX_LATERAL_JERK = <span class="o">5.0</span>              <span class="c"># m/s³</span>
-MAX_LATERAL_ACCEL_NO_ROLL = <span class="o">3.0</span>     <span class="c"># m/s²</span>
+<span class="c"># openpilot/selfdrive/controls/lib/drive_helpers.py — 적용 후</span>
+MAX_CURVATURE = <span class="o">0.2</span>                 <span class="c"># 고속 캡, 반경 5 m</span>
+LOW_SPEED_MAX_CURVATURE = <span class="o">0.35</span>      <span class="c"># 저속 캡, ~2.9 m</span>
+MAX_LATERAL_JERK = <span class="o">5.0</span>              <span class="c"># 고속 평탄 ×1.20 → 6.0</span>
+MAX_LATERAL_ACCEL_NO_ROLL = <span class="o">3.0</span>     <span class="c"># 고속 평탄 ×1.20 → 3.6</span>
+LOW_SPEED_MAX_LAT_ACCEL = <span class="o">5.0</span>
+LOW_SPEED_MAX_LAT_JERK = <span class="o">8.0</span>
 MIN_SPEED = <span class="o">1.0</span>                     <span class="c"># clip 계산용 하한</span>
 </pre>
 
@@ -790,9 +796,11 @@ MAX_ANGLE_CONSECUTIVE_FRAMES = <span class="o">2</span>
   실험 모드와 UI는 그대로 둡니다. 바꾼 것은 조향 목표를 고르는 곳과
   <code>clip_curvature</code> 상한뿐입니다.</p>
   <ul>
-    <li><strong>30 km/h 이하:</strong> UI 경로가 같은 목표를 계속 가리키면 그 경로 곡률로 조향을 연다.</li>
-    <li><strong>80 km/h 이상:</strong> 허용 횡가속도·횡저크를 스톡 대비 <strong>+20%</strong> (3.0 → 3.6 m/s²). 급한 커브 상한을 푸는 것이 아니라, 지금 못 도는 곡선을 조금 더 따라가게 한다.</li>
-    <li><strong>30~80 km/h:</strong> 경로 비중과 상한을 선형으로 잇는다.</li>
+    <li><strong>30 km/h 이하:</strong> <em>가까운</em> 경로가 이미 꺾이면 UI 경로 곡률로 조향을 연다.
+      15 m UI만 꺾인 채 가까운 ~4 m가 직선이면 action을 유지한다 (옆차 앞으로 먼저 꺾지 않음).
+      모델이 경로 반대 방향으로 조향하면 action을 유지한다.</li>
+    <li><strong>80 km/h 이상:</strong> 허용 횡가속도·횡저크를 스톡 대비 <strong>+20%</strong> (3.0 → 3.6 m/s²). 급한 커브 상한을 푸는 것이 아니라, 지금 못 도는 곡선을 조금 더 따라가게 한다. 조향 목표는 action만.</li>
+    <li><strong>30~80 km/h:</strong> 경로 비중과 상한을 선형으로 잇는다. 중간 속도는 경로 y 표준편차 ≤ 0.8 m도 본다.</li>
   </ul>
 </div>
 
@@ -819,7 +827,7 @@ MAX_ANGLE_CONSECUTIVE_FRAMES = <span class="o">2</span>
     </tr>
     <tr>
       <td><code>openpilot/selfdrive/controls/tests/test_drive_helpers.py</code></td>
-      <td>스케줄 평탄/선형, 고속 +20%, 안정 경로 추종, 흔들림 시 action 유지.</td>
+      <td>스케줄 평탄/선형, 고속 +20%, 가까운 코너 추종, 먼 15 m 휨은 action 유지, 반대 action 유지, 흔들림 시 action 유지.</td>
     </tr>
   </tbody>
 </table>
@@ -830,7 +838,6 @@ MAX_ANGLE_CONSECUTIVE_FRAMES = <span class="o">2</span>
     <li>실험 모드 (종방향 e2e만)</li>
     <li>UI 렌더러</li>
     <li>modeld <code>MIN_LAT_CONTROL_SPEED = 0.3</code> 동결 (서행이면 해당 없음)</li>
-    <li><code>MAX_CURVATURE = 0.2</code> 절대 캡</li>
     <li>토크 PID 적분항 <code>vEgo &lt; 5</code> 동결, Hyundai EPS 85도 펄스</li>
   </ul>
 </div>
@@ -850,7 +857,7 @@ MAX_ANGLE_CONSECUTIVE_FRAMES = <span class="o">2</span>
     <tr>
       <td>≤ 30 km/h</td>
       <td>0</td>
-      <td>UI 경로가 안정되면 경로 곡률 100%</td>
+      <td>가까운 경로가 꺾이면 경로 곡률 100%. 아니면 action</td>
       <td>5.0 m/s²</td>
       <td>8.0 m/s³</td>
     </tr>
@@ -888,8 +895,8 @@ MAX_ANGLE_CONSECUTIVE_FRAMES = <span class="o">2</span>
     <div class="flow-col">
       <div class="join-label">경로 비중 = 1 − t</div>
       <div class="node ui">
-        <div class="t">저속: UI 경로</div>
-        <div class="d">30 km/h 이하에서 안정 시 경로 곡률</div>
+        <div class="t">저속: 가까운 UI 경로</div>
+        <div class="d">30 km/h 이하, ~4 m가 이미 꺾일 때만</div>
       </div>
     </div>
     <div class="flow-col">
@@ -911,23 +918,27 @@ LOW_SPEED_MAX_LAT_ACCEL = <span class="o">5.0</span>          <span class="c"># 
 LOW_SPEED_MAX_LAT_JERK = <span class="o">8.0</span>           <span class="c"># m/s³</span>
 MAX_LATERAL_ACCEL_NO_ROLL = <span class="o">3.0</span>        <span class="c"># 고속 평탄은 ×1.20 → 3.6</span>
 MAX_LATERAL_JERK = <span class="o">5.0</span>                 <span class="c"># 고속 평탄은 ×1.20 → 6.0</span>
-MAX_CURVATURE = <span class="o">0.2</span>                    <span class="c"># 절대 캡, 속도 무관</span>
+MAX_CURVATURE = <span class="o">0.2</span>                    <span class="c"># 고속 캡</span>
+LOW_SPEED_MAX_CURVATURE = <span class="o">0.35</span>         <span class="c"># 저속 캡, ~2.9 m</span>
 </pre>
 
 <div class="note">
   <div class="note-title">고속에서 급한 커브를 더 여는 것이 아닙니다</div>
   <p>고속 바인딩은 여전히 횡가속도입니다. 80 km/h에서 3.6 / v² ≈ 0.007 /m (반경 약 140 m).
   +20%는 “지금 못 돌아나가던 곡선”을 조금 더 따라가게 할 뿐, 직각 코너를 고속에서 허가하지 않습니다.</p>
-  <p>저속 5.0 m/s² 는 15 km/h에서 최소 반경 약 3.5 m 까지 허용하지만,
-  <code>MAX_CURVATURE = 0.2</code> (반경 5 m)가 먼저 막습니다.</p>
+  <p>저속 5.0 m/s² 는 15 km/h에서 κ 상한 약 0.29 (반경 약 3.5 m).
+  곡률 캡 0.35는 그보다 헐거워서, 이 속도에서는 횡가속도가 먼저 막습니다.
+  더 느리면 0.35 (반경 ~2.9 m)가 먼저 막습니다.</p>
 </div>
 
 <!-- ====================================================== -->
-<h2 id="path-follow">13. 저속 UI 경로 조향 허가</h2>
+<h2 id="path-follow">13. 저속 UI 경로 조향 허가 (가까운 코너만)</h2>
 <p>
   화면이 그리는 값과 같은 <code>modelV2.position</code> 에서 곡률을 계산합니다.
-  저속(≤30 km/h)에서는 코너가 다가오며 15 m 앞 y가 커져도 허가합니다.
-  좌우로 진동할 때만 끊습니다. 중간 속도는 예전처럼 표준편차 0.8 m도 봅니다.
+  저속(≤30 km/h)에서 경로를 따라가는 것은 <strong>이미 들어온 코너</strong>입니다.
+  15 m UI가 꺾여 보여도 가까운 ~4 m가 아직 직선이면 action을 유지합니다.
+  모델이 경로 반대 방향으로 조향하면 (옆차가 있는 전형) 역시 action을 유지합니다.
+  좌우로 진동할 때도 끊습니다. 중간 속도는 표준편차 0.8 m도 봅니다.
 </p>
 
 <div class="flow">
@@ -935,7 +946,7 @@ MAX_CURVATURE = <span class="o">0.2</span>                    <span class="c"># 
   <div class="legend">
     <span><i style="background:var(--node-ui);border-color:#1f4b7a;"></i>UI 경로</span>
     <span><i style="background:var(--node-lat);border-color:#2ea043;"></i>조향</span>
-    <span><i style="background:var(--node-warn);border-color:#9e6a03;"></i>안정 아님 / 고속</span>
+    <span><i style="background:var(--node-warn);border-color:#9e6a03;"></i>action 유지</span>
   </div>
   <div class="flow-col" style="width:100%;">
     <div class="node start">
@@ -944,8 +955,8 @@ MAX_CURVATURE = <span class="o">0.2</span>                    <span class="c"># 
     </div>
     <div class="arrow">↓<span>latActive 일 때만 blend</span></div>
     <div class="node decision">
-      <div class="t">경로를 따라가나?</div>
-      <div class="d">저속: 좌우 진동만 거부 (90도 접근 허용)<br>중간: 추가로 표준편차 ≤ 0.8 m</div>
+      <div class="t">가까운 코너인가?</div>
+      <div class="d">|k_near| ≥ 0.02 (~4 m가 이미 꺾임)<br>좌우 진동 아님 · action이 경로와 반대 아님</div>
     </div>
   </div>
   <div class="split">
@@ -953,14 +964,14 @@ MAX_CURVATURE = <span class="o">0.2</span>                    <span class="c"># 
       <div class="join-label">아니오 · 또는 80 km/h 이상</div>
       <div class="node warn">
         <div class="t">action 곡률 유지</div>
-        <div class="d">흔들리면 UI를 따라가지 않음</div>
+        <div class="d">15 m UI만 꺾임 / 옆차 / 흔들림<br>가까운 길이 직선이면 먼저 꺾지 않음</div>
       </div>
     </div>
     <div class="flow-col">
       <div class="join-label">예 · 30 km/h 이하는 경로 100%</div>
       <div class="node ui">
         <div class="t">κ = 2y / (x² + y²)</div>
-        <div class="d">lookahead x = clip(v·1.5, 8, 18) m<br>UI가 그린 점과 같은 기하</div>
+        <div class="d">near x = clip(v·1.5, 4, far) m<br>far x = 저속에서 15 m (UI 점)<br>near가 꺾인 뒤에만 far를 씀</div>
       </div>
       <div class="arrow">↓<span>중간 속도는 선형 혼합</span></div>
       <div class="node lat">
@@ -973,7 +984,7 @@ MAX_CURVATURE = <span class="o">0.2</span>                    <span class="c"># 
     <div class="arrow">↓</div>
     <div class="node warn">
       <div class="t">clip_curvature(속도 스케줄)</div>
-      <div class="d">횡저크 · 횡가속도(속도별) · MAX_CURVATURE 0.2</div>
+      <div class="d">횡저크 · 횡가속도 · 곡률 캡 (저속 0.35, 고속 0.2)</div>
     </div>
     <div class="arrow">↓</div>
     <div class="node lat">
@@ -998,20 +1009,33 @@ self.desired_curvature, curvature_limited = <span class="o">clip_curvature</span
 
 <pre>
 <span class="c"># PathSteerHelper 상수 — drive_helpers.py</span>
-PATH_STABLE_X = <span class="o">15.0</span>             <span class="c"># m</span>
+PATH_STABLE_X = <span class="o">15.0</span>             <span class="c"># m, UI 점 · 저속 far look</span>
 PATH_STABLE_STD = <span class="o">0.8</span>            <span class="c"># m, 중간 속도만</span>
 PATH_STABLE_SAMPLES = <span class="o">10</span>         <span class="c"># 약 0.5 s</span>
-PATH_OSCILLATION_DY = <span class="o">0.3</span>         <span class="c"># m</span>
-PATH_OSCILLATION_FLIPS = <span class="o">3</span>        <span class="c"># 좌우 진동이면 action 유지</span>
-PATH_CURV_X_MIN = <span class="o">8.0</span>
-PATH_CURV_X_MAX = <span class="o">18.0</span>
+PATH_OSCILLATION_Y = <span class="o">1.0</span>         <span class="c"># m, 이하면 L/R 카운트 안 함</span>
+PATH_OSCILLATION_FLIPS = <span class="o">2</span>        <span class="c"># 좌우 진동이면 action 유지</span>
+PATH_ONE_SIDED_Y = <span class="o">2.0</span>           <span class="c"># m, 같은 쪽 큰 코너는 흔들림 아님</span>
+PATH_CURV_X_MIN = <span class="o">4.0</span>            <span class="c"># m, near look</span>
+PATH_CURV_X_MAX = <span class="o">16.0</span>           <span class="c"># m</span>
+PATH_NEAR_TURN_MIN = <span class="o">0.02</span>        <span class="c"># 1/50 m, 이하면 가까운 길은 직선</span>
+PATH_ACTION_OPPOSE = <span class="o">0.015</span>       <span class="c"># 모델이 반대면 action 유지</span>
 </pre>
 
 <div class="note">
   <div class="note-title">route 00000286 — 10도에서 돌아온 이유</div>
   <p>t≈244~247 s, 9~14 km/h. UI 15 m y가 3→25 m로 커지는 동안 action은 0.005~0.008.
   경로 곡률이 0.04~0.06까지 한두 프레임 섞였다가, y 표준편차가 0.8 m를 넘어 다시 action으로 떨어짐.
-  저속에선 그 기하 변화를 흔들림으로 보지 않고 경로 조향을 유지하도록 바꿈.</p>
+  저속에선 그 기하 변화를 흔들림으로 보지 않고, <strong>이미 들어온 코너</strong>의 경로 조향을 유지하도록 바꿈.</p>
+</div>
+
+<div class="note">
+  <div class="note-title">route 00000299 — 15 m를 바로 따라가던 문제</div>
+  <p>저속 ~5 km/h. 4 m 경로는 거의 직선(<code>y≈0.1 m</code>)인데 15 m UI는 이미 크게 휨(<code>y≈6 m</code>).
+  코너 시작은 아직 8~10 m 앞. 모델 action은 반대 방향(−0.09)인데
+  PathSteerHelper가 +0.03으로 먼저 꺾음. 옆차가 있는 상태에서 먼 UI 코너를 자른 것.</p>
+  <p>지금은 가까운 경로의 |κ|가 0.02 미만이면 action을 유지하고,
+  action과 경로 부호가 반대면 덮어쓰지 않습니다.
+  이미 코너 안에 들어오면 (원 경로처럼 4 m도 꺾임) 예전처럼 경로 곡률로 90도를 돕니다.</p>
 </div>
 
 <!-- ====================================================== -->
@@ -1062,8 +1086,8 @@ desired_curvature = model_output['action'][0,0] / (max(<span class="o">1.0</span
 </pre>
 <p>
   변경 전에는 화면이 90도 길을 그려도 action 곡률이 작으면 휠이 그만큼만 돌아가려 했습니다.
-  이번 변경이 그 점을 푸는 것입니다. 서행·중속에서 UI 경로가 안정되면
-  조향 목표를 action만이 아니라 <strong>그 경로 곡률</strong>로 엽니다.
+  서행에서 <strong>이미 들어온 코너</strong>의 UI 경로 곡률로 조향을 엽니다.
+  15 m UI만 꺾여 있고 가까운 길이 직선이거나, 모델이 반대 방향이면 action을 유지합니다.
 </p>
 
 <!-- ====================================================== -->
@@ -1098,7 +1122,7 @@ desired_curvature = model_output['action'][0,0] / (max(<span class="o">1.0</span
   </tbody>
 </table>
 <ol>
-  <li>UI 경로를 일부 따라감 (새 동작). 30 km/h에서 안정 시 100%, 80 km/h에서 0%, 사이는 선형.</li>
+  <li>가까운 UI 경로를 일부 따라감. 30 km/h에서 가까운 코너이면 100%, 80 km/h에서 0%, 사이는 선형.</li>
   <li>상한이 예전 3.0 / 5.0보다 큼. 30에 가까울수록 5.0 / 8.0, 80에 가까울수록 3.6 / 6.0.</li>
 </ol>
 <p>
@@ -1131,23 +1155,23 @@ desired_curvature = model_output['action'][0,0] / (max(<span class="o">1.0</span
 <p>상한을 넓힌 만큼 예전보다 커브를 조금 더 세게/빠르게 따라갈 수는 있습니다. 형태는 다음과 같습니다.</p>
 <ul>
   <li>고속에서 모델이 이미 예전 3.0에 붙어 있던 커브 → 이제 3.6까지 허용.</li>
-  <li>30~80 km/h에서 안정된 UI 경로를 일부 믿음. 틀린 길이 안정적으로 보이면 예전보다 그쪽으로 감.</li>
-  <li>30 km/h 이하 직각은 의도적으로 더 꺾게 만든 구간.</li>
+  <li>30~80 km/h에서 가까운 코너가 안정되면 UI 경로를 일부 믿음. 틀린 길이 안정적으로 보이면 예전보다 그쪽으로 감.</li>
+  <li>30 km/h 이하 직각은, <strong>코너에 들어온 뒤</strong> 의도적으로 더 꺾게 만든 구간. 먼 15 m UI만 보고 먼저 꺾지는 않음.</li>
 </ul>
 
 <div class="card" style="margin-top:16px;">
   <p><strong>요약</strong></p>
   <ol>
     <li>실험 모드는 이번 현상과 관계없습니다.</li>
-    <li>휠이 90도까지 안 돈 이유는 <code>clip_curvature</code> max 계수 (횡가속도 3.0, 횡저크 5.0, 곡률 0.2).</li>
-    <li>적용 후: 30 km/h 이하 5.0 / 8.0 + 안정 UI 경로 조향. 80 km/h 이상 +20% (3.6 / 6.0). 사이는 선형.</li>
-    <li>action은 즉시 조작 명령, UI 경로와 다름. 이번 변경이 서행에서 경로를 조향에 쓰는 이유.</li>
+    <li>휠이 90도까지 안 돈 이유는 <code>clip_curvature</code> max 계수 (횡가속도 3.0, 횡저크 5.0, 곡률 0.2)와, action이 작은 90도 경로를 따라가지 않던 점.</li>
+    <li>적용 후: 30 km/h 이하 5.0 / 8.0 / 곡률 0.35. <strong>가까운 경로가 꺾일 때만</strong> UI 경로 조향. 먼 15 m UI·반대 action은 유지. 80 km/h 이상 +20% (3.6 / 6.0). 사이는 선형.</li>
+    <li>action은 즉시 조작 명령, UI 경로와 다름. 서행 90도는 가까운 코너의 경로 곡률로 연다.</li>
     <li>고속 5도 순간 급변경은 없음. 저크·토크 레이트가 남음. 상한만 넓힘.</li>
   </ol>
 </div>
 
 <footer>
-  openpilot_mj_develop · 90도 외길 조향 제한 정리 · 경로 추종(≤30 km/h) · 고속 +20% · 중간 선형
+  openpilot_mj_develop · 90도 외길 조향 제한 정리 · 가까운 코너만 경로 추종(≤30 km/h) · 고속 +20% · 중간 선형
 </footer>
 
 </div>
