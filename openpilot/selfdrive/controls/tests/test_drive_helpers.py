@@ -3,8 +3,8 @@ import numpy as np
 from openpilot.common.constants import CV
 from openpilot.selfdrive.controls.lib.drive_helpers import (
   HIGH_SPEED_LIMIT_SCALE, LOW_SPEED_MAX_CURVATURE, LOW_SPEED_MAX_LAT_ACCEL,
-  MAX_CURVATURE, MAX_LATERAL_ACCEL_NO_ROLL, PATH_STABLE_SAMPLES, PATH_STABLE_X,
-  PathSteerHelper, V_LIMIT_HIGH, V_LIMIT_LOW, clip_curvature,
+  MAX_CURVATURE, MAX_LATERAL_ACCEL_NO_ROLL, PATH_NEAR_TURN_MIN, PATH_STABLE_SAMPLES,
+  PATH_STABLE_X, PathSteerHelper, V_LIMIT_HIGH, V_LIMIT_LOW, clip_curvature,
   curvature_from_path_turn, curvature_from_path_xy, path_follow_weight,
   path_lookahead_x, scheduled_lat_accel_limit, scheduled_max_curvature,
   speed_blend,
@@ -130,19 +130,33 @@ class TestPathSteer:
     assert abs(out - path_kappa) < 1e-6
     assert abs(out) > abs(action)
 
-  def test_low_speed_uses_far_ui_bend_not_near_straight(self):
-    # Path is straight for the first 6 m (old 4 m look) then bends like the UI.
+  def test_far_ui_bend_keeps_action_until_near_turns(self):
+    # Path is straight for the first 10 m then bends like the UI. Do not
+    # cut that corner while the car is still on the straight.
     xs = np.linspace(0.0, 30.0, 31)
     ys = np.where(xs >= 10.0, 8.0, 0.0)
     v = 10.0 * CV.KPH_TO_MS
     k_near = curvature_from_path_xy(xs, ys, 4.0)
+    k_far = curvature_from_path_xy(xs, ys, PATH_STABLE_X)
     k_turn = curvature_from_path_turn(xs, ys, v)
-    assert k_near is not None and k_turn is not None
-    assert abs(k_near) < 0.02
-    assert abs(k_turn) > abs(k_near) * 3
+    assert k_near is not None and k_far is not None and k_turn is not None
+    assert abs(k_near) < PATH_NEAR_TURN_MIN
+    assert abs(k_far) > abs(k_near) * 3
+    assert abs(k_turn - k_near) < 1e-6
     helper = PathSteerHelper()
-    out = helper.blend(_Model(xs, ys), v, 0.005, model_updated=True)
-    assert abs(out - k_turn) < 1e-6
+    action = 0.005
+    out = helper.blend(_Model(xs, ys), v, action, model_updated=True)
+    assert abs(out - action) < 1e-9
+
+  def test_opposing_action_keeps_action(self):
+    # Nearby left-turn path, but the model is steering the other way
+    # (adjacent car). Do not override into the cut.
+    xs, ys = _circle_path(8.0)
+    helper = PathSteerHelper()
+    action = -0.05
+    v = 15.0 * CV.KPH_TO_MS
+    out = helper.blend(_Model(xs, ys), v, action, model_updated=True)
+    assert abs(out - action) < 1e-9
 
   def test_shaking_path_keeps_action(self):
     helper = PathSteerHelper()

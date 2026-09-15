@@ -32,6 +32,8 @@ PATH_ONE_SIDED_Y = 2.0         # m, mean |y| of a real corner (not a shake)
 PATH_LOOKAHEAD_S = 2.5         # s, timed lookahead used above 30 km/h
 PATH_CURV_X_MIN = 4.0          # m, near look while already in the corner
 PATH_CURV_X_MAX = 16.0         # m
+PATH_NEAR_TURN_MIN = 0.02      # 1/50 m; below this the near path is still straight
+PATH_ACTION_OPPOSE = 0.015     # model turning the other way: keep action
 
 
 def clamp(val, min_val, max_val):
@@ -76,6 +78,10 @@ def path_lookahead_x(v_ego: float) -> float:
   w = path_follow_weight(v_ego)
   return float(w * PATH_STABLE_X + (1.0 - w) * timed)
 
+def path_near_x(v_ego: float) -> float:
+  """Near look used to decide whether the corner has actually started."""
+  return float(np.clip(v_ego * 1.5, PATH_CURV_X_MIN, path_lookahead_x(v_ego)))
+
 def curvature_from_path_xy(xs, ys, lookahead_x: float) -> float | None:
   """Constant-curvature arc through a path point at lookahead_x. Same geometry the UI draws."""
   if xs is None or ys is None or len(xs) < 3 or len(ys) < 3:
@@ -93,14 +99,18 @@ def curvature_from_path_xy(xs, ys, lookahead_x: float) -> float | None:
 
 
 def curvature_from_path_turn(xs, ys, v_ego: float) -> float | None:
-  """Curvature of the UI path. Near and far looks; same-sign takes the tighter one."""
-  far_x = path_lookahead_x(v_ego)
-  near_x = float(np.clip(v_ego * 1.5, PATH_CURV_X_MIN, far_x))
-  k_near = curvature_from_path_xy(xs, ys, near_x)
-  k_far = curvature_from_path_xy(xs, ys, far_x)
+  """Curvature of the UI path.
+
+  Far look is only used once the near path is already bending the same
+  way. A 15 m UI corner while the car is still on a straight is ignored.
+  """
+  k_near = curvature_from_path_xy(xs, ys, path_near_x(v_ego))
+  k_far = curvature_from_path_xy(xs, ys, path_lookahead_x(v_ego))
   if k_near is None:
     return k_far
   if k_far is None:
+    return k_near
+  if abs(k_near) < PATH_NEAR_TURN_MIN:
     return k_near
   if k_near * k_far >= 0.0:
     return k_far if abs(k_far) >= abs(k_near) else k_near
@@ -110,6 +120,8 @@ def curvature_from_path_turn(xs, ys, v_ego: float) -> float | None:
 class PathSteerHelper:
   """Blend steering toward the UI path at low speed.
 
+  Follow a real nearby corner, not a 15 m UI bend that is still ahead.
+  If the model is turning the other way, keep its action (adjacent car).
   Reject only left/right oscillation of the path. A large turn that grows
   then shrinks as it is passed is not shake. Mid-speed still uses the std cap.
   """
@@ -168,12 +180,19 @@ class PathSteerHelper:
     # Mid/high speed still needs a filled history and a tight path.
     if weight < 1.0 and (not self._ready() or not self._tight_stable()):
       return float(action_curvature)
-    # L/R shake only once we have enough samples. At low speed a visible UI
-    # corner is followed from the first frame so steering is not delayed 0.5 s.
+    # L/R shake only once we have enough samples. A nearby corner is
+    # followed from the first frame; a far 15 m UI bend is not.
     if self._ready() and self._oscillating() and not self._one_sided_turn():
       return float(action_curvature)
-    path_curv = curvature_from_path_turn(model_v2.position.x, model_v2.position.y, v_ego)
+    xs = model_v2.position.x
+    ys = model_v2.position.y
+    k_near = curvature_from_path_xy(xs, ys, path_near_x(v_ego))
+    if k_near is None or abs(k_near) < PATH_NEAR_TURN_MIN:
+      return float(action_curvature)
+    path_curv = curvature_from_path_turn(xs, ys, v_ego)
     if path_curv is None:
+      return float(action_curvature)
+    if path_curv * action_curvature < 0.0 and abs(action_curvature) >= PATH_ACTION_OPPOSE:
       return float(action_curvature)
     return float(weight * path_curv + (1.0 - weight) * action_curvature)
 
